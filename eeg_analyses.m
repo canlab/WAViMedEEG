@@ -137,6 +137,7 @@ orders=[
 {'Palosaari',1},
 {'Polosaari',2},	
 {'Roth',2},
+{'Schneider',0},
 {'Simone',1},
 {'Sorbo',0}
 ];
