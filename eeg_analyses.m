@@ -107,7 +107,7 @@ end
 %     end
 % end
 
-%%
+ %%
 % Listing out subject data types and counting
 % 0 = control, 1 = pain, 2 = relief/follow-up
 ncontrol=0;
@@ -163,4 +163,10 @@ for sub=1:n
     if length(data{sub})~=length(orderedData{sub})
         error('Sizes do not match from OG to preprocessed')
     end
+end
+
+%%
+%exporting data matrix as CSV file, numbered in alphabetical order
+for sub=1:n
+    csvwrite(strcat(num2str(sub),'.csv'),orderedData{sub})
 end
