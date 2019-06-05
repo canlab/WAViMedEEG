@@ -15,14 +15,13 @@ n=sys.argv[2]
 
 LABELS=[0,1]
 
-def get_dataset(file_path, numSubjects):
-    dataset = tf.data.experimental.make_csv_dataset(
-        file_path,
-        batch_size=15,
-        #na_value="NaN",
-        num_epochs=1,
-        ignore_errors=True
-    )
-    return dataset
-
-raw_train_data = get_dataset(filename, n)
+# def get_dataset(file_path, numSubjects):
+#     dataset = tf.data.experimental.make_csv_dataset(
+#         file_path,
+#         batch_size=15,
+#         #na_value="NaN",
+#         num_epochs=1,
+#     )
+#     return dataset
+#
+# raw_train_data = get_dataset(filename, n)
