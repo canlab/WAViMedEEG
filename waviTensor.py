@@ -17,11 +17,13 @@ LABELS = [0,1]
 filenames = os.listdir(foldername)
 n = len(filenames)
 
-def printCSV(sub):
-    with open(foldername+filenames[sub], newline='') as File:
-        reader = csv.reader(File)
-        for row in reader:
-            print(row)
+train_file_path = tf.keras.utils.get_file("train.csv", TRAIN_DATA_URL)
+
+# def printCSV(sub):
+#     with open(foldername+filenames[sub], newline='') as File:
+#         reader = csv.reader(File)
+#         for row in reader:
+#             print(row)
 
 # def get_model(input_dim, hidden_units=[100]):
 #     """
