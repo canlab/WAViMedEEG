@@ -1,5 +1,5 @@
-%The following code is intended for SMS thumper data
-
+% The following code is intended for SMS thumper data
+% you should cd into the directory containing files of interest
 
 %load filenames of all SMS thumper data into 3 arrays, EEG, ART, and EVT
 eeg_fnames=filenames(fullfile('*SMS.eeg'));
@@ -62,9 +62,10 @@ for sub=1:n
         end
     end
 end
+
 %%
 %for every subject's SMS EEG file, split into 3 arrays
-%1. eegStruct{sub}{1} = array of EEG data for 155 samples after each 1st thump
+%1. setOne{sub}{thumpnum} = array of EEG data for 155 samples after each 1st thump
 %each iteration should be a column = 155 samples
 for sub=1:n
     onethump=find(evt{sub}==1)
@@ -78,7 +79,7 @@ for sub=1:n
 end
 
 %%
-%2. eegStruct{sub}{2} = array of EEG data for 155 samples after each 2nd thump
+%2. setTwo{sub}{thumpnum} = array of EEG data for 155 samples after each 2nd thump
 %each iteration should be a column = 155 samples
 for sub=1:n
     twothump=find(evt{sub}==2)
@@ -90,24 +91,25 @@ for sub=1:n
         end
     end
 end
-%what if we pulled the two sets of indices for where thump1 and thump2 are
-%but then pull like 155 samples for every subject? The advantage being we
-%don't want to lose the second thump in some cases? Like there's 151
-%samples in between thumps sometimes right?
 %%
-%3. eegStruct{sub}{3} = array of EEG data until the next 1st thump
+%3. setThree{sub}{thumpnum} = array of EEG data until the next 1st thump
 %each iteration should be a column of data, varying length
-% for sub=1:29
-%     for thumpnum=1:length(twothump)
-%         try
-%                   
-%         catch
-% 
-%         end
-%     end
-% end
+for sub=1:n
+    for thumpnum=1:length(twothump)
+        try
+            setThree{sub}{thumpnum}=data{sub}(twothump(thumpnum)+150:onethump(thumpnum+1)+4,:)
+        catch
+            setThree{sub}{thumpnum}=data{sub}(twothump(thumpnum)+150:end,:)
+        end
+    end
+end
 
- %%
+%%
+%4.  
+
+
+
+%%
 % Listing out subject data types and counting
 % 0 = control, 1 = pain, 2 = relief/follow-up
 ncontrol=0;
@@ -169,5 +171,5 @@ end
 %%
 %exporting data matrix as CSV file, numbered in alphabetical order
 for sub=1:n
-    csvwrite(strcat(num2str(sub),'.csv'),orderedData{sub})
+    csvwrite(strcat('/csv/',num2str(sub),'.csv'),orderedData{sub})
 end
