@@ -105,7 +105,31 @@ for sub=1:n
 end
 
 %%
-%4.  
+%4. manipulate setThree{sub}{thumpnum} such that it is curated into a new
+%set of continuous 1s / 250 sample long matrices format
+%restingState{sub}{contig}
+%
+% offset parameter should be used for creating a new set such that the
+% start of the first window's start will be incremented by that many samples, and offset should be
+% >0 and <250
+offset = 0
+windowLength = 250 %number of samples / window
+for sub=1:n
+    contig=1
+    for thumpnum=1:length(setThree{sub})
+        timeStamp=1
+        while length(setThree{sub}{thumpnum}(timeStamp:end,:))>=250
+            try
+                restingState{sub}{contig}=setThree{sub}{thumpnum}(timeStamp:(timeStamp+windowLength-1),:)
+                timeStamp=timeStamp+windowLength
+                contig=contig+1
+            catch
+                contig=contig+1
+                continue
+            end
+        end
+    end
+end
 
 
 
@@ -117,32 +141,32 @@ npain=0;
 nrelief=0;
 
 orders=[
-{'Bannantine',2},
-{'Barker',1},
-{'Barker',2},
-{'Carter',0},
-{'Chambers',1},
-{'Chambers',2},
-{'Fosse',0},
-{'Gervasi',1},
-{'Gervasi',2},
-{'Gerwick',0},
-{'Gies',1},
-{'Gies',2},
-{'Kramer',1},
-{'Kramer',2},
-{'Mitchell',1},
-{'Neubauer',1},
-{'Neubauer',2},
-{'Oak',0},
-{'Olivas',1},
-{'Palosaari',1},
-{'Polosaari',2},	
-{'Roth',2},
-{'Schneider',0},
-{'Simone',1},
-{'Sorbo',0}
-];
+    {'Bannantine',2},
+    {'Barker',1},
+    {'Barker',2},
+    {'Carter',0},
+    {'Chambers',1},
+    {'Chambers',2},
+    {'Fosse',0},
+    {'Gervasi',1},
+    {'Gervasi',2},
+    {'Gerwick',0},
+    {'Gies',1},
+    {'Gies',2},
+    {'Kramer',1},
+    {'Kramer',2},
+    {'Mitchell',1},
+    {'Neubauer',1},
+    {'Neubauer',2},
+    {'Oak',0},
+    {'Olivas',1},
+    {'Palosaari',1},
+    {'Polosaari',2},
+    {'Roth',2},
+    {'Schneider',0},
+    {'Simone',1},
+    {'Sorbo',0}
+    ];
 
 for subject=1:length(orders)
     if orders{subject,2}==0
@@ -155,21 +179,18 @@ for subject=1:length(orders)
 end
 
 %%
-%Insert a column of order number into start of raw EEG data
+%Insert a column of order number into start of all resting state data
 for sub=1:n
-    orderedData{sub}=[repelem(orders{sub,2},length(data{sub}))' data{sub}]
-end
-
-%%
-%Sanity check to make sure lengths match in original data and ordered data
-for sub=1:n
-    if length(data{sub})~=length(orderedData{sub})
-        error('Sizes do not match from OG to preprocessed')
+    for contig=1:length(restingState{sub})
+        restingState{sub}{contig}=[repelem(orders{sub,2},length(restingState{sub}{contig}))' restingState{sub}{contig}]
     end
 end
 
 %%
 %exporting data matrix as CSV file, numbered in alphabetical order
+% YOU SHOULD CD INTO ANOTHER FOLDER BEFORE YOU RUN THIS SECTION
 for sub=1:n
-    csvwrite(strcat('/csv/',num2str(sub),'.csv'),orderedData{sub})
+    for contig=1:length(restingState{sub})
+        csvwrite(strcat(num2str(sub),'_',num2str(contig),'.csv'),restingState{sub}{contig})
+    end
 end
