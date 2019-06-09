@@ -11,19 +11,18 @@ import sys, os, re
 # make numpy values easier to read
 np.set_printoptions(precision=3, suppress=True)
 
-foldername=sys.argv[1]
+dataDirectory=sys.argv[1]
 
 LABELS = [0,1]
-filenames = os.listdir(foldername)
+filenames = os.listdir(dataDirectory)
 n = len(filenames)
 
-train_file_path = tf.keras.utils.get_file("train.csv", TRAIN_DATA_URL)
+def sorted_alphanumeric(data):
+    convert = lambda text: int(text) if text.isdigit() else text.lower()
+    alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ]
+    return sorted(data, key=alphanum_key)
 
-# def printCSV(sub):
-#     with open(foldername+filenames[sub], newline='') as File:
-#         reader = csv.reader(File)
-#         for row in reader:
-#             print(row)
+train_file_path = tf.keras.utils.get_file("train.csv", TRAIN_DATA_URL)
 
 # def get_model(input_dim, hidden_units=[100]):
 #     """
