@@ -24,6 +24,11 @@ def sorted_alphanumeric(data):
 
 train_file_path = tf.keras.utils.get_file("train.csv", TRAIN_DATA_URL)
 
+tf.data.experimental.make_csv_dataset(
+    file_pattern,
+)
+
+
 # def get_model(input_dim, hidden_units=[100]):
 #     """
 #     Create a Keras model with layers
