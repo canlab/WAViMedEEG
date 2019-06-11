@@ -7,27 +7,51 @@ import numpy as np
 import csv
 import tensorflow as tf
 import sys, os, re
+import matplotlib as mpl
 
 # make numpy values easier to read
 np.set_printoptions(precision=3, suppress=True)
 
-dataDirectory=sys.argv[1]
-
-LABELS = [0,1]
-filenames = os.listdir(dataDirectory)
-n = len(filenames)
+#dataDirectory=sys.argv[1]
+os.chdir('PainStudyFiles/csv')
+#os.listdir()
+os.getcwd() #'../science/CANlab/WAViMedEEGScripts/PainStudyFiles/csv/'
 
 def sorted_alphanumeric(data):
     convert = lambda text: int(text) if text.isdigit() else text.lower()
     alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ]
     return sorted(data, key=alphanum_key)
 
-train_file_path = tf.keras.utils.get_file("train.csv", TRAIN_DATA_URL)
+# list of csv files to be loaded are those in the current directory
+filenames=sorted_alphanumeric(os.listdir())
+n=len(filenames)
+print(filenames)
 
-tf.data.experimental.make_csv_dataset(
-    file_pattern,
-)
+def get_dataset(filenames):
+    dataset = tf.data.experimental.make_csv_dataset(
+        filenames,
+        251,
+        column_names=['group','C1','C2','C3','C4','C5','C6','C7','C8','C9','C10','C11','C12','C13','C14','C15','C16','C17','C18','C19'],
+        column_defaults=None,
+        label_name='group',
+        select_columns=None,
+        field_delim=',',
+        use_quote_delim=True,
+        na_value='',
+        header=False,
+        num_epochs=None,
+        shuffle=False,
+        shuffle_buffer_size=10000,
+        shuffle_seed=None,
+        prefetch_buffer_size=tf.data.experimental.AUTOTUNE,
+        num_parallel_reads=12,
+        sloppy=False,
+        num_rows_for_inference=100,
+        compression_type=""
+    )
+    return dataset
 
+get_dataset(filenames)
 
 # def get_model(input_dim, hidden_units=[100]):
 #     """
