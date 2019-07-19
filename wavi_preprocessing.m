@@ -193,9 +193,10 @@ for sub=1:n
     if (sub~=2)&&(sub~=4)
         for contig=1:length(restingState{sub})
             if (orders{sub,2}==0) || (orders{sub,2}==1)
-                csvwrite(strcat(num2str(sub),'_',num2str(contig),'.csv'),restingState{sub}{contig})
-                %inverse version
-                %csvwrite(strcat(num2str(sub),'_inverse_',num2str(contig),'.csv'),restingState{sub}{contig}')
+                %channel cols
+                %csvwrite(strcat(num2str(sub),'_',num2str(contig),'.csv'),restingState{sub}{contig})
+                %channel rows
+                csvwrite(strcat(num2str(sub),'_inverse_',num2str(contig),'.csv'),restingState{sub}{contig}')
             end
         end
     end
