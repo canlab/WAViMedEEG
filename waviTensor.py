@@ -1,4 +1,4 @@
-d#!/usr/bin/env python3
+#!/usr/bin/env python3
 
 # Usage: ./waviTensor.py <folder containing CSV files> <test data folder>
 
