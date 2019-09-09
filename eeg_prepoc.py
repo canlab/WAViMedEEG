@@ -7,4 +7,4 @@ import tensorflow==2.0.0-beta1 as tf
 
 fnames = os.listdir()
 
-tasks = ['']
+tasks = ['P300', 'Flanker', 'Chronic', 'Rest']
