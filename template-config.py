@@ -34,6 +34,29 @@ participantNumLen = 3
 # ====================
 stepTwoTrigger = "" # 'yes' or 'no' to skip command line prompt
 numChannels = 19 # default 19 for WAVi headset
+mneTask = "" # one of tasks
+
+channel_names = [
+    'Fp1',
+    'Fp2',
+    'F3',
+    'F4',
+    'F7',
+    'F8',
+    'C3',
+    'C4',
+    'P3',
+    'P4',
+    'O1',
+    'O2',
+    'T3',
+    'T4',
+    'T5',
+    'T6',
+    'Fz',
+    'Cz',
+    'Pz'
+]
 
 # III. CONTIG GENERATION
 # ====================
@@ -44,3 +67,37 @@ contigLength = 750 # in cycles, at 250 Hz, default 3 seconds
 # IV. NEURAL NETWORK DIFFERENTIATION
 # ====================
 stepFourTrigger = "" # 'yes' or 'no' to skip command line prompt
+
+convnet_channels = [
+    'Fp1',
+    'Fp2',
+    'F3',
+    'F4',
+    'F7',
+    'F8',
+    'C3',
+    'C4',
+    'P3',
+    'P4',
+    'O1',
+    'O2',
+    'T3',
+    'T4',
+    'T5',
+    'T6',
+    'Fz',
+    'Cz',
+    'Pz'
+]
+
+# dictionary of first-index subject number and a respective 4-character name for the group
+subjectKeys = {
+    0: "pilt", # pilot
+    1: "pain",
+    2: "ctrl"
+}
+
+learningRate = 0.001
+betaOne = 0.99
+betaTwo = 0.999
+numEpochs = 100

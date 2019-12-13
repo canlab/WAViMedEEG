@@ -30,7 +30,7 @@ train_count = len(train_image_paths)
 print("You have", train_count, "training images.")
 
 #list the available labels
-label_names = ['ctrl', 'pain']
+label_names = ['pain', 'ctrl']
 #label_names = sorted(item.name for item in train_path.glob('*/') if item.is_dir())
 print("Labels discovered:", label_names)
 
@@ -40,11 +40,17 @@ print("Label indices:", label_to_index)
 
 #create a list of every file and its index label
 
+# this \/ gets labels from first 4 characters of filename
 #train_image_labels = [label_to_index[path[:4]] for path in train_image_paths]
+# this \/ gets labels from parent folder
 #train_image_labels = [label_to_index[pathlib.Path(path).parent.name]
  #                   for path in train_image_paths]
-# train_image_labels = [label_to_index[path[0]] for path in train_image_paths]
-train_image_labels = [int(path[0]) for path in train_image_paths]
+
+subjectKeys = config.subjectKeys
+
+train_image_groups = [subjectKeys.get(int(path[0]), "none") for path in train_image_paths]
+train_image_labels = [label_to_index[group] for group in train_image_groups]
+
 # force list of strings to numpy array
 train_image_labels = np.array(train_image_labels)
 
@@ -64,9 +70,25 @@ def load_numpy_stack(lead, paths):
         numpy_stack.append(array)
     numpy_dataset = np.rollaxis(np.block(numpy_stack), 2, 0)
     numpy_dataset = numpy_dataset.reshape(numpy_dataset.shape+(1,))
+    print("Original Shape of Dataset:", numpy_dataset.shape, "\n")
     return(numpy_dataset)
 
+def filter_my_channels(dataset, keep_channels, axisNum):
+    filter_indeces = []
+
+    # for each channel in my channel list
+    for keep in keep_channels:
+        filter_indeces.append(config.channel_names.index(keep))
+    #   get the index of that channel in the master channel list
+    #   add that index number to a new list filter_indeces
+
+    # iter over the rows of axis 2 (in 0, 1, 2, 3 4-dimensional dataset)
+    filtered_dataset = np.take(dataset, filter_indeces, axisNum)
+    print("New Shape of Dataset:", filtered_dataset.shape, "\n")
+    return(filtered_dataset)
+
 train_arrays = load_numpy_stack(train_path, train_image_paths)
+train_arrays = filter_my_channels(train_arrays, config.convnet_channels, 2)
 #train_arrays = load_numpy_stack('', train_image_paths)
 
 def createModel(learn, num_epochs, betaOne, betaTwo):
@@ -105,14 +127,25 @@ def createModel(learn, num_epochs, betaOne, betaTwo):
 
     return(history)
 
-rates = np.arange(0.01, 0.1, 0.01)
-beta1s = np.arange(0.9, 0.99, 0.01)
-beta2s = np.arange(0.99, 0.999, 0.001)
+try:
+    rate = config.learningRate
+except:
+    rate = float(input("What's my learning rate? \n"))
 
-rate = float(input("What's my learning rate? \n"))
-beta1 = float(input("What's my beta1? \n"))
-beta2 = float(input("What's my beta2? \n"))
-epochs = int(input("How many epochs? \n"))
+try:
+    beta1 = config.betaOne
+except:
+    beta1 = float(input("What's my beta1? \n"))
+
+try:
+    beta2 = config.betaTwo
+except:
+    beta2 = float(input("What's my beta2? \n"))
+
+try:
+    epochs = config.numEpochs
+except:
+    epochs = int(input("How many epochs? \n"))
 
 # compiled = kerasModel(rate)
 # fitted = fitModel(compiled, epochs)
