@@ -35,11 +35,26 @@ def apply_art_mask_nan(data, artifact):
 #     mx = ma.filled(mx.astype(float), 0)
 #     return(mx)
 
+def filter_my_channels(dataset, keep_channels, axisNum):
+    filter_indeces = []
+    # print("Old Shape of Dataset:", dataset.shape, "\n")
+    # for each channel in my channel list
+    for keep in keep_channels:
+        filter_indeces.append(config.channel_names.index(keep))
+    #   get the index of that channel in the master channel list
+    #   add that index number to a new list filter_indeces
+
+    # iter over the rows of axis 2 (in 0, 1, 2, 3 4-dimensional dataset)
+    filtered_dataset = np.take(dataset, filter_indeces, axisNum)
+    # print("New Shape of Dataset:", filtered_dataset.shape, "\n")
+    return(filtered_dataset)
+
 def loadTaskCSVs(group_folder):
     arrays = []
     for sub in os.listdir(group_folder):
         eeg, art = load_csv(group_folder+"/", sub[:config.participantNumLen])
-        arrays.append(apply_art_mask_nan(eeg, art))
+        masked = apply_art_mask_nan(eeg, art)
+        arrays.append(filter_my_channels(masked, config.network_channels, 1))
     return(arrays)
 
 # def load_flanker():
@@ -231,6 +246,7 @@ def contigs_to_csv(batch, group, prefix):
 #                 i+=1
 working_path = config.studyDirectory+"/"+config.selectedTask
 for group in os.listdir(working_path):
-    data_array = loadTaskCSVs(working_path+"/"+group)
-    contigs = get_contigs_from_trials(data_array)
-    contigs_to_csv(contigs, group, config.selectedTask)
+    if group != "0":
+        data_array = loadTaskCSVs(working_path+"/"+group)
+        contigs = get_contigs_from_trials(data_array)
+        contigs_to_csv(contigs, group, config.selectedTask)

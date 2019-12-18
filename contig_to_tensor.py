@@ -46,10 +46,10 @@ print("Label indices:", label_to_index)
 #train_image_labels = [label_to_index[pathlib.Path(path).parent.name]
  #                   for path in train_image_paths]
 
-subjectKeys = config.subjectKeys
-
-train_image_groups = [subjectKeys.get(int(path[0]), "none") for path in train_image_paths]
+train_image_groups = [config.subjectKeys.get(int(path[0]), "none") for path in train_image_paths]
 train_image_labels = [label_to_index[group] for group in train_image_groups]
+#train_image_labels = [int(path[0]) for path in train_image_paths]
+
 
 # force list of strings to numpy array
 train_image_labels = np.array(train_image_labels)
@@ -73,22 +73,22 @@ def load_numpy_stack(lead, paths):
     print("Original Shape of Dataset:", numpy_dataset.shape, "\n")
     return(numpy_dataset)
 
-def filter_my_channels(dataset, keep_channels, axisNum):
-    filter_indeces = []
-
-    # for each channel in my channel list
-    for keep in keep_channels:
-        filter_indeces.append(config.channel_names.index(keep))
-    #   get the index of that channel in the master channel list
-    #   add that index number to a new list filter_indeces
-
-    # iter over the rows of axis 2 (in 0, 1, 2, 3 4-dimensional dataset)
-    filtered_dataset = np.take(dataset, filter_indeces, axisNum)
-    print("New Shape of Dataset:", filtered_dataset.shape, "\n")
-    return(filtered_dataset)
+# def filter_my_channels(dataset, keep_channels, axisNum):
+#     filter_indeces = []
+#
+#     # for each channel in my channel list
+#     for keep in keep_channels:
+#         filter_indeces.append(config.channel_names.index(keep))
+#     #   get the index of that channel in the master channel list
+#     #   add that index number to a new list filter_indeces
+#
+#     # iter over the rows of axis 2 (in 0, 1, 2, 3 4-dimensional dataset)
+#     filtered_dataset = np.take(dataset, filter_indeces, axisNum)
+#     print("New Shape of Dataset:", filtered_dataset.shape, "\n")
+#     return(filtered_dataset)
 
 train_arrays = load_numpy_stack(train_path, train_image_paths)
-train_arrays = filter_my_channels(train_arrays, config.convnet_channels, 2)
+#train_arrays = filter_my_channels(train_arrays, config.network_channels, 2)
 #train_arrays = load_numpy_stack('', train_image_paths)
 
 def createModel(learn, num_epochs, betaOne, betaTwo):

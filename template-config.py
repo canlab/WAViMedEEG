@@ -64,11 +64,7 @@ stepThreeTrigger = "" # 'yes' or 'no' to skip command line prompt
 selectedTask = "" # one of the supported tasks listed above, to be exported to contigs
 contigLength = 750 # in cycles, at 250 Hz, default 3 seconds
 
-# IV. NEURAL NETWORK DIFFERENTIATION
-# ====================
-stepFourTrigger = "" # 'yes' or 'no' to skip command line prompt
-
-convnet_channels = [
+network_channels = [
     'Fp1',
     'Fp2',
     'F3',
@@ -89,6 +85,10 @@ convnet_channels = [
     'Cz',
     'Pz'
 ]
+
+# IV. NEURAL NETWORK DIFFERENTIATION
+# ====================
+stepFourTrigger = "" # 'yes' or 'no' to skip command line prompt
 
 # dictionary of first-index subject number and a respective 4-character name for the group
 subjectKeys = {
