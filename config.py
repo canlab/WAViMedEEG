@@ -9,7 +9,7 @@ import os
 # --------------------> *.eeg
 # --------------------> *.evt
 # --------------------> *.art
-studyDirectory = "/home/claytonjschneider/science/CANlab/EEGstudies/CANlabStudy"
+studyDirectory = "/home/clayton/science/CANlab/EEGstudies/CANlabStudy"
 sampleRate = 250 # in Hz
 
 # I. WAVi to CSV CONVERSIONS
