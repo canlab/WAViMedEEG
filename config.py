@@ -1,3 +1,5 @@
+import os
+
 # INITIALIZING STUDY FILES
 # ====================
 
@@ -7,7 +9,7 @@
 # --------------------> *.eeg
 # --------------------> *.evt
 # --------------------> *.art
-studyDirectory = "/home/claytonjschneider/CANlabStudy"
+studyDirectory = "/home/claytonjschneider/science/CANlab/EEGstudies/CANlabStudy"
 sampleRate = 250 # in Hz
 
 # I. WAVi to CSV CONVERSIONS
@@ -19,6 +21,15 @@ stepOneTrigger = "no" # 'yes' or 'no' to skip command line prompt
 # Ex: 104_p300.eeg
 # if you want to use a different length participant identifier, specify it here
 participantNumLen = 3
+
+# subjectsTasksKeys={}
+#
+# for task in os.listdir(studyDirectory):
+#     if task != "raw":
+#         subjectsTasksKeys[task]=[[os.listdir(studyDirectory+"/"+task)]:2]
+#
+# for key in subjectsTasksKeys:
+#     print(key, " : ", subjectsTasksKeys[key])
 
 # current supported tasks are
 # p300
@@ -60,9 +71,9 @@ channel_names = [
 
 # III. CONTIG GENERATION
 # ====================
-stepThreeTrigger = "" # 'yes' or 'no' to skip command line prompt
+stepThreeTrigger = "no" # 'yes' or 'no' to skip command line prompt
 selectedTask = "p300" # one of the supported tasks listed above, to be exported to contigs
-contigLength = 250 # in cycles, at 250 Hz, default 3 seconds
+contigLength = 250 # in cycles, at 250 Hz
 
 network_channels = [
     'Pz',
@@ -72,7 +83,9 @@ network_channels = [
 
 # IV. NEURAL NETWORK DIFFERENTIATION
 # ====================
-stepFourTrigger = "" # 'yes' or 'no' to skip command line prompt
+stepFourTrigger = "yes" # 'yes' or 'no' to skip command line prompt
+
+source = studyDirectory+"/contigs_"+selectedTask
 
 # dictionary of first-index subject number and a respective 4-character name for the group
 subjectKeys = {
@@ -86,3 +99,5 @@ learningRate = 0.001
 betaOne = 0.99
 betaTwo = 0.999
 numEpochs = 100
+
+resultsDir = studyDirectory+"/results"

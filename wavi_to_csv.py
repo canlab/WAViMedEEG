@@ -103,15 +103,11 @@ def writeCSVs(df):
     for task in df.columns[1:]:
         os.mkdir(config.studyDirectory+"/"+task)
         for sub in df.index.values:
-            try:
-                os.mkdir(config.studyDirectory+"/"+task+"/"+sub[0])
-            except:
-                print("You're probably fine, but the group-level folder already existed.")
             if (df.loc[sub][task]!="none"):
                 if len(df.loc[sub][task])>=2:
-                    np.savetxt(config.studyDirectory+"/"+task+'/'+str(df.loc[sub]['group'])+'/'+sub+'_eeg.csv', df.loc[sub][task][0][1], delimiter=",", fmt="%2.0f")
-                    np.savetxt(config.studyDirectory+"/"+task+'/'+str(df.loc[sub]['group'])+'/'+sub+'_art.csv', df.loc[sub][task][1][1], delimiter=",", fmt="%2.0f")
+                    np.savetxt(config.studyDirectory+"/"+task+'/'+sub+'_art.csv', df.loc[sub][task][1][1], delimiter=",", fmt="%2.0f")
+                    np.savetxt(config.studyDirectory+"/"+task+'/'+sub+'_eeg.csv', df.loc[sub][task][0][1], delimiter=",", fmt="%2.0f")
                 if len(df.loc[sub][task])==3:
-                    np.savetxt(config.studyDirectory+"/"+task+'/'+str(df.loc[sub]['group'])+'/'+sub+'_evt.csv', df.loc[sub][task][2][1], delimiter=",", fmt="%2.0f")
+                    np.savetxt(config.studyDirectory+"/"+task+'/'+sub+'_evt.csv', df.loc[sub][task][2][1], delimiter=",", fmt="%2.0f")
 
 writeCSVs(EEG)

@@ -15,44 +15,66 @@ import config
 
 print("Using Tensorflow version", tf.__version__)
 
-train_path = pathlib.Path(config.studyDirectory+'/contigs')
+train_path = pathlib.Path(config.source)
 
 # load in image paths for training set
 
 import random
 
-train_image_paths = os.listdir(train_path)
-#train_image_paths = list(train_path.glob('*/*'))
-train_image_paths = [str(path) for path in train_image_paths]
-random.shuffle(train_image_paths)
+def get_avail_subjects():
+    subs = []
+    for file in os.listdir(train_path):
+        if file[:3] not in subs:
+            if file[0] != "0":
+                subs.append(file[:3])
+    return(subs)
 
-train_count = len(train_image_paths)
-print("You have", train_count, "training images.")
+subject_list = get_avail_subjects()
+print("List of available subjects:")
+for sub in subject_list:
+    print(sub)
 
-#list the available labels
-label_names = ['pain', 'ctrl']
-#label_names = sorted(item.name for item in train_path.glob('*/') if item.is_dir())
-print("Labels discovered:", label_names)
+def generate_paths_and_labels(omission):
+    image_paths = os.listdir(train_path)
+    image_paths = [path for path in image_paths if path[0] != "0"]
+    #train_image_paths = list(train_path.glob('*/*'))
+    train_image_paths = [str(path) for path in image_paths if omission != path[:3]]
+    test_image_paths = [str(path) for path in image_paths if omission == path[:3]]
 
-#assign an index to each label
-label_to_index = dict((name, index) for index, name in enumerate(label_names))
-print("Label indices:", label_to_index)
+    random.shuffle(train_image_paths)
 
-#create a list of every file and its index label
+    train_count = len(train_image_paths)
+    print("You have", train_count, "files.")
 
-# this \/ gets labels from first 4 characters of filename
-#train_image_labels = [label_to_index[path[:4]] for path in train_image_paths]
-# this \/ gets labels from parent folder
-#train_image_labels = [label_to_index[pathlib.Path(path).parent.name]
- #                   for path in train_image_paths]
+    #list the available labels
+    label_names = ['pain', 'ctrl']
+    #label_names = sorted(item.name for item in train_path.glob('*/') if item.is_dir())
+    print("Labels discovered:", label_names)
 
-train_image_groups = [config.subjectKeys.get(int(path[0]), "none") for path in train_image_paths]
-train_image_labels = [label_to_index[group] for group in train_image_groups]
-#train_image_labels = [int(path[0]) for path in train_image_paths]
+    #assign an index to each label
+    label_to_index = dict((name, index) for index, name in enumerate(label_names))
+    print("Label indices:", label_to_index)
 
+    #create a list of every file and its integer label
 
-# force list of strings to numpy array
-train_image_labels = np.array(train_image_labels)
+    # this \/ gets labels from first 4 characters of filename
+    #train_image_labels = [label_to_index[path[:4]] for path in train_image_paths]
+    # this \/ gets labels from parent folder
+    #train_image_labels = [label_to_index[pathlib.Path(path).parent.name]
+     #                   for path in train_image_paths]
+
+    train_image_groups = [config.subjectKeys.get(int(path[0]), "none") for path in train_image_paths]
+    test_image_groups = [config.subjectKeys.get(int(path[0]), "none") for path in test_image_paths]
+
+    train_image_labels = [label_to_index[group] for group in train_image_groups]
+    test_image_labels = [label_to_index[group] for group in test_image_groups]
+    #train_image_labels = [int(path[0]) for path in train_image_paths]
+
+    # force list of labels to numpy array
+    train_image_labels = np.array(train_image_labels)
+    test_image_labels = np.array(test_image_labels)
+
+    return(train_image_paths, train_image_labels, test_image_paths, test_image_labels)
 
 def normalize(array):
     nom = (array - array.min())*(1 - 0)
@@ -87,11 +109,7 @@ def load_numpy_stack(lead, paths):
 #     print("New Shape of Dataset:", filtered_dataset.shape, "\n")
 #     return(filtered_dataset)
 
-train_arrays = load_numpy_stack(train_path, train_image_paths)
-#train_arrays = filter_my_channels(train_arrays, config.network_channels, 2)
-#train_arrays = load_numpy_stack('', train_image_paths)
-
-def createModel(learn, num_epochs, betaOne, betaTwo):
+def createModel(train_arrays, train_image_labels, learn, num_epochs, betaOne, betaTwo):
     # Introduce sequential Set
     model = tf.keras.models.Sequential()
 
@@ -125,7 +143,7 @@ def createModel(learn, num_epochs, betaOne, betaTwo):
     history = model.fit(train_arrays, train_image_labels, epochs=num_epochs,
                        validation_split=0.33)
 
-    return(history)
+    return(history, model)
 
 try:
     rate = config.learningRate
@@ -147,20 +165,34 @@ try:
 except:
     epochs = int(input("How many epochs? \n"))
 
-# compiled = kerasModel(rate)
-# fitted = fitModel(compiled, epochs)
-fitted = createModel(rate, epochs, beta1, beta2)
+try:
+    os.mkdir(config.resultsDir)
+except:
+    print("Results dir already made.")
 
 import matplotlib.pyplot as plt
 
-# Plot training & validation accuracy values
-plt.plot(fitted.history['accuracy'])
-plt.plot(fitted.history['val_accuracy'])
-plt.title('Model_accuracy')
-plt.ylabel('Accuracy')
-plt.xlabel('Epoch')
-plt.legend(['Train', 'Test'], loc='upper left')
-plt.show()
+for sub in subject_list:
+    train_paths, train_labels, test_paths, test_labels = generate_paths_and_labels(sub)
+    train_data = load_numpy_stack(train_path, train_paths)
+    test_data = load_numpy_stack(train_path, test_paths)
+
+    fitted, modelvar = createModel(train_data, train_labels, rate, epochs, beta1, beta2)
+
+    # Plot training & validation accuracy values
+    plt.clf()
+    plt.plot(fitted.history['accuracy'])
+    plt.plot(fitted.history['val_accuracy'])
+    plt.title("Subject " + sub + " ===== yield " + str(len(test_data)) + " contigs")
+    plt.ylabel('Accuracy')
+    plt.xlabel('Epoch')
+    plt.legend(['Train', 'Test'], loc='upper left')
+    plt.savefig(config.resultsDir+"/"+sub+".png")
+
+    f = open(config.resultsDir+"/"+sub+".txt", 'w')
+    score = modelvar.evaluate(test_data, test_labels)
+    f.write("Loss: " + repr(score[0]) + "\n" + "Accuracy: " + repr(score[1]) + "\n")
+    f.close()
 
 #results = testModel(fitted)
 #myresults.append(results)

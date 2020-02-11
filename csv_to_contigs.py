@@ -4,21 +4,12 @@ from numpy import array, ma, genfromtxt
 import pandas as pd
 import config
 
-# class taskInfo():
-#     def __init__(self):
-#         self.fnames = os.listdir()
-#         self.ctrl_fnames = os.listdir("2")
-#         self.pain_subs = []
-#         self.ctrl_subs = []
-#         for fname in self.pain_fnames:
-#             if(fname[:3] not in self.pain_subs):
-#                 self.pain_subs.append(fname[:3])
-#         for fname in self.ctrl_fnames:
-#             if(fname[:3] not in self.ctrl_subs):
-#                 self.ctrl_subs.append(fname[:3])
-
-os.mkdir(config.studyDirectory+"/contigs")
-print("I made the contigs folder")
+try:
+    contigsFolder = config.studyDirectory+"/contigs"+"_"+config.selectedTask
+    os.mkdir(contigsFolder)
+except:
+    print("You already had the specified contigs folder. Go back and clean up.\n")
+    quit()
 
 def load_csv(prefix, sub):
     eeg = genfromtxt(prefix+"/"+sub+"_eeg.csv", delimiter=",")
@@ -30,10 +21,10 @@ def apply_art_mask_nan(data, artifact):
     mx = ma.filled(mx.astype(float), np.nan)
     return(mx)
 
-# def apply_art_mask_zero(data, artifact):
-#     mx = ma.masked_array(data, mask=artifact)
-#     mx = ma.filled(mx.astype(float), 0)
-#     return(mx)
+def apply_art_mask_zero(data, artifact):
+    mx = ma.masked_array(data, mask=artifact)
+    mx = ma.filled(mx.astype(float), 0)
+    return(mx)
 
 def filter_my_channels(dataset, keep_channels, axisNum):
     filter_indeces = []
@@ -49,64 +40,18 @@ def filter_my_channels(dataset, keep_channels, axisNum):
     # print("New Shape of Dataset:", filtered_dataset.shape, "\n")
     return(filtered_dataset)
 
-def loadTaskCSVs(group_folder):
+def loadTaskCSVs(task_folder):
     arrays = []
-    for sub in os.listdir(group_folder):
-        eeg, art = load_csv(group_folder+"/", sub[:config.participantNumLen])
+    subjectWriteOrder = []
+    for sub in os.listdir(task_folder):
+        subNum = sub[:config.participantNumLen]
+        if subNum not in subjectWriteOrder:
+            subjectWriteOrder.append(subNum)
+    for num in subjectWriteOrder:
+        eeg, art = load_csv(task_folder+"/", num)
         masked = apply_art_mask_nan(eeg, art)
         arrays.append(filter_my_channels(masked, config.network_channels, 1))
-    return(arrays)
-
-# def load_flanker():
-#     go_to_task("flanker")
-#     flanker_pain = []
-#     flanker_ctrl = []
-#     info = taskInfo()
-#     os.chdir("1")
-#     for sub in info.pain_subs:
-#         eeg, art = load_csv(sub)
-#         flanker_pain.append(apply_art_mask_zero(eeg, art))
-#     os.chdir("..")
-#     os.chdir("2")
-#     for sub in info.ctrl_subs:
-#         eeg, art = load_csv(sub)
-#         flanker_ctrl.append(apply_art_mask_zero(eeg, art))
-#     os.chdir("..")
-#     return(flanker_pain, flanker_ctrl)
-
-# def load_chronic():
-#     go_to_task("chronic")
-#     chronic_pain = []
-#     chronic_ctrl = []
-#     info = taskInfo()
-#     os.chdir("1")
-#     for sub in info.pain_subs:
-#         eeg, art = load_csv(sub)
-#         chronic_pain.append(apply_art_mask_zero(eeg, art))
-#     os.chdir("..")
-#     os.chdir("2")
-#     for sub in info.ctrl_subs:
-#         eeg, art = load_csv(sub)
-#         chronic_ctrl.append(apply_art_mask_zero(eeg, art))
-#     os.chdir("..")
-#     return(chronic_pain, chronic_ctrl)
-
-# def load_rest():
-#     go_to_task("rest")
-#     rest_pain = []
-#     rest_ctrl = []
-#     info = taskInfo()
-#     os.chdir("1")
-#     for sub in info.pain_subs:
-#         eeg, art = load_csv(sub)
-#         rest_pain.append(apply_art_mask_zero(eeg, art))
-#     os.chdir("..")
-#     os.chdir("2")
-#     for sub in info.ctrl_subs:
-#         eeg, art = load_csv(sub)
-#         rest_ctrl.append(apply_art_mask_zero(eeg, art))
-#     os.chdir("..")
-#     return(rest_pain, rest_ctrl)
+    return(arrays, subjectWriteOrder)
 
 def sec_to_cyc(seconds):
     return(seconds * 250)
@@ -123,25 +68,23 @@ def generate_sparse_contigs(run, length):
             i+=length
         else:
             i+=1
-    return contigs, startindexes
+    return contigs
 
-def generate_all_contigs(run, length):
-    i = 0
-    contigs = []
-    startindexes = []
-    while i < run.shape[0]-length:
-        stk = run[i:(i+length),:]
-        contigs.append(stk)
-        startindexes.append(i)
-        i+=length
-    return contigs, startindexes
+# def generate_all_contigs(run, length):
+#     i = 0
+#     contigs = []
+#     startindexes = []
+#     while i < run.shape[0]-length:
+#         stk = run[i:(i+length),:]
+#         contigs.append(stk)
+#         startindexes.append(i)
+#         i+=length
+#     return contigs, startindexes
 
-def get_contigs_from_trials(trials):
-    all_contigs = []
+def get_contigs_from_trials(trial):
     cycles = config.contigLength
-    for run in trials:
-        all_contigs.append(generate_sparse_contigs(run, cycles))
-    return(all_contigs)
+    sub_contigs = generate_sparse_contigs(trial, cycles)
+    return(sub_contigs)
 
 # def amps_by_subject(contigs):
 #     amps_by_subject=[]
@@ -205,48 +148,30 @@ def get_contigs_from_trials(trials):
 #     }
 #     func = switcher.get(argument, lambda: \"Invalid task\")
 
-def filter_amplitude(contig, bads=[]):
+def filter_amplitude(contig, bads):
     amp = np.sum(np.square(contig))
     if amp in bads:
         return(True)
     else:
         return(False)
 
-def contigs_to_csv(batch, group, prefix):
+def contigs_to_csv(batch, prefix, subject_number):
     num_tossed = 0
     i = 0
-    for sub in batch:
-        if (len(sub[0])>0):
-            for contig in sub[0]:
-                if filter_amplitude(contig, bads=[0]):
-                    num_tossed+=1
-                else:
-                    np.savetxt(config.studyDirectory+"/contigs"+"/"+group+"_"+prefix+"_"+str(i)+".csv", contig, delimiter=",", fmt="%2.0f")
-                    i+=1
-    print("I tossed", num_tossed, "contigs, due to specified amplitude filters.")
+    sub_step = 0
+    for contig in batch:
+        if (len(contig)>0):
+            if filter_amplitude(contig, bads=[0]):
+                num_tossed+=1
+            else:
+                np.savetxt(config.studyDirectory+"/contigs"+"_"+prefix+"/"+subject_number+"_"+str(i)+".csv", contig, delimiter=",", fmt="%2.0f")
+                i+=1
+        sub_step+=1
+    print("I tossed", num_tossed, "contigs from", subject_number, "due to specified amplitude filters.")
 
-# def contigs_to_csv_split(group, task, prefix):
-#     if(\"train\" not in os.listdir()):
-#         os.mkdir("train")
-#         os.mkdir("test")
-#     if(task not in os.listdir("train")):
-#         os.chdir("train")
-#         os.mkdir(task)
-#         os.chdir("../test")
-#         os.mkdir(task)
-#         os.chdir("..")
-#     i = 0
-#     for sub in group:
-#         if(len(sub[0])>0):
-#             for contig in sub[0]:
-#                 if(i%3==0):
-#                     np.savetxt(directory+"/contigs/test/"+task+"/"+prefix+"_"+str(i)+".csv", contig, delimiter=",", fmt="%2.0f")
-#                 else:
-#                     np.savetxt(directory+"/contigs/train/"+task+"/"+prefix+"_"+str(i)+".csv", contig, delimiter=",", fmt="%2.0f")
-#                 i+=1
 working_path = config.studyDirectory+"/"+config.selectedTask
-for group in os.listdir(working_path):
-    if group != "0":
-        data_array = loadTaskCSVs(working_path+"/"+group)
-        contigs = get_contigs_from_trials(data_array)
-        contigs_to_csv(contigs, group, config.selectedTask)
+trials_array, subject_array = loadTaskCSVs(working_path)
+for sub_trial in zip(trials_array, subject_array):
+    contigs = get_contigs_from_trials(sub_trial[0])
+    contigs_to_csv(contigs, config.selectedTask, sub_trial[1])
+    print("Contigified data from subject", sub_trial[1])
