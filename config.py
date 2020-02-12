@@ -14,7 +14,7 @@ sampleRate = 250 # in Hz
 
 # I. WAVi to CSV CONVERSIONS
 # ====================
-stepOneTrigger = "no" # 'yes' or 'no' to skip command line prompt
+stepOneTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
 
 # this package expects a naming convention for raw EEG files:
 # 3-digit participant number, underscore, task name, .art / .eeg / .evt
@@ -43,7 +43,7 @@ participantNumLen = 3
 
 # II. MNE CONFIGURATION
 # ====================
-stepTwoTrigger = "no" # 'yes' or 'no' to skip command line prompt
+stepTwoTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 # numChannels = 19 # default 19 for WAVi headset
 mneTask = "p300"
 
@@ -71,7 +71,7 @@ channel_names = [
 
 # III. CONTIG GENERATION
 # ====================
-stepThreeTrigger = "no" # 'yes' or 'no' to skip command line prompt
+stepThreeTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 selectedTask = "p300" # one of the supported tasks listed above, to be exported to contigs
 contigLength = 250 # in cycles, at 250 Hz
 
@@ -83,7 +83,7 @@ network_channels = [
 
 # IV. NEURAL NETWORK DIFFERENTIATION
 # ====================
-stepFourTrigger = "yes" # 'yes' or 'no' to skip command line prompt
+stepFourTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 
 source = studyDirectory+"/contigs_"+selectedTask
 
@@ -101,3 +101,8 @@ betaTwo = 0.999
 numEpochs = 100
 
 resultsDir = studyDirectory+"/results"
+
+# Supplement
+# SCORE DISTRIBUTIONS
+# ====================
+stepFourTriggerDistributions = "no" # enter 'yes' or 'no' to skip command line prompt
