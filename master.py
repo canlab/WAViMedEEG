@@ -12,7 +12,6 @@ def viewStudyTree(startpath):
         indent = ' ' * 4 * (level)
         print('{}{}/'.format(indent, os.path.basename(root)))
         subindent = ' ' * 4 * (level+1)
-    print("\n")
         #for f in files:
         #    print('{}{}'.format(subindent, f))
 
@@ -68,9 +67,8 @@ if config.stepFourTrigger == "yes":
     import contig_to_tensor
     viewStudyTree(config.studyDirectory)
 
-    # Step IV Supplement
-    if (config.stepFourTriggerDistributions != "no") & (config.stepFourTriggerDistributions != "yes"):
-        config.stepFourTriggerDistributions = input("Step IV: Would you like to export score distributions? yes or no \n")
-    if config.stepFourTriggerDistributions == "yes":
-        import score_distributions.py
-        viewStudyTree(config.studyDirectory)
+# Step IV Supplement
+if (config.stepFourTriggerDistributions != "no") & (config.stepFourTriggerDistributions != "yes"):
+    config.stepFourTriggerDistributions = input("Step IV: Would you like to export score distributions? yes or no \n")
+if config.stepFourTriggerDistributions == "yes":
+    import score_distributions

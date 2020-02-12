@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import config
 import os
+from tqdm import tqdm
 
 # Takes user-supplied study directory, adds all files in /raw ending with "eeg", "art", "evt" into fnames list
 def getRawFnames(raw_path):
@@ -56,50 +57,52 @@ def populateTasks(df, filenames):
     return(df)
 
 def loadEEGdataNumpy(df):
-    for sub in df.index.values:
+    print("Importing data")
+    for sub in tqdm(df.index.values):
         for task in df.columns:
             if df.loc[sub][task]!="none":
                 if task=="p300":
                     df.loc[sub][task][0][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+ends[2][:-4]+'.eeg', delimiter=' ')
                     df.loc[sub][task][1][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+ends[2][:-4]+'.art', delimiter=' ')
                     df.loc[sub][task][2][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+ends[2][:-4]+'.evt', delimiter=' ')
-                    print("You passed p300")
+                    # print("You passed p300")
                 if task=="flanker":
                     df.loc[sub][task][0][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+ends[1][:-4]+'.eeg', delimiter=' ')
                     df.loc[sub][task][1][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+ends[1][:-4]+'.art', delimiter=' ')
                     df.loc[sub][task][2][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+ends[1][:-4]+'.evt', delimiter=' ')
-                    print("You passed flanker")
+                    # print("You passed flanker")
                 if task=="chronic":
                     df.loc[sub][task][1][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+ends[0][:-4]+'.art', delimiter=' ')
                     df.loc[sub][task][0][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+ends[0][:-4]+'.eeg', delimiter=' ')
-                    print("You passed chronic")
+                    # print("You passed chronic")
                 if task=="rest":
                     df.loc[sub][task][0][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+ends[3][:-4]+'.eeg', delimiter=' ')
                     df.loc[sub][task][1][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+ends[3][:-4]+'.art', delimiter=' ')
-                    print("You passed rest")
+                    # print("You passed rest")
     return(df)
 
 raw_folder = config.studyDirectory+"/raw"
 fnames, ends = getRawFnames(raw_folder)
 subs = list(dict.fromkeys(getSubjects(fnames, config.participantNumLen)))
 print("Using the following subjects:")
-print("\t",subs)
+print("\t",subs, "\n")
 cnames = ['subject', 'group']
 for task in ends:
     cnames.append(task[0:-4])
 data = initializeDataframe(cnames, subs)
-print(data)
+print(data, "\n")
 data = populateTasks(data, fnames)
-print(data)
+print(data, "\n")
 try:
     EEG = loadEEGdataNumpy(data)
 except:
-    print("Error: You broke when trying to load MAT files into numpy arrays.")
+    print("Error: You broke when trying to load MAT files into numpy arrays.\n")
 
 def writeCSVs(df):
     for task in df.columns[1:]:
         os.mkdir(config.studyDirectory+"/"+task)
-        for sub in df.index.values:
+        print("Writing files for task:", task, "\n")
+        for sub in tqdm(df.index.values):
             if (df.loc[sub][task]!="none"):
                 if len(df.loc[sub][task])>=2:
                     np.savetxt(config.studyDirectory+"/"+task+'/'+sub+'_art.csv', df.loc[sub][task][1][1], delimiter=",", fmt="%2.0f")

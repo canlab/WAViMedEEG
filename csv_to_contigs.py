@@ -3,6 +3,7 @@ import numpy as np
 from numpy import array, ma, genfromtxt
 import pandas as pd
 import config
+from tqdm import tqdm
 
 try:
     contigsFolder = config.studyDirectory+"/contigs"+"_"+config.selectedTask
@@ -41,13 +42,17 @@ def filter_my_channels(dataset, keep_channels, axisNum):
     return(filtered_dataset)
 
 def loadTaskCSVs(task_folder):
+    print("\nLoading", config.selectedTask, "CSVs for contigification")
+    print("==========\n")
     arrays = []
     subjectWriteOrder = []
-    for sub in os.listdir(task_folder):
+    for sub in tqdm(os.listdir(task_folder)):
         subNum = sub[:config.participantNumLen]
         if subNum not in subjectWriteOrder:
             subjectWriteOrder.append(subNum)
-    for num in subjectWriteOrder:
+    print("\nApplying Artifact Masks")
+    print("==========\n")
+    for num in tqdm(subjectWriteOrder):
         eeg, art = load_csv(task_folder+"/", num)
         masked = apply_art_mask_nan(eeg, art)
         arrays.append(filter_my_channels(masked, config.network_channels, 1))
@@ -167,11 +172,14 @@ def contigs_to_csv(batch, prefix, subject_number):
                 np.savetxt(config.studyDirectory+"/contigs"+"_"+prefix+"/"+subject_number+"_"+str(i)+".csv", contig, delimiter=",", fmt="%2.0f")
                 i+=1
         sub_step+=1
-    print("I tossed", num_tossed, "contigs from", subject_number, "due to specified amplitude filters.")
 
 working_path = config.studyDirectory+"/"+config.selectedTask
 trials_array, subject_array = loadTaskCSVs(working_path)
+print("\n Contigifying CSV data")
+print("==========\n")
+pbar = tqdm(total=len(trials_array))
 for sub_trial in zip(trials_array, subject_array):
     contigs = get_contigs_from_trials(sub_trial[0])
     contigs_to_csv(contigs, config.selectedTask, sub_trial[1])
-    print("Contigified data from subject", sub_trial[1])
+    pbar.update(1)
+pbar.close()

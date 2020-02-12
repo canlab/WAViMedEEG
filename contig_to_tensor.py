@@ -12,6 +12,7 @@ import csv
 import sys, os, re
 import pathlib
 import config
+from tqdm import tqdm
 
 print("Using Tensorflow version", tf.__version__)
 
@@ -172,7 +173,7 @@ except:
 
 import matplotlib.pyplot as plt
 
-for sub in subject_list:
+for sub in tqdm(subject_list):
     train_paths, train_labels, test_paths, test_labels = generate_paths_and_labels(sub)
     train_data = load_numpy_stack(train_path, train_paths)
     test_data = load_numpy_stack(train_path, test_paths)

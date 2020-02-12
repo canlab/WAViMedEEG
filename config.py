@@ -14,7 +14,7 @@ sampleRate = 250 # in Hz
 
 # I. WAVi to CSV CONVERSIONS
 # ====================
-stepOneTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
+stepOneTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 
 # this package expects a naming convention for raw EEG files:
 # 3-digit participant number, underscore, task name, .art / .eeg / .evt
@@ -105,4 +105,4 @@ resultsDir = studyDirectory+"/results"
 # Supplement
 # SCORE DISTRIBUTIONS
 # ====================
-stepFourTriggerDistributions = "no" # enter 'yes' or 'no' to skip command line prompt
+stepFourTriggerDistributions = "yes" # enter 'yes' or 'no' to skip command line prompt
