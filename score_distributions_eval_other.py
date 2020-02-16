@@ -4,32 +4,32 @@ from tqdm import tqdm
 import numpy as np
 
 scoreFiles = [fname for fname in os.listdir(config.resultsDir) if "txt" in fname]
-scores = []
-pain_scores = []
-ctrl_scores = []
+
+accuracies = []
+pain_acc = []
+ctrl_acc = []
 
 print("Reading NN output files")
 print("==========\n")
 for fname in tqdm(scoreFiles):
     f = open(config.resultsDir+"/"+fname, 'r')
-    loss = float(f.readline()[:-2].split()[1])
-    accuracy = float(f.readline()[:-2].split()[1])
+    f.readline()
     if fname[0]=="1":
-        accuracy = 1 - accuracy
-        pain_scores.append((loss, accuracy))
+        accuracy = float(f.readline()[:-2])
+        pain_acc.append(accuracy)
     elif fname[0]=="2":
-        ctrl_scores.append((loss, accuracy))
-    scores.append((loss, accuracy))
-
+        accuracy = 1 - float(f.readline()[:-2])
+        ctrl_acc.append(accuracy)
+    accuracies.append(accuracy)
 
 import matplotlib.pyplot as plt
 
-n, bins, patches = plt.hist(x=[score[0] for score in scores], bins='auto', color='blue', alpha=0.7, rwidth=0.85)
+n, bins, patches = plt.hist(x=[ctrl_acc], bins='auto', color='blue', alpha=0.7, rwidth=0.85)
 plt.grid(axis='y', alpha=0.75)
 plt.xlabel('Accuracy')
 plt.xticks(rotation=315)
 plt.ylabel('Count')
-plt.title('Accuracy Distribution from Jacknife Learning')
+plt.title('Accuracy Distribution')
 plt.text(23,45,r'$\mu=15, b=3$')
 maxfreq = n.max()
 

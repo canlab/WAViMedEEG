@@ -9,7 +9,7 @@ import os
 # --------------------> *.eeg
 # --------------------> *.evt
 # --------------------> *.art
-studyDirectory = "/home/clayton/science/CANlab/EEGstudies/CANlabStudy"
+studyDirectory = "/home/claytonjschneider/science/CANlab/EEGstudies/CANlabStudy"
 sampleRate = 250 # in Hz
 
 # I. WAVi to CSV CONVERSIONS
@@ -72,7 +72,7 @@ channel_names = [
 # III. CONTIG GENERATION
 # ====================
 stepThreeTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-selectedTask = "p300" # one of the supported tasks listed above, to be exported to contigs
+selectedTask = "thumper" # one of the supported tasks listed above, to be exported to contigs
 contigLength = 250 # in cycles, at 250 Hz
 
 network_channels = [
@@ -85,7 +85,8 @@ network_channels = [
 # ====================
 stepFourTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 
-source = studyDirectory+"/contigs_"+selectedTask
+source = studyDirectory+"/contigs_p300"
+evalPath = "/home/claytonjschneider/science/CANlab/EEGstudies/WAViPainStudy/contigs_thumper"
 
 # dictionary of first-index subject number and a respective 4-character name for the group
 subjectKeys = {
@@ -100,7 +101,8 @@ betaOne = 0.99
 betaTwo = 0.999
 numEpochs = 100
 
-resultsDir = studyDirectory+"/results"
+
+resultsDir = "/home/claytonjschneider/science/CANlab/EEGstudies/CANlabStudy/results_jacknife_shuffle"
 
 # Supplement
 # SCORE DISTRIBUTIONS

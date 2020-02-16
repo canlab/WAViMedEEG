@@ -12,47 +12,57 @@ import csv
 import sys, os, re
 import pathlib
 import config
+from tqdm import tqdm
 
 print("Using Tensorflow version", tf.__version__)
 
-train_path = pathlib.Path(config.studyDirectory+'/contigs')
-
-# load in image paths for training set
-
 import random
 
-train_image_paths = os.listdir(train_path)
-#train_image_paths = list(train_path.glob('*/*'))
-train_image_paths = [str(path) for path in train_image_paths]
-random.shuffle(train_image_paths)
+def generate_subjects(contig_path):
+    fnames = os.listdir(contig_path)
+    subs = []
+    for fname in fnames:
+        if fname[:config.participantNumLen] not in subs:
+            if fname[0] != "0":
+                subs.append(fname[:config.participantNumLen])
+    return(subs)
 
-train_count = len(train_image_paths)
-print("You have", train_count, "training images.")
+def generate_paths_and_labels(contigs_path, omission=[]):
+    fnames = os.listdir(contigs_path)
 
-#list the available labels
-label_names = ['pain', 'ctrl']
-#label_names = sorted(item.name for item in train_path.glob('*/') if item.is_dir())
-print("Labels discovered:", label_names)
+    image_paths = [str(path) for path in fnames if path[0] != "0"]
+    image_paths = [path for path in image_paths if path[:3] not in omission]
+    #train_image_paths = list(train_path.glob('*/*'))
+    random.shuffle(image_paths)
 
-#assign an index to each label
-label_to_index = dict((name, index) for index, name in enumerate(label_names))
-print("Label indices:", label_to_index)
+    image_count = len(image_paths)
+    print("You have loaded", image_count, "path / label pairs.")
 
-#create a list of every file and its index label
+    #list the available labels
+    label_names = list(config.subjectKeys.values())
+    label_names = [label for label in label_names if label != "pilt"]
+    print("Labels discovered:", label_names)
 
-# this \/ gets labels from first 4 characters of filename
-#train_image_labels = [label_to_index[path[:4]] for path in train_image_paths]
-# this \/ gets labels from parent folder
-#train_image_labels = [label_to_index[pathlib.Path(path).parent.name]
- #                   for path in train_image_paths]
+    #assign an index to each label
+    label_to_index = dict((name, index) for index, name in enumerate(label_names))
+    print("Label indices:", label_to_index)
 
-train_image_groups = [config.subjectKeys.get(int(path[0]), "none") for path in train_image_paths]
-train_image_labels = [label_to_index[group] for group in train_image_groups]
-#train_image_labels = [int(path[0]) for path in train_image_paths]
+    #create a list of every file and its integer label
 
+    # this \/ gets labels from first 4 characters of filename
+    #train_image_labels = [label_to_index[path[:4]] for path in train_image_paths]
+    # this \/ gets labels from parent folder
+    #train_image_labels = [label_to_index[pathlib.Path(path).parent.name]
+     #                   for path in train_image_paths]
 
-# force list of strings to numpy array
-train_image_labels = np.array(train_image_labels)
+    image_groups = [config.subjectKeys.get(int(path[0]), "none") for path in image_paths]
+
+    image_labels = [label_to_index[group] for group in image_groups]
+
+    # force list of labels to numpy array
+    image_labels = np.array(image_labels)
+
+    return(image_paths, image_labels)
 
 def normalize(array):
     nom = (array - array.min())*(1 - 0)
@@ -87,11 +97,7 @@ def load_numpy_stack(lead, paths):
 #     print("New Shape of Dataset:", filtered_dataset.shape, "\n")
 #     return(filtered_dataset)
 
-train_arrays = load_numpy_stack(train_path, train_image_paths)
-#train_arrays = filter_my_channels(train_arrays, config.network_channels, 2)
-#train_arrays = load_numpy_stack('', train_image_paths)
-
-def createModel(learn, num_epochs, betaOne, betaTwo):
+def createModel(train_arrays, train_image_labels, learn, num_epochs, betaOne, betaTwo):
     # Introduce sequential Set
     model = tf.keras.models.Sequential()
 
@@ -147,23 +153,33 @@ try:
 except:
     epochs = int(input("How many epochs? \n"))
 
-# compiled = kerasModel(rate)
-# fitted = fitModel(compiled, epochs)
-fitted, modelvar = createModel(rate, epochs, beta1, beta2)
+try:
+    os.mkdir(config.resultsDir)
+except:
+    print("Results dir already made.")
 
-import matplotlib.pyplot as plt
+subject_list = generate_subjects(config.evalPath)
+print("List of subjects being evaluated:")
+for sub in subject_list:
+    print(sub)
 
-# Plot training & validation accuracy values
-plt.plot(fitted.history['accuracy'])
-plt.plot(fitted.history['val_accuracy'])
-plt.title('Model_accuracy')
-plt.ylabel('Accuracy')
-plt.xlabel('Epoch')
-plt.legend(['Train', 'Test'], loc='upper left')
-plt.show()
+train_path = pathlib.Path(config.source)
+eval_path = pathlib.Path(config.evalPath)
 
-#results = testModel(fitted)
-#myresults.append(results)
+train_paths, train_labels = generate_paths_and_labels(train_path)
 
-#print(myresults)
-# print(\"Loss: \", results[0], \"\\nAccuracy: \", results[1])
+train_data = load_numpy_stack(train_path, train_paths)
+
+fitted, modelvar = createModel(train_data, train_labels, rate, epochs, beta1, beta2)
+
+for sub in tqdm(subject_list):
+    eval_paths, eval_labels = generate_paths_and_labels(eval_path, omission=[omit for omit in subject_list if omit != sub])
+    eval_data = load_numpy_stack(eval_path, eval_paths)
+
+    f = open(config.resultsDir+"/"+sub+".txt", 'w')
+    f.write("Subject accuracy:\n")
+
+    score = modelvar.evaluate(eval_data, eval_labels)
+
+    f.write(repr(score[1])+"\n")
+    f.close()

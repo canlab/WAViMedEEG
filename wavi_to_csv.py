@@ -54,31 +54,36 @@ def populateTasks(df, filenames):
             df.loc[sub]['rest']=[['eeg','NaN'],['art','NaN']]
         else:
             df.loc[sub]['rest']="none"
+        if (sub + "_" + "thumper.eeg") in filenames:
+            df.loc[sub]['thumper']=[['eeg','NaN'],['art','NaN'],['evt','NaN']]
+        else:
+            df.loc[sub]['thumper']="none"
     return(df)
 
 def loadEEGdataNumpy(df):
     print("Importing data")
     for sub in tqdm(df.index.values):
         for task in df.columns:
-            if df.loc[sub][task]!="none":
-                if task=="p300":
-                    df.loc[sub][task][0][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+ends[2][:-4]+'.eeg', delimiter=' ')
-                    df.loc[sub][task][1][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+ends[2][:-4]+'.art', delimiter=' ')
-                    df.loc[sub][task][2][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+ends[2][:-4]+'.evt', delimiter=' ')
-                    # print("You passed p300")
-                if task=="flanker":
-                    df.loc[sub][task][0][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+ends[1][:-4]+'.eeg', delimiter=' ')
-                    df.loc[sub][task][1][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+ends[1][:-4]+'.art', delimiter=' ')
-                    df.loc[sub][task][2][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+ends[1][:-4]+'.evt', delimiter=' ')
-                    # print("You passed flanker")
-                if task=="chronic":
-                    df.loc[sub][task][1][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+ends[0][:-4]+'.art', delimiter=' ')
-                    df.loc[sub][task][0][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+ends[0][:-4]+'.eeg', delimiter=' ')
-                    # print("You passed chronic")
-                if task=="rest":
-                    df.loc[sub][task][0][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+ends[3][:-4]+'.eeg', delimiter=' ')
-                    df.loc[sub][task][1][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+ends[3][:-4]+'.art', delimiter=' ')
-                    # print("You passed rest")
+            if task!="group":
+                if df.loc[sub][task]!="none":
+                    if task=="p300":
+                        df.loc[sub][task][0][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'p300.eeg', delimiter=' ')
+                        df.loc[sub][task][1][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'p300.art', delimiter=' ')
+                        df.loc[sub][task][2][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'p300.evt', delimiter=' ')
+                    if task=="flanker":
+                        df.loc[sub][task][0][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'flanker.eeg', delimiter=' ')
+                        df.loc[sub][task][1][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'flanker.art', delimiter=' ')
+                        df.loc[sub][task][2][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'flanker.evt', delimiter=' ')
+                    if task=="chronic":
+                        df.loc[sub][task][1][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'chronic.art', delimiter=' ')
+                        df.loc[sub][task][0][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'chronic.eeg', delimiter=' ')
+                    if task=="rest":
+                        df.loc[sub][task][0][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'rest.eeg', delimiter=' ')
+                        df.loc[sub][task][1][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'rest.art', delimiter=' ')
+                    if task=="thumper":
+                        df.loc[sub][task][0][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'thumper.eeg', delimiter=' ')
+                        df.loc[sub][task][1][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'thumper.art', delimiter=' ')
+                        df.loc[sub][task][2][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'thumper.evt', delimiter=' ')
     return(df)
 
 raw_folder = config.studyDirectory+"/raw"
@@ -93,10 +98,10 @@ data = initializeDataframe(cnames, subs)
 print(data, "\n")
 data = populateTasks(data, fnames)
 print(data, "\n")
-try:
-    EEG = loadEEGdataNumpy(data)
-except:
-    print("Error: You broke when trying to load MAT files into numpy arrays.\n")
+# try:
+EEG = loadEEGdataNumpy(data)
+# except:
+    # print("Error: You broke when trying to load MAT files into numpy arrays.\n")
 
 def writeCSVs(df):
     for task in df.columns[1:]:

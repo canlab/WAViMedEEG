@@ -13,14 +13,9 @@ import sys, os, re
 import pathlib
 import config
 from tqdm import tqdm
+import random
 
 print("Using Tensorflow version", tf.__version__)
-
-train_path = pathlib.Path(config.source)
-
-# load in image paths for training set
-
-import random
 
 def get_avail_subjects():
     subs = []
@@ -29,11 +24,6 @@ def get_avail_subjects():
             if file[0] != "0":
                 subs.append(file[:3])
     return(subs)
-
-subject_list = get_avail_subjects()
-print("List of available subjects:")
-for sub in subject_list:
-    print(sub)
 
 def generate_paths_and_labels(omission):
     image_paths = os.listdir(train_path)
@@ -70,6 +60,11 @@ def generate_paths_and_labels(omission):
     train_image_labels = [label_to_index[group] for group in train_image_groups]
     test_image_labels = [label_to_index[group] for group in test_image_groups]
     #train_image_labels = [int(path[0]) for path in train_image_paths]
+
+    # null tests, shuffle labels and randomize test
+    random.shuffle(train_image_labels)
+    rand_group = random.randint(0, 1)
+    test_image_labels = [rand_group for label in test_image_labels]
 
     # force list of labels to numpy array
     train_image_labels = np.array(train_image_labels)
@@ -173,27 +168,38 @@ except:
 
 import matplotlib.pyplot as plt
 
-for sub in tqdm(subject_list):
-    train_paths, train_labels, test_paths, test_labels = generate_paths_and_labels(sub)
-    train_data = load_numpy_stack(train_path, train_paths)
-    test_data = load_numpy_stack(train_path, test_paths)
 
-    fitted, modelvar = createModel(train_data, train_labels, rate, epochs, beta1, beta2)
+train_path = pathlib.Path(config.source)
+subject_list = get_avail_subjects()
+print("List of available subjects:")
+for sub in subject_list:
+    print(sub)
 
-    # Plot training & validation accuracy values
-    plt.clf()
-    plt.plot(fitted.history['accuracy'])
-    plt.plot(fitted.history['val_accuracy'])
-    plt.title("Subject " + sub + " ===== yield " + str(len(test_data)) + " contigs")
-    plt.ylabel('Accuracy')
-    plt.xlabel('Epoch')
-    plt.legend(['Train', 'Test'], loc='upper left')
-    plt.savefig(config.resultsDir+"/"+sub+".png")
+for iter in tqdm(range(1000)):
+    os.mkdir(config.resultsDir+"/iter"+str(iter))
+    for sub in tqdm(subject_list):
+        train_paths, train_labels, test_paths, test_labels = generate_paths_and_labels(sub)
 
-    f = open(config.resultsDir+"/"+sub+".txt", 'w')
-    score = modelvar.evaluate(test_data, test_labels)
-    f.write("Loss: " + repr(score[0]) + "\n" + "Accuracy: " + repr(score[1]) + "\n")
-    f.close()
+        train_data = load_numpy_stack(train_path, train_paths)
+        test_data = load_numpy_stack(train_path, test_paths)
+        #
+        fitted, modelvar = createModel(train_data, train_labels, rate, epochs, beta1, beta2)
+        #
+        # # Plot training & validation accuracy values
+        # plt.clf()
+        # plt.plot(fitted.history['accuracy'])
+        # plt.plot(fitted.history['val_accuracy'])
+        # plt.title("Subject " + sub + " ===== yield " + str(len(test_data)) + " contigs")
+        # plt.ylabel('Accuracy')
+        # plt.xlabel('Epoch')
+        # plt.legend(['Train', 'Test'], loc='upper left')
+        # plt.savefig(config.resultsDir+"/"+sub+".png")
+        #
+        f = open(config.resultsDir+"/iter"+str(iter)+"/"+sub+".txt", 'w')
+        score = modelvar.evaluate(test_data, test_labels)
+        f.write("Group: " + repr(test_labels[0])+"\n")
+        f.write("Loss: " + repr(score[0]) + "\n" + "Accuracy: " + repr(score[1]) + "\n")
+        f.close()
 
 #results = testModel(fitted)
 #myresults.append(results)

@@ -64,11 +64,11 @@ if config.stepThreeTrigger == "yes":
 if (config.stepFourTrigger != "no")  & (config.stepFourTrigger != "yes"):
     config.stepFourTrigger = input("Step IV: Do you want to run the model on your contigs folder? yes or no \n")
 if config.stepFourTrigger == "yes":
-    import contig_to_tensor
+    import contig_to_tensor_jacknife
     viewStudyTree(config.studyDirectory)
 
 # Step IV Supplement
 if (config.stepFourTriggerDistributions != "no") & (config.stepFourTriggerDistributions != "yes"):
     config.stepFourTriggerDistributions = input("Step IV: Would you like to export score distributions? yes or no \n")
 if config.stepFourTriggerDistributions == "yes":
-    import score_distributions
+    import score_distributions_jacknife
