@@ -9,8 +9,11 @@ import os
 # --------------------> *.eeg
 # --------------------> *.evt
 # --------------------> *.art
-studyDirectory = "/home/claytonjschneider/science/CANlab/EEGstudies/CANlabStudy"
+studyDirectory = "/home/clayton/science/CANlab/EEGstudies/CANlabStudy"
+resultsBaseDir = studyDirectory+"/results"
 sampleRate = 250 # in Hz
+
+selectedTask = "p300" # in general, the task which will be used for triggered analysis step
 
 # I. WAVi to CSV CONVERSIONS
 # ====================
@@ -45,7 +48,6 @@ participantNumLen = 3
 # ====================
 stepTwoTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 # numChannels = 19 # default 19 for WAVi headset
-mneTask = "p300"
 
 channel_names = [
     'Fp1',
@@ -72,13 +74,17 @@ channel_names = [
 # III. CONTIG GENERATION
 # ====================
 stepThreeTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-selectedTask = "thumper" # one of the supported tasks listed above, to be exported to contigs
-contigLength = 250 # in cycles, at 250 Hz
+contigLength = 250 # length of segmented epochs, in cycles, at 250 Hz
 
+# for accurate sensors in spectral analysis,
+# keep these in the same order
+# as the default list above (channel_names)
+# it will not affect contigs themselves
+# and you can change the order after you've run step 3
 network_channels = [
-    'Pz',
     'P3',
-    'P4'
+    'P4',
+    'Pz'
 ]
 
 # IV. NEURAL NETWORK DIFFERENTIATION
@@ -101,10 +107,11 @@ betaOne = 0.99
 betaTwo = 0.999
 numEpochs = 100
 
-
-resultsDir = "/home/claytonjschneider/science/CANlab/EEGstudies/CANlabStudy/results_jacknife_shuffle"
-
 # Supplement
 # SCORE DISTRIBUTIONS
 # ====================
-stepFourTriggerDistributions = "yes" # enter 'yes' or 'no' to skip command line prompt
+stepFourTriggerDistributions = "no" # enter 'yes' or 'no' to skip command line prompt
+
+# V. FREQUENCY DECOMPOSITION
+# ====================
+stepFiveTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt

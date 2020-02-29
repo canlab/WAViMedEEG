@@ -72,3 +72,10 @@ if (config.stepFourTriggerDistributions != "no") & (config.stepFourTriggerDistri
     config.stepFourTriggerDistributions = input("Step IV: Would you like to export score distributions? yes or no \n")
 if config.stepFourTriggerDistributions == "yes":
     import score_distributions_jacknife
+
+# Step V
+# frequency decomposition
+if (config.stepFiveTrigger != "no") & (config.stepFiveTrigger != "yes"):
+    config.stepFiveTrigger = input("Step V: Would you like to analyze power spectral density? yes or no \n")
+if config.stepFiveTrigger == "yes":
+    import frequency_analysis

@@ -9,8 +9,11 @@ import os
 # --------------------> *.eeg
 # --------------------> *.evt
 # --------------------> *.art
-studyDirectory = "fullpath/to/study/directory"
+studyDirectory = "/home/clayton/science/CANlab/EEGstudies/CANlabStudy"
+resultsBaseDir = studyDirectory+"/results"
 sampleRate = 250 # in Hz
+
+selectedTask = "p300" # in general, the task which will be used for triggered analysis step
 
 # I. WAVi to CSV CONVERSIONS
 # ====================
@@ -43,9 +46,8 @@ participantNumLen = 3
 
 # II. MNE CONFIGURATION
 # ====================
-stepTwoTrigger = "no" # 'yes' or 'no' to skip command line prompt
+stepTwoTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 # numChannels = 19 # default 19 for WAVi headset
-mneTask = "p300"
 
 channel_names = [
     'Fp1',
@@ -71,21 +73,26 @@ channel_names = [
 
 # III. CONTIG GENERATION
 # ====================
-stepThreeTrigger = "no" # 'yes' or 'no' to skip command line prompt
-selectedTask = "p300" # one of the supported tasks listed above, to be exported to contigs
-contigLength = 250 # in cycles, at 250 Hz
+stepThreeTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
+contigLength = 250 # length of segmented epochs, in cycles, at 250 Hz
 
+# for accurate sensors in spectral analysis,
+# keep these in the same order
+# as the default list above (channel_names)
+# it will not affect contigs themselves
+# and you can change the order after you've run step 3
 network_channels = [
-    'Pz',
     'P3',
-    'P4'
+    'P4',
+    'Pz'
 ]
 
 # IV. NEURAL NETWORK DIFFERENTIATION
 # ====================
-stepFourTrigger = "yes" # 'yes' or 'no' to skip command line prompt
+stepFourTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 
-source = studyDirectory+"/contigs_"+selectedTask
+source = studyDirectory+"/contigs_p300"
+evalPath = "/home/claytonjschneider/science/CANlab/EEGstudies/WAViPainStudy/contigs_thumper"
 
 # dictionary of first-index subject number and a respective 4-character name for the group
 subjectKeys = {
@@ -100,4 +107,11 @@ betaOne = 0.99
 betaTwo = 0.999
 numEpochs = 100
 
-resultsDir = studyDirectory+"/results"
+# Supplement
+# SCORE DISTRIBUTIONS
+# ====================
+stepFourTriggerDistributions = "no" # enter 'yes' or 'no' to skip command line prompt
+
+# V. FREQUENCY DECOMPOSITION
+# ====================
+stepFiveTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
