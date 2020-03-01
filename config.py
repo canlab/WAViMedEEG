@@ -9,7 +9,7 @@ import os
 # --------------------> *.eeg
 # --------------------> *.evt
 # --------------------> *.art
-studyDirectory = "/home/clayton/science/CANlab/EEGstudies/CANlabStudy"
+studyDirectory = "/home/claytonjschneider/science/CANlab/EEGstudies/CANlabStudy"
 resultsBaseDir = studyDirectory+"/results"
 sampleRate = 250 # in Hz
 
@@ -74,7 +74,7 @@ channel_names = [
 # III. CONTIG GENERATION
 # ====================
 stepThreeTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-contigLength = 250 # length of segmented epochs, in cycles, at 250 Hz
+contigLength = 1250 # length of segmented epochs, in cycles, at 250 Hz
 
 # for accurate sensors in spectral analysis,
 # keep these in the same order
@@ -115,3 +115,4 @@ stepFourTriggerDistributions = "no" # enter 'yes' or 'no' to skip command line p
 # V. FREQUENCY DECOMPOSITION
 # ====================
 stepFiveTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
+freqRange = [8.0, 13.0] # low and high end of freq range to be analyzed

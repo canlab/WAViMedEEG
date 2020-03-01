@@ -78,4 +78,4 @@ if config.stepFourTriggerDistributions == "yes":
 if (config.stepFiveTrigger != "no") & (config.stepFiveTrigger != "yes"):
     config.stepFiveTrigger = input("Step V: Would you like to analyze power spectral density? yes or no \n")
 if config.stepFiveTrigger == "yes":
-    import frequency_analysis
+    import power_spectral_density
