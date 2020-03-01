@@ -15,10 +15,17 @@ highestBin = int(1/(config.sampleRate / config.contigLength) * config.freqRange[
 frequencies = np.arange(config.freqRange[0], config.freqRange[1], config.sampleRate/config.contigLength)
 
 fnames = [fname for fname in os.listdir(sourceDir)]
+
 for fname in fnames:
-    PSD = np.genfromtxt(sourceDir+"/"+fname, delimiter=",")[1][lowestBin:highestBin]
-    meanP = sum(PSD) / len(PSD)
-    normPSD = np.true_divide(PSD, meanP)
-    logNormPSD = np.log(normPSD)
-    slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(logNormPSD, frequencies)
-    
+fname = fnames[0]
+
+PSD = np.genfromtxt(sourceDir+"/"+fname, delimiter=",")[1][lowestBin:highestBin]
+meanP = sum(PSD) / len(PSD)
+normPSD = np.true_divide(PSD, meanP)
+logNormPSD = np.log(normPSD)
+slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(logNormPSD, frequencies)
+print(slope)
+print(intercept)
+print(r_value)
+print(p_value)
+print(std_err)

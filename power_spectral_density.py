@@ -5,6 +5,7 @@ from scipy import stats
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 sourceDir = config.studyDirectory+"/contigs_"+config.selectedTask
 resultsDir = config.resultsBaseDir+"/spectral"
@@ -37,7 +38,7 @@ print("Analyzing spectral density of subjects:", subject_list)
 # pain_high_P3 = []
 # pain_high_P4 = []
 
-for sub in subject_list:
+for sub in tqdm(subject_list):
     # sub_low_Pz = []
     # sub_low_P3 = []
     # sub_low_P4 = []
