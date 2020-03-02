@@ -16,6 +16,17 @@ frequencies = np.arange(config.freqRange[0], config.freqRange[1], config.sampleR
 
 fnames = [fname for fname in os.listdir(sourceDir)]
 
+class pSpec:
+    def __init__(self):
+        self.sub = 0
+        self.contig = 0
+        self.channel = 'e'
+        self.sums = {
+            paf = 0
+            pafStd = 0
+            muSpec = np.empty(len(frequencies))
+        }
+
 for fname in fnames:
 fname = fnames[0]
 

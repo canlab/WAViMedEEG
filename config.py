@@ -115,4 +115,4 @@ stepFourTriggerDistributions = "no" # enter 'yes' or 'no' to skip command line p
 # V. FREQUENCY DECOMPOSITION
 # ====================
 stepFiveTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
-freqRange = [8.0, 13.0] # low and high end of freq range to be analyzed
+freqRange = [7.0, 13.0] # low and high end of freq range to be analyzed
