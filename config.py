@@ -115,4 +115,8 @@ stepFourTriggerDistributions = "no" # enter 'yes' or 'no' to skip command line p
 # V. FREQUENCY DECOMPOSITION
 # ====================
 stepFiveTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
-freqRange = [7.0, 13.0] # low and high end of freq range to be analyzed
+alphaRange = [7.0, 13.0] # bounds of alpha peak search windows frequencies
+# Savitzky-Golay filter
+window_length = 11
+poly_order = 5
+mdiff = 0.2 # minimal height difference distinguishing a primary peak from competitors

@@ -52,6 +52,7 @@ for sub in tqdm(subject_list):
         channel_number = 0
         for sensor_waveform in array.T:
             electrode = config.network_channels[channel_number]
+            # perform pwelch routine to extract PSD estimates by channel
             f, Pxx_den = scipy.signal.periodogram(
                 sensor_waveform,
                 fs=float(config.sampleRate),
