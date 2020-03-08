@@ -6,7 +6,7 @@ import config
 from tqdm import tqdm
 
 try:
-    contigsFolder = config.studyDirectory+"/contigs"+"_"+config.selectedTask
+    contigsFolder = config.studyDirectory+"/contigs"+"_"+config.selectedTask+"_"+str(config.contigLength)
     os.mkdir(contigsFolder)
 except:
     print("You already had the specified contigs folder. Go back and clean up.\n")
@@ -169,7 +169,7 @@ def contigs_to_csv(batch, prefix, subject_number):
             if filter_amplitude(contig, bads=[0]):
                 num_tossed+=1
             else:
-                np.savetxt(config.studyDirectory+"/contigs"+"_"+prefix+"/"+subject_number+"_"+str(i)+".csv", contig, delimiter=",", fmt="%2.0f")
+                np.savetxt(contigsFolder+"/"+subject_number+"_"+str(i)+".csv", contig, delimiter=",", fmt="%2.0f")
                 i+=1
         sub_step+=1
 

@@ -9,7 +9,7 @@ import os
 # --------------------> *.eeg
 # --------------------> *.evt
 # --------------------> *.art
-studyDirectory = "/home/clayton/science/CANlab/EEGstudies/CANlabStudy"
+studyDirectory = "/home/claytonjschneider/science/CANlab/EEGstudies/CANlabStudy"
 resultsBaseDir = studyDirectory+"/results"
 sampleRate = 250 # in Hz
 
@@ -74,7 +74,7 @@ channel_names = [
 # III. CONTIG GENERATION
 # ====================
 stepThreeTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-contigLength = 1250 # length of segmented epochs, in cycles, at 250 Hz
+contigLength = 250 # length of segmented epochs, in cycles, at 250 Hz
 
 # for accurate sensors in spectral analysis,
 # keep these in the same order
@@ -91,8 +91,8 @@ network_channels = [
 # ====================
 stepFourTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 
-source = studyDirectory+"/contigs_p300"
-evalPath = "/home/clayton/science/CANlab/EEGstudies/WAViPainStudy/contigs_thumper"
+source = studyDirectory+"/contigs_p300_250"
+evalPath = "/home/clayton/science/CANlab/EEGstudies/CANlabStudy/contigs_p300_250"
 
 # dictionary of first-index subject number and a respective 4-character name for the group
 subjectKeys = {
@@ -114,9 +114,13 @@ stepFourTriggerDistributions = "no" # enter 'yes' or 'no' to skip command line p
 
 # V. FREQUENCY DECOMPOSITION
 # ====================
-stepFiveTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
+stepFiveTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 alphaRange = [7.0, 13.0] # bounds of alpha peak search windows frequencies
 # Savitzky-Golay filter
 window_length = 11
 poly_order = 5
 mdiff = 0.2 # minimal height difference distinguishing a primary peak from competitors
+
+# VI. ROC CURVE
+# ====================
+stepSixTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt

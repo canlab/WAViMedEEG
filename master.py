@@ -79,3 +79,10 @@ if (config.stepFiveTrigger != "no") & (config.stepFiveTrigger != "yes"):
     config.stepFiveTrigger = input("Step V: Would you like to analyze power spectral density? yes or no \n")
 if config.stepFiveTrigger == "yes":
     import power_spectral_density
+
+# Step VI
+# roc curve
+if (config.stepSixTrigger != "no") & (config.stepSixTrigger != "yes"):
+    config.stepSixTrigger = input("Step VI: Would you like to plot ROC curve?")
+if config.stepSixTrigger == "yes":
+    import roc_curve
