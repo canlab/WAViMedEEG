@@ -62,9 +62,9 @@ def generate_paths_and_labels(omission):
     #train_image_labels = [int(path[0]) for path in train_image_paths]
 
     # null tests, shuffle labels and randomize test
-    random.shuffle(train_image_labels)
-    rand_group = random.randint(0, 1)
-    test_image_labels = [rand_group for label in test_image_labels]
+    # random.shuffle(train_image_labels)
+    # rand_group = random.randint(0, 1)
+    # test_image_labels = [rand_group for label in test_image_labels]
 
     # force list of labels to numpy array
     train_image_labels = np.array(train_image_labels)
@@ -162,7 +162,7 @@ except:
     epochs = int(input("How many epochs? \n"))
 
 try:
-    os.mkdir(config.resultsDir)
+    os.mkdir(config.resultsPath)
 except:
     print("Results dir already made.")
 
@@ -175,31 +175,35 @@ print("List of available subjects:")
 for sub in subject_list:
     print(sub)
 
-for iter in tqdm(range(1000)):
-    os.mkdir(config.resultsDir+"/iter"+str(iter))
-    for sub in tqdm(subject_list):
-        train_paths, train_labels, test_paths, test_labels = generate_paths_and_labels(sub)
+# for iter in tqdm(range(1000)):
+    # os.mkdir(config.resultsPath+"/iter"+str(iter))
+for sub in tqdm(subject_list):
+    train_paths, train_labels, test_paths, test_labels = generate_paths_and_labels(sub)
 
-        train_data = load_numpy_stack(train_path, train_paths)
-        test_data = load_numpy_stack(train_path, test_paths)
-        #
-        fitted, modelvar = createModel(train_data, train_labels, rate, epochs, beta1, beta2)
-        #
-        # # Plot training & validation accuracy values
-        # plt.clf()
-        # plt.plot(fitted.history['accuracy'])
-        # plt.plot(fitted.history['val_accuracy'])
-        # plt.title("Subject " + sub + " ===== yield " + str(len(test_data)) + " contigs")
-        # plt.ylabel('Accuracy')
-        # plt.xlabel('Epoch')
-        # plt.legend(['Train', 'Test'], loc='upper left')
-        # plt.savefig(config.resultsDir+"/"+sub+".png")
-        #
-        f = open(config.resultsDir+"/iter"+str(iter)+"/"+sub+".txt", 'w')
-        score = modelvar.evaluate(test_data, test_labels)
-        f.write("Group: " + repr(test_labels[0])+"\n")
-        f.write("Loss: " + repr(score[0]) + "\n" + "Accuracy: " + repr(score[1]) + "\n")
-        f.close()
+    train_data = load_numpy_stack(train_path, train_paths)
+    test_data = load_numpy_stack(train_path, test_paths)
+    #
+    fitted, modelvar = createModel(train_data, train_labels, rate, epochs, beta1, beta2)
+    #
+    # # Plot training & validation accuracy values
+    # plt.clf()
+    # plt.plot(fitted.history['accuracy'])
+    # plt.plot(fitted.history['val_accuracy'])
+    # plt.title("Subject " + sub + " ===== yield " + str(len(test_data)) + " contigs")
+    # plt.ylabel('Accuracy')
+    # plt.xlabel('Epoch')
+    # plt.legend(['Train', 'Test'], loc='upper left')
+    # plt.savefig(config.resultsDir+"/"+sub+".png")
+    #
+    # f = open(config.resultsPath+"/iter"+str(iter)+"/"+sub+".txt", 'w')
+    f = open(config.resultsPath+"/"+sub+".txt", 'w')
+    for eval_contig, eval_label in zip(test_data, test_labels):
+        score = modelvar.evaluate(eval_contig, eval_label)
+        f.write(repr(score[1]) + "\n")
+    # score = modelvar.evaluate(test_data, test_labels)
+    # f.write("Group: " + repr(test_labels[0])+"\n")
+    # f.write("Loss: " + repr(score[0]) + "\n" + "Accuracy: " + repr(score[1]) + "\n")
+    f.close()
 
 #results = testModel(fitted)
 #myresults.append(results)

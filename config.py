@@ -89,10 +89,11 @@ network_channels = [
 
 # IV. NEURAL NETWORK DIFFERENTIATION
 # ====================
-stepFourTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
+stepFourTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
 
 source = studyDirectory+"/contigs_p300_250"
-evalPath = "/home/clayton/science/CANlab/EEGstudies/CANlabStudy/contigs_p300_250"
+evalPath = "/home/claytonjschneider/science/CANlab/EEGstudies/CANlabStudy/contigs_p300_250"
+resultsPath = "/home/claytonjschneider/science/CANlab/EEGstudies/CANlabStudy/results/jacknife_evaluation"
 
 # dictionary of first-index subject number and a respective 4-character name for the group
 subjectKeys = {
@@ -123,4 +124,4 @@ mdiff = 0.2 # minimal height difference distinguishing a primary peak from compe
 
 # VI. ROC CURVE
 # ====================
-stepSixTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
+stepSixTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
