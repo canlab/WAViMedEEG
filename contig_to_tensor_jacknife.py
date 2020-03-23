@@ -197,12 +197,12 @@ for sub in tqdm(subject_list):
     #
     # f = open(config.resultsPath+"/iter"+str(iter)+"/"+sub+".txt", 'w')
     f = open(config.resultsPath+"/"+sub+".txt", 'w')
-    for eval_contig, eval_label in zip(test_data, test_labels):
-        score = modelvar.evaluate(eval_contig, eval_label)
-        f.write(repr(score[1]) + "\n")
-    # score = modelvar.evaluate(test_data, test_labels)
-    # f.write("Group: " + repr(test_labels[0])+"\n")
-    # f.write("Loss: " + repr(score[0]) + "\n" + "Accuracy: " + repr(score[1]) + "\n")
+    # for eval_contig, eval_label in zip(test_data, test_labels):
+    #     score = modelvar.evaluate(eval_contig[0], eval_label[0])
+    #     f.write(repr(score[1]) + "\n")
+    score = modelvar.evaluate(test_data, test_labels)
+    f.write("Group: " + repr(test_labels[0])+"\n")
+    f.write("Loss: " + repr(score[0]) + "\n" + "Accuracy: " + repr(score[1]) + "\n")
     f.close()
 
 #results = testModel(fitted)

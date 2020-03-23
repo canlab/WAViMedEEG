@@ -5,7 +5,7 @@ from sklearn.metrics import roc_curve
 from sklearn.metrics import roc_auc_score
 from matplotlib import pyplot
 
-resultsFolder = config.resultsBaseDir+"_jacknife"
+resultsFolder = config.roc_source
 
 fnames = [fname for fname in os.listdir(resultsFolder) if ".txt" in fname]
 subjects = [fname[:3] for fname in fnames]
@@ -16,7 +16,8 @@ negatives = 0
 
 for fname in fnames:
     f = open(resultsFolder+"/"+fname, 'r')
-    loss = f.readline()
+    f.readline()
+    f.readline()
     true_group = int(fname[0])
     prediction_group = float(f.readline().split()[1])
     roc.append((true_group, prediction_group))

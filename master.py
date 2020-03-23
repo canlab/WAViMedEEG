@@ -86,3 +86,17 @@ if (config.stepSixTrigger != "no") & (config.stepSixTrigger != "yes"):
     config.stepSixTrigger = input("Step VI: Would you like to plot ROC curve?")
 if config.stepSixTrigger == "yes":
     import roc_curve
+
+# Step VII
+# bandpass filter
+if (config.stepSevenTrigger != "no") & (config.stepSevenTrigger != "yes"):
+    config.stepSevenTrigger = input("Step VII: Would you like to run a bandpass filter?")
+if config.stepSevenTrigger == "yes":
+    import bandpass_filter
+
+# Step VIII
+# bandpass filter
+if (config.stepEightTrigger != "no") & (config.stepEightTrigger != "yes"):
+    config.stepEightTrigger = input("Step VIII: Would you like to plot some random contig?")
+if config.stepEightTrigger == "yes":
+    import plot_contig

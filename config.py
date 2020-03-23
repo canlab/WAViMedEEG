@@ -9,7 +9,7 @@ import os
 # --------------------> *.eeg
 # --------------------> *.evt
 # --------------------> *.art
-studyDirectory = "/home/claytonjschneider/science/CANlab/EEGstudies/CANlabStudy"
+studyDirectory = "/home/clayton/science/CANlab/EEGstudies/CANlabStudy"
 resultsBaseDir = studyDirectory+"/results"
 sampleRate = 250 # in Hz
 
@@ -89,11 +89,11 @@ network_channels = [
 
 # IV. NEURAL NETWORK DIFFERENTIATION
 # ====================
-stepFourTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
+stepFourTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 
 source = studyDirectory+"/contigs_p300_250"
-evalPath = "/home/claytonjschneider/science/CANlab/EEGstudies/CANlabStudy/contigs_p300_250"
-resultsPath = "/home/claytonjschneider/science/CANlab/EEGstudies/CANlabStudy/results/jacknife_evaluation"
+evalPath = studyDirectory+"/contigs_p300_250"
+resultsPath = studyDirectory+"/results/jacknife_evaluation"
 
 # dictionary of first-index subject number and a respective 4-character name for the group
 subjectKeys = {
@@ -125,3 +125,16 @@ mdiff = 0.2 # minimal height difference distinguishing a primary peak from compe
 # VI. ROC CURVE
 # ====================
 stepSixTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
+roc_source = studyDirectory+"/results/jacknife_evaluation_alpha"
+
+# VII. BANDPASS FILTER
+# ====================
+stepSevenTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
+bandpassSource = source
+bandpassBounds = [8, 12]
+bandpassName = "alpha"
+
+# VIII. CONTIG PLOT
+# ====================
+stepEightTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
+plotSource = studyDirectory+"/contigs_p300_250/101_29.csv"
