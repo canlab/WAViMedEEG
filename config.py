@@ -89,7 +89,7 @@ network_channels = [
 
 # IV. NEURAL NETWORK DIFFERENTIATION
 # ====================
-stepFourTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
+stepFourTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
 
 source = studyDirectory+"/contigs_p300_250"
 evalPath = studyDirectory+"/contigs_p300_250"
@@ -129,10 +129,13 @@ roc_source = studyDirectory+"/results/jacknife_evaluation_alpha"
 
 # VII. BANDPASS FILTER
 # ====================
-stepSevenTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
+stepSevenTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 bandpassSource = source
-bandpassBounds = [8, 12]
-bandpassName = "alpha"
+#   delta, 0.1-4, theta: 4-8, alpha: 8-12, beta: 16-31, gamma: 32-60
+bandpassBounds = [0.1, 4]
+bandpassName = "delta"
+
+numberExamples = 5
 
 # VIII. CONTIG PLOT
 # ====================
