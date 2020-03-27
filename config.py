@@ -9,7 +9,7 @@ import os
 # --------------------> *.eeg
 # --------------------> *.evt
 # --------------------> *.art
-studyDirectory = "/home/claytonjschneider/science/CANlab/EEGstudies/CANlabStudy"
+studyDirectory = "/home/clayton/science/CANlab/EEGstudies/CANlabStudy"
 resultsBaseDir = studyDirectory+"/results"
 sampleRate = 250 # in Hz
 
@@ -111,7 +111,7 @@ numEpochs = 100
 # Supplement
 # SCORE DISTRIBUTIONS
 # ====================
-stepFourTriggerDistributions = "no" # enter 'yes' or 'no' to skip command line prompt
+stepFourSuppTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 
 # V. FREQUENCY DECOMPOSITION
 # ====================
@@ -124,7 +124,7 @@ mdiff = 0.2 # minimal height difference distinguishing a primary peak from compe
 
 # VI. ROC CURVE
 # ====================
-stepSixTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
+stepSixTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 roc_source = studyDirectory+"/results/"
 
 # VII. BANDPASS FILTER
@@ -136,6 +136,11 @@ bandpassBounds = [32, 60]
 bandpassName = "gamma"
 
 numberExamples = 5
+
+# VIIs. FILTER PLOTS
+# ====================
+stepSevenSuppTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
+filterPlotContig = "104_77"
 
 # VIII. CONTIG PLOT
 # ====================

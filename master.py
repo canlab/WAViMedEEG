@@ -68,9 +68,9 @@ if config.stepFourTrigger == "yes":
     viewStudyTree(config.studyDirectory)
 
 # Step IV Supplement
-if (config.stepFourTriggerDistributions != "no") & (config.stepFourTriggerDistributions != "yes"):
-    config.stepFourTriggerDistributions = input("Step IV: Would you like to export score distributions? yes or no \n")
-if config.stepFourTriggerDistributions == "yes":
+if (config.stepFourSuppTrigger != "no") & (config.stepFourSuppTrigger != "yes"):
+    config.stepFourSuppTrigger = input("Step IV: Would you like to export score distributions? yes or no \n")
+if config.stepFourSuppTrigger == "yes":
     import score_distributions_jacknife
 
 # Step V
@@ -93,6 +93,17 @@ if (config.stepSevenTrigger != "no") & (config.stepSevenTrigger != "yes"):
     config.stepSevenTrigger = input("Step VII: Would you like to run a bandpass filter?")
 if config.stepSevenTrigger == "yes":
     import bandpass_filter
+
+# Step VII Supplement
+# filter plots
+if (config.stepSevenSuppTrigger != "no") & (config.stepSevenSuppTrigger != "yes"):
+    config.stepSevenSuppTrigger = input("Step VII Supplement: Would you like to plot contig filters?")
+if config.stepSevenSuppTrigger == "yes":
+    if not config.filterPlotContig:
+        config.filterPlotContig = input("Enter a contig filename to plot. Ex: <101_1>")
+    import plot_contig_each_filter
+
+
 
 # Step VIII
 # bandpass filter
