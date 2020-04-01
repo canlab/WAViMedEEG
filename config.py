@@ -124,8 +124,9 @@ mdiff = 0.2 # minimal height difference distinguishing a primary peak from compe
 
 # VI. ROC CURVE
 # ====================
-stepSixTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
+stepSixTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
 roc_source = studyDirectory+"/results/"
+roc_type = "shuffle" # 'shuffle' or 'filter'
 
 # VII. BANDPASS FILTER
 # ====================
@@ -139,7 +140,7 @@ numberExamples = 5
 
 # VIIs. FILTER PLOTS
 # ====================
-stepSevenSuppTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
+stepSevenSuppTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 filterPlotContig = "104_77"
 
 # VIII. CONTIG PLOT
