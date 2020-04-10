@@ -17,7 +17,6 @@ import random
 
 print("Using Tensorflow version", tf.__version__)
 
-# get all subject numbers in use
 def get_avail_subjects():
     subs = []
     for file in os.listdir(train_path):
@@ -26,7 +25,7 @@ def get_avail_subjects():
                 subs.append(file[:3])
     return(subs)
 
-def generate_paths_and_labels(omission=None):
+def generate_paths_and_labels(omission):
     image_paths = os.listdir(train_path)
     image_paths = [path for path in image_paths if path[0] != "0"]
     #train_image_paths = list(train_path.glob('*/*'))
@@ -48,6 +47,13 @@ def generate_paths_and_labels(omission=None):
     print("Label indices:", label_to_index)
 
     #create a list of every file and its integer label
+
+    # this \/ gets labels from first 4 characters of filename
+    #train_image_labels = [label_to_index[path[:4]] for path in train_image_paths]
+    # this \/ gets labels from parent folder
+    #train_image_labels = [label_to_index[pathlib.Path(path).parent.name]
+     #                   for path in train_image_paths]
+
     train_image_groups = [config.subjectKeys.get(int(path[0]), "none") for path in train_image_paths]
     test_image_groups = [config.subjectKeys.get(int(path[0]), "none") for path in test_image_paths]
 
@@ -56,10 +62,9 @@ def generate_paths_and_labels(omission=None):
     #train_image_labels = [int(path[0]) for path in train_image_paths]
 
     # null tests, shuffle labels and randomize test
-    if config.permuteLabels == True:
-        random.shuffle(train_image_labels)
-        rand_group = random.randint(0, 1)
-        test_image_labels = [rand_group for label in test_image_labels]
+    # random.shuffle(train_image_labels)
+    # rand_group = random.randint(0, 1)
+    # test_image_labels = [rand_group for label in test_image_labels]
 
     # force list of labels to numpy array
     train_image_labels = np.array(train_image_labels)
@@ -85,6 +90,20 @@ def load_numpy_stack(lead, paths):
     numpy_dataset = numpy_dataset.reshape(numpy_dataset.shape+(1,))
     print("Original Shape of Dataset:", numpy_dataset.shape, "\n")
     return(numpy_dataset)
+
+# def filter_my_channels(dataset, keep_channels, axisNum):
+#     filter_indeces = []
+#
+#     # for each channel in my channel list
+#     for keep in keep_channels:
+#         filter_indeces.append(config.channel_names.index(keep))
+#     #   get the index of that channel in the master channel list
+#     #   add that index number to a new list filter_indeces
+#
+#     # iter over the rows of axis 2 (in 0, 1, 2, 3 4-dimensional dataset)
+#     filtered_dataset = np.take(dataset, filter_indeces, axisNum)
+#     print("New Shape of Dataset:", filtered_dataset.shape, "\n")
+#     return(filtered_dataset)
 
 def createModel(train_arrays, train_image_labels, learn, num_epochs, betaOne, betaTwo):
     # Introduce sequential Set
@@ -149,6 +168,7 @@ except:
 
 import matplotlib.pyplot as plt
 
+
 train_path = pathlib.Path(config.source)
 subject_list = get_avail_subjects()
 print("List of available subjects:")
@@ -184,3 +204,9 @@ for sub in tqdm(subject_list):
     f.write("Group: " + repr(test_labels[0])+"\n")
     f.write("Loss: " + repr(score[0]) + "\n" + "Accuracy: " + repr(score[1]) + "\n")
     f.close()
+
+#results = testModel(fitted)
+#myresults.append(results)
+
+#print(myresults)
+# print(\"Loss: \", results[0], \"\\nAccuracy: \", results[1])

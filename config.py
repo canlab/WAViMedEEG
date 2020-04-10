@@ -95,6 +95,8 @@ source = studyDirectory+"/contigs_p300_250_alpha"
 evalPath = studyDirectory+"/contigs_p300_250_alpha"
 resultsPath = studyDirectory+"/results/jacknife_evaluation_alpha"
 
+permuteLabels = False
+
 # dictionary of first-index subject number and a respective 4-character name for the group
 subjectKeys = {
     0: "pilt", # pilot
@@ -124,7 +126,7 @@ mdiff = 0.2 # minimal height difference distinguishing a primary peak from compe
 
 # VI. ROC CURVE
 # ====================
-stepSixTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
+stepSixTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 roc_source = studyDirectory+"/results/"
 roc_type = "shuffle" # 'shuffle' or 'filter'
 
