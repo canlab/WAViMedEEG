@@ -16,37 +16,6 @@ frequencies = np.arange(config.alphaRange[0], config.alphaRange[1], config.sampl
 freq_res = config.sampleRate /
 
 fnames = [fname for fname in os.listdir(sourceDir)]
-#
-# class pChans:
-#     def __init__(self):
-#         self.pxx = [],
-#         self.minPow = [],
-#         self.d0 = [],
-#         self.d1 = [],
-#         self.d2 = [],
-#         self.peaks = [],
-#         self.pos1 = [],
-#         self.pos2 = [],
-#         self.f1 = [],
-#         self.f2 = [],
-#         self.inf1 = [],
-#         self.inf2 = [],
-#         self.Q = [],
-#         self.Qf = [],
-#         self.gravs = [],
-#         self.selP = [],
-#         self.selG = []
-#
-# class pSpec:
-#     def __init__(self):
-#         self.sub = 0
-#         self.contig = 0
-#         self.channel = 'e'
-#         self.sums = {
-#             paf = 0
-#             pafStd = 0
-#             muSpec = np.empty(len(frequencies))
-#         }
 
 def next_power_of_2(x):
     return 1 if x == 0 else 2**(x - 1).bit_length()

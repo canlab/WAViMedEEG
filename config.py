@@ -15,6 +15,7 @@ sampleRate = 250 # in Hz
 
 selectedTask = "p300" # in general, the task which will be used for triggered analysis step
 
+
 # I. WAVi to CSV CONVERSIONS
 # ====================
 stepOneTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
@@ -44,6 +45,7 @@ participantNumLen = 3
 # whether it will use .evt in the loadEEGdataNumpy function of wavi_to_csv
 # once you do, please make a pull request so others can use it as well
 
+
 # II. MNE CONFIGURATION
 # ====================
 stepTwoTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
@@ -71,6 +73,7 @@ channel_names = [
     'Pz'
 ]
 
+
 # III. CONTIG GENERATION
 # ====================
 stepThreeTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
@@ -79,13 +82,12 @@ contigLength = 250 # length of segmented epochs, in cycles, at 250 Hz
 # for accurate sensors in spectral analysis,
 # keep these in the same order
 # as the default list above (channel_names)
-# it will not affect contigs themselves
-# and you can change the order after you've run step 3
 network_channels = [
     'P3',
     'P4',
     'Pz'
 ]
+
 
 # IV. NEURAL NETWORK DIFFERENTIATION
 # ====================
@@ -110,10 +112,6 @@ betaOne = 0.99
 betaTwo = 0.999
 numEpochs = 100
 
-# Supplement
-# SCORE DISTRIBUTIONS
-# ====================
-stepFourSuppTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 
 # V. FREQUENCY DECOMPOSITION
 # ====================
@@ -124,11 +122,13 @@ window_length = 11
 poly_order = 5
 mdiff = 0.2 # minimal height difference distinguishing a primary peak from competitors
 
+
 # VI. ROC CURVE
 # ====================
 stepSixTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 roc_source = studyDirectory+"/results/"
 roc_type = "shuffle" # 'shuffle' or 'filter'
+
 
 # VII. BANDPASS FILTER
 # ====================
@@ -138,14 +138,14 @@ bandpassSource = source
 bandpassBounds = [32, 60]
 bandpassName = "gamma"
 
-numberExamples = 5
 
 # VIIs. FILTER PLOTS
 # ====================
 stepSevenSuppTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 filterPlotContig = "104_77"
 
-# VIII. CONTIG PLOT
+
+# VIII. MNE PLOT
 # ====================
-stepEightTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-plotSource = studyDirectory+"/contigs_p300_250/101_29.csv"
+# stepEightTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
+# plotSource = studyDirectory+"/contigs_p300_250_no/101_29.csv"

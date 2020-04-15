@@ -75,83 +75,21 @@ def generate_sparse_contigs(run, length):
             i+=1
     return contigs
 
-# def generate_all_contigs(run, length):
-#     i = 0
-#     contigs = []
-#     startindexes = []
-#     while i < run.shape[0]-length:
-#         stk = run[i:(i+length),:]
-#         contigs.append(stk)
-#         startindexes.append(i)
-#         i+=length
-#     return contigs, startindexes
+def generate_all_contigs(run, length):
+    i = 0
+    contigs = []
+    startindexes = []
+    while i < run.shape[0]-length:
+        stk = run[i:(i+length),:]
+        contigs.append(stk)
+        startindexes.append(i)
+        i+=length
+    return contigs, startindexes
 
 def get_contigs_from_trials(trial):
     cycles = config.contigLength
     sub_contigs = generate_sparse_contigs(trial, cycles)
     return(sub_contigs)
-
-# def amps_by_subject(contigs):
-#     amps_by_subject=[]
-#     for sub in contigs:
-#         amps = [np.sum(np.square(contig)) for contig in sub[0]]
-#         amps_by_subject.append(amps)
-#     return(amps_by_subject)
-#
-# def amps_by_group(contigs):
-#     amps_by_group=[]
-#     for sub in contigs:
-#         for contig in sub[0]:
-#             amp = np.sum(np.square(contig))
-#             amps_by_group.append(amp)
-#     return(amps_by_group)
-#
-# print((p300_pain_contigs[0][0][1]))
-#
-# p300_pain_amps = amps_by_group(p300_pain_contigs)
-# p300_ctrl_amps = amps_by_group(p300_ctrl_contigs)
-#
-# chronic_pain_amps = amps_by_group(chronic_pain_contigs)
-# chronic_ctrl_amps = amps_by_group(chronic_ctrl_contigs)
-
-# import matplotlib.pyplot as plt
-
-# n, bins, patches = plt.hist(x=chronic_ctrl_amps, bins='auto', color='blue', alpha=0.7, rwidth=0.85)
-# plt.grid(axis='y', alpha=0.75)
-# plt.xlabel('Amplitude')
-# plt.xticks(rotation=315)
-# plt.ylabel('Frequency')
-# plt.title('Voltage Amplitude Distribution Across Ctrl Subjects')
-# plt.text(23,45,r'$\\mu=15, b=3$')
-# maxfreq = n.max()
-#
-# plt.ylim(ymax=np.ceil(maxfreq / 10) * 10 if maxfreq % 10 else maxfreq + 10)
-#
-# n, bins, patches = plt.hist(x=p300_ctrl_amps, bins='auto', color='blue', alpha=0.7, rwidth=0.85)
-# plt.grid(axis='y', alpha=0.75)
-# plt.xlabel('Amplitude')
-# plt.xticks(rotation=315)
-# plt.ylabel('Frequency')
-# plt.title('Voltage Amplitude Distribution Across Ctrl Subjects')
-# plt.text(23,45,r'$\\mu=15, b=3$')
-# maxfreq = n.max()
-#
-# plt.ylim(ymax=np.ceil(maxfreq / 10) * 10 if maxfreq % 10 else maxfreq + 10)
-#
-# p300_pain_std = np.std(p300_pain_amps)
-# p300_ctrl_std = np.std(p300_ctrl_amps)
-#
-# print(p300_pain_std)
-# print(p300_ctrl_std)
-
-# def load_per_task(task):
-#     switcher = {
-#         p300: load_p300,
-#         flanker: load_flanker,
-#         chronic: load_chronic,
-#         rest: load_rest
-#     }
-#     func = switcher.get(argument, lambda: \"Invalid task\")
 
 def filter_amplitude(contig, bads):
     amp = np.sum(np.square(contig))

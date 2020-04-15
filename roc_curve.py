@@ -88,13 +88,6 @@ for resultsFolder in resultsFolders:
             neg_predicts.append(prediction_group)
         roc.append((true_group, prediction_group))
 
-    # print("Input for ", resultsFolder.replace(config.roc_source, ''))
-    # print("Pain:", pos_predicts)
-    # print("Ctrl:", neg_predicts)
-
-    # pos_predicts.sort()
-    # neg_predicts.sort()
-
     pos_mu = np.mean(pos_predicts)
     pos_std = np.std(pos_predicts)
     neg_mu = np.mean(neg_predicts)

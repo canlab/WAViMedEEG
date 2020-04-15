@@ -162,24 +162,11 @@ for sub in tqdm(subject_list):
 
     train_data = load_numpy_stack(train_path, train_paths)
     test_data = load_numpy_stack(train_path, test_paths)
-    #
+
     fitted, modelvar = createModel(train_data, train_labels, rate, epochs, beta1, beta2)
-    #
-    # # Plot training & validation accuracy values
-    # plt.clf()
-    # plt.plot(fitted.history['accuracy'])
-    # plt.plot(fitted.history['val_accuracy'])
-    # plt.title("Subject " + sub + " ===== yield " + str(len(test_data)) + " contigs")
-    # plt.ylabel('Accuracy')
-    # plt.xlabel('Epoch')
-    # plt.legend(['Train', 'Test'], loc='upper left')
-    # plt.savefig(config.resultsDir+"/"+sub+".png")
-    #
-    # f = open(config.resultsPath+"/iter"+str(iter)+"/"+sub+".txt", 'w')
+
     f = open(config.resultsPath+"/"+sub+".txt", 'w')
-    # for eval_contig, eval_label in zip(test_data, test_labels):
-    #     score = modelvar.evaluate(eval_contig[0], eval_label[0])
-    #     f.write(repr(score[1]) + "\n")
+
     score = modelvar.evaluate(test_data, test_labels)
     f.write("Group: " + repr(test_labels[0])+"\n")
     f.write("Loss: " + repr(score[0]) + "\n" + "Accuracy: " + repr(score[1]) + "\n")

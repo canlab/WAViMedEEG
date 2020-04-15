@@ -17,7 +17,6 @@ def viewStudyTree(startpath):
 
 viewStudyTree(config.studyDirectory)
 
-# experiment details
 
 # Step I
 # wavi to csv
@@ -27,6 +26,7 @@ if config.stepOneTrigger == "yes":
     import wavi_to_csv
     viewStudyTree(config.studyDirectory)
 
+
 # Step II
 # csv to mne
 if (config.stepTwoTrigger != "no")  & (config.stepTwoTrigger != "yes"):
@@ -35,9 +35,9 @@ if config.stepTwoTrigger == "yes":
     import csv_to_mne
     viewStudyTree(config.studyDirectory)
 
+
 # Step III
 # csv to contig
-# NEVER use more than one at a time! always going to clear 'contigs' folder.
 if (config.stepThreeTrigger != "no")  & (config.stepThreeTrigger != "yes"):
     config.stepThreeTrigger = input("Step III: Do you want to convert your CSV trials into contigs for CNN analysis? yes or no\n")
 if config.stepThreeTrigger == "yes":
@@ -47,31 +47,15 @@ if config.stepThreeTrigger == "yes":
     import csv_to_contigs
     viewStudyTree(config.studyDirectory)
 
-# Step IV
-# Version A
-# contig to tensor
-# WIDE NETWORK
-# if (config.stepFourTrigger != "no")  & (config.stepFourTrigger != "yes"):
-#     config.stepFourTrigger = input("Step IV: Do you want to run the model on your contigs folder? yes or no \n")
-# if config.stepFourTrigger == "yes":
-#     import contig_to_tensor_orig
-#     viewStudyTree(config.studyDirectory)
 
 # Step IV
-# Version B
-# contig to tensor
-# OMITTED PER SUBJECT NETWORK
+# contig to tensor, jacknife
 if (config.stepFourTrigger != "no")  & (config.stepFourTrigger != "yes"):
     config.stepFourTrigger = input("Step IV: Do you want to run the model on your contigs folder? yes or no \n")
 if config.stepFourTrigger == "yes":
     import contig_to_tensor_jacknife
     viewStudyTree(config.studyDirectory)
 
-# Step IV Supplement
-if (config.stepFourSuppTrigger != "no") & (config.stepFourSuppTrigger != "yes"):
-    config.stepFourSuppTrigger = input("Step IV: Would you like to export score distributions? yes or no \n")
-if config.stepFourSuppTrigger == "yes":
-    import score_distributions_jacknife
 
 # Step V
 # frequency decomposition
@@ -80,6 +64,7 @@ if (config.stepFiveTrigger != "no") & (config.stepFiveTrigger != "yes"):
 if config.stepFiveTrigger == "yes":
     import power_spectral_density
 
+
 # Step VI
 # roc curve
 if (config.stepSixTrigger != "no") & (config.stepSixTrigger != "yes"):
@@ -87,12 +72,14 @@ if (config.stepSixTrigger != "no") & (config.stepSixTrigger != "yes"):
 if config.stepSixTrigger == "yes":
     import roc_curve
 
+
 # Step VII
 # bandpass filter
 if (config.stepSevenTrigger != "no") & (config.stepSevenTrigger != "yes"):
     config.stepSevenTrigger = input("Step VII: Would you like to run a bandpass filter?")
 if config.stepSevenTrigger == "yes":
     import bandpass_filter
+
 
 # Step VII Supplement
 # filter plots
@@ -102,7 +89,6 @@ if config.stepSevenSuppTrigger == "yes":
     if not config.filterPlotContig:
         config.filterPlotContig = input("Enter a contig filename to plot. Ex: <101_1>")
     import plot_contig_each_filter
-
 
 
 # Step VIII
