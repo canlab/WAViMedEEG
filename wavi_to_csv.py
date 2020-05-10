@@ -86,6 +86,18 @@ def loadEEGdataNumpy(df):
                         df.loc[sub][task][2][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'thumper.evt', delimiter=' ')
     return(df)
 
+def writeCSVs(df):
+    for task in df.columns[1:]:
+        os.mkdir(config.studyDirectory+"/"+task)
+        print("Writing files for task:", task, "\n")
+        for sub in tqdm(df.index.values):
+            if (df.loc[sub][task]!="none"):
+                if len(df.loc[sub][task])>=2:
+                    np.savetxt(config.studyDirectory+"/"+task+'/'+sub+'_art.csv', df.loc[sub][task][1][1], delimiter=",", fmt="%2.0f")
+                    np.savetxt(config.studyDirectory+"/"+task+'/'+sub+'_eeg.csv', df.loc[sub][task][0][1], delimiter=",", fmt="%2.0f")
+                if len(df.loc[sub][task])==3:
+                    np.savetxt(config.studyDirectory+"/"+task+'/'+sub+'_evt.csv', df.loc[sub][task][2][1], delimiter=",", fmt="%2.0f")
+
 raw_folder = config.studyDirectory+"/raw"
 fnames, ends = getRawFnames(raw_folder)
 subs = list(dict.fromkeys(getSubjects(fnames, config.participantNumLen)))
@@ -98,21 +110,7 @@ data = initializeDataframe(cnames, subs)
 print(data, "\n")
 data = populateTasks(data, fnames)
 print(data, "\n")
-# try:
-EEG = loadEEGdataNumpy(data)
-# except:
-    # print("Error: You broke when trying to load MAT files into numpy arrays.\n")
 
-def writeCSVs(df):
-    for task in df.columns[1:]:
-        os.mkdir(config.studyDirectory+"/"+task)
-        print("Writing files for task:", task, "\n")
-        for sub in tqdm(df.index.values):
-            if (df.loc[sub][task]!="none"):
-                if len(df.loc[sub][task])>=2:
-                    np.savetxt(config.studyDirectory+"/"+task+'/'+sub+'_art.csv', df.loc[sub][task][1][1], delimiter=",", fmt="%2.0f")
-                    np.savetxt(config.studyDirectory+"/"+task+'/'+sub+'_eeg.csv', df.loc[sub][task][0][1], delimiter=",", fmt="%2.0f")
-                if len(df.loc[sub][task])==3:
-                    np.savetxt(config.studyDirectory+"/"+task+'/'+sub+'_evt.csv', df.loc[sub][task][2][1], delimiter=",", fmt="%2.0f")
+EEG = loadEEGdataNumpy(data)
 
 writeCSVs(EEG)

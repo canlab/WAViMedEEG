@@ -5,17 +5,18 @@ import config
 
 from pathlib import Path
 
-def viewStudyTree(startpath):
+def viewStudyTree(startpath, max_depth=3):
     print("Please review your study directory. \n")
     for root, dirs, files in os.walk(startpath):
         level = root.replace(startpath, '').count(os.sep)
-        indent = ' ' * 4 * (level)
-        print('{}{}/'.format(indent, os.path.basename(root)))
-        subindent = ' ' * 4 * (level+1)
-        #for f in files:
-        #    print('{}{}'.format(subindent, f))
+        if (max_depth!=None) | level <= max_depth:
+            indent = ' ' * 4 * (level)
+            print('{}{}/'.format(indent, os.path.basename(root)), len(dirs))
+            subindent = ' ' * 4 * (level+1)
+            #for f in files:
+            #    print('{}{}'.format(subindent, f))
 
-viewStudyTree(config.studyDirectory)
+viewStudyTree(config.studyDirectory, max_depth=config.max_tree_depth)
 
 
 # Step I
@@ -48,37 +49,78 @@ if config.stepThreeTrigger == "yes":
     viewStudyTree(config.studyDirectory)
 
 
-# Step IV
+# Step IVa
 # contig to tensor, jacknife
-if (config.stepFourTrigger != "no")  & (config.stepFourTrigger != "yes"):
-    config.stepFourTrigger = input("Step IV: Do you want to run the model on your contigs folder? yes or no \n")
-if config.stepFourTrigger == "yes":
+if (config.stepFourATrigger != "no")  & (config.stepFourATrigger != "yes"):
+    config.stepFourATrigger = input("Step IVa: Do you want to run the model on your source folder and save? yes or no \n")
+if config.stepFourATrigger == "yes":
+    import contig_to_tensor_and_save
+    viewStudyTree(config.studyDirectory)
+
+
+# Step IVb
+# contig to tensor, jacknife
+if (config.stepFourBTrigger != "no")  & (config.stepFourBTrigger != "yes"):
+    config.stepFourBTrigger = input("Step IVb: Do you want to evaluate jacknife models from source on your eval folder? yes or no \n")
+if config.stepFourBTrigger == "yes":
     import contig_to_tensor_jacknife
     viewStudyTree(config.studyDirectory)
 
 
-# Step V
-# frequency decomposition
-if (config.stepFiveTrigger != "no") & (config.stepFiveTrigger != "yes"):
-    config.stepFiveTrigger = input("Step V: Would you like to analyze power spectral density? yes or no \n")
-if config.stepFiveTrigger == "yes":
-    import power_spectral_density
+# Step IVc
+# evaluate model
+if (config.stepFourCTrigger != "no")  & (config.stepFourCTrigger != "yes"):
+    config.stepFourCTrigger = input("Step IVc: Do you want to evaluate a saved model on your eval folder? yes or no \n")
+if config.stepFourCTrigger == "yes":
+    import evaluate_model
+    viewStudyTree(config.studyDirectory)
+
+
+# Step Va
+# power spectral density
+if (config.stepFiveATrigger != "no") & (config.stepFiveATrigger != "yes"):
+    config.stepFiveATrigger = input("Step Va: Would you like to analyze power spectral density? yes or no \n")
+if config.stepFiveATrigger == "yes":
+    import contigs_to_spectral
+
+# Step Vb
+# cepstrum
+if (config.stepFiveBTrigger != "no") & (config.stepFiveBTrigger != "yes"):
+    config.stepFiveBTrigger = input("Step Vb: Would you like to analyze cepstrum data? yes or no \n")
+if config.stepFiveBTrigger == "yes":
+    import contigs_to_cepstrum
+
+
+
+# Step V supplement
+# PSD plot
+if (config.stepFiveSTrigger != "no") & (config.stepFiveSTrigger != "yes"):
+    config.stepFiveSTrigger = input("Step V: Would you like to plot a contig's PSDs? yes or no \n")
+if config.stepFiveSTrigger == "yes":
+    import plot_psd
 
 
 # Step VI
 # roc curve
-if (config.stepSixTrigger != "no") & (config.stepSixTrigger != "yes"):
-    config.stepSixTrigger = input("Step VI: Would you like to plot ROC curve?")
-if config.stepSixTrigger == "yes":
+if (config.stepSixATrigger != "no") & (config.stepSixATrigger != "yes"):
+    config.stepSixATrigger = input("Step VIa: Would you like to plot ROC curve?")
+if config.stepSixATrigger == "yes":
     import roc_curve
+
+# Step VIb
+# plot many PDFs
+if (config.stepSixBTrigger != "no") & (config.stepSixBTrigger != "yes"):
+    config.stepSixBTrigger = input("Step VIb: Would you like to plot many model-evaluation PDFs?")
+if config.stepSixBTrigger == "yes":
+    import plot_many_evals
 
 
 # Step VII
 # bandpass filter
 if (config.stepSevenTrigger != "no") & (config.stepSevenTrigger != "yes"):
-    config.stepSevenTrigger = input("Step VII: Would you like to run a bandpass filter?")
+    config.stepSevenTrigger = input("Step VII: Would you like to run bandpass filters?")
 if config.stepSevenTrigger == "yes":
-    import bandpass_filter
+    import csv_to_bandpass
 
 
 # Step VII Supplement
@@ -97,3 +139,10 @@ if (config.stepEightTrigger != "no") & (config.stepEightTrigger != "yes"):
     config.stepEightTrigger = input("Step VIII: Would you like to plot some random contig?")
 if config.stepEightTrigger == "yes":
     import plot_contig
+
+# Step IX
+# support vector machine
+if (config.stepNineTrigger != "no") & (config.stepNineTrigger != "yes"):
+    config.stepNineTrigger = input("Step IX: Would you like to run SVM on spectral data?")
+if config.stepNineTrigger == "yes":
+    import spectral_svm

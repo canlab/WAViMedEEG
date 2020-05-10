@@ -51,7 +51,7 @@ hasStim = False
 #     hasStim = True
 
 # eeg_data = np.genfromtxt(data_folder[0]+"/100_eeg.csv", delimiter=',').transpose()
-eeg_data = np.genfromtxt(config.plotSource, delimiter=',').transpose()
+eeg_data = np.genfromtxt(config.plotSource, delimiter=',').T
 
 #print(eeg_data)
 eeg_data = eeg_data

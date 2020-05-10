@@ -11,7 +11,38 @@ import os
 # --------------------> *.art
 studyDirectory = "/home/clayton/science/CANlab/EEGstudies/CANlabStudy"
 resultsBaseDir = studyDirectory+"/results"
+max_tree_depth = 3
+
 sampleRate = 250 # in Hz
+
+# dictionary of first-index subject number and a respective 4-character name for the group
+subjectKeys = {
+    0: "pilt", # pilot
+    1: "pain",
+    2: "ctrl"
+}
+
+channel_names = [
+    'Fp1',
+    'Fp2',
+    'F3',
+    'F4',
+    'F7',
+    'F8',
+    'C3',
+    'C4',
+    'P3',
+    'P4',
+    'O1',
+    'O2',
+    'T3',
+    'T4',
+    'T5',
+    'T6',
+    'Fz',
+    'Cz',
+    'Pz'
+]
 
 selectedTask = "p300" # in general, the task which will be used for triggered analysis step
 
@@ -42,7 +73,7 @@ participantNumLen = 3
 # rest
 
 # if you need to add a new one, you currently have to specify
-# whether it will use .evt in the loadEEGdataNumpy function of wavi_to_csv
+# whether it will use .evt in the loadEEGdataNumpy function of wavi_to_csv.py
 # once you do, please make a pull request so others can use it as well
 
 
@@ -51,60 +82,33 @@ participantNumLen = 3
 stepTwoTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 # numChannels = 19 # default 19 for WAVi headset
 
-channel_names = [
-    'Fp1',
-    'Fp2',
-    'F3',
-    'F4',
-    'F7',
-    'F8',
-    'C3',
-    'C4',
-    'P3',
-    'P4',
-    'O1',
-    'O2',
-    'T3',
-    'T4',
-    'T5',
-    'T6',
-    'Fz',
-    'Cz',
-    'Pz'
-]
-
 
 # III. CONTIG GENERATION
 # ====================
 stepThreeTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-contigLength = 250 # length of segmented epochs, in cycles, at 250 Hz
+contigLength = 1250 # length of segmented epochs, in cycles, at 250 Hz
 
 # for accurate sensors in spectral analysis,
 # keep these in the same order
 # as the default list above (channel_names)
+# network_channels = [
+#     'P3',
+#     'P4',
+#     'Pz'
+# ]
 network_channels = [
     'P3',
     'P4',
     'Pz'
 ]
 
-
-# IV. NEURAL NETWORK DIFFERENTIATION
+# IV. CNN
 # ====================
-stepFourTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-
-source = studyDirectory+"/contigs_p300_250_alpha"
-evalPath = studyDirectory+"/contigs_p300_250_alpha"
-resultsPath = studyDirectory+"/results/jacknife_evaluation_alpha"
+source = "/home/clayton/science/CANlab/EEGstudies/CANlabStudy"+"/contigs/"+selectedTask+"_"+str(contigLength)
+evalPath = studyDirectory+"/contigs/"+selectedTask+"_"+str(contigLength)
+resultsPath = resultsBaseDir+"/model_evaluation"+"_"+selectedTask+"_"+str(contigLength)
 
 permuteLabels = False
-
-# dictionary of first-index subject number and a respective 4-character name for the group
-subjectKeys = {
-    0: "pilt", # pilot
-    1: "pain",
-    2: "ctrl"
-}
 
 # network hyperparameters
 learningRate = 0.001
@@ -113,30 +117,64 @@ betaTwo = 0.999
 numEpochs = 100
 
 
-# V. FREQUENCY DECOMPOSITION
+# IVa. TRAIN / SAVE NEURAL NETWORK WEIGHTS
 # ====================
-stepFiveTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-alphaRange = [7.0, 13.0] # bounds of alpha peak search windows frequencies
+stepFourATrigger = "no" # enter 'yes' or 'no' to skip command line prompt
+
+
+# IVb. NEURAL NETWORK DIFFERENTIATION JACKNIFE
+# ====================
+stepFourBTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
+
+
+# IVc. EVALUATE A SAVED MODEL
+# ====================
+stepFourCTrigger = "no"
+
+
+# Va. POWER SPECTRAL DENSITY CURVES
+# ====================
+stepFiveATrigger = "no" # enter 'yes' or 'no' to skip command line prompt
+# alphaRange = [7.0, 13.0] # bounds of alpha peak search windows frequencies
 # Savitzky-Golay filter
-window_length = 11
-poly_order = 5
-mdiff = 0.2 # minimal height difference distinguishing a primary peak from competitors
+# window_length = 11
+# poly_order = 5
+# mdiff = 0.2 # minimal height difference distinguishing a primary peak from competitors
 
-
-# VI. ROC CURVE
+# Vb. CEPSTRUMS
 # ====================
-stepSixTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-roc_source = studyDirectory+"/results/"
-roc_type = "shuffle" # 'shuffle' or 'filter'
+stepFiveBTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 
+# Vs. PLOT POWER SPECTRAL DENSITY CURVES
+# ====================
+stepFiveSTrigger = "no"
+plot_contig_lead = "209_1"
+
+
+# VIa. ROC CURVE
+# ====================
+stepSixATrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
+roc_source = resultsBaseDir+"/jacknife_evaluation_p300_1250"
+req_results_keyword = "jacknife" # optional to require roc source folders to contain a keyword
+roc_type = "filter" # 'shuffle' or 'filter'
+
+# VIb. Plot Many Probability Distribution Functions
+# ====================
+stepSixBTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
+roc_sourceDir_many = "/home/clayton/science/CANlab/EEGstudies"
+roc_source_keyword_many = "ref"
+req_many_eval_path = "/results/model_evaluation_p300_1250" # path of specific evaluation within each study folder
 
 # VII. BANDPASS FILTER
 # ====================
 stepSevenTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-bandpassSource = source
-#   delta, 0.1-4, theta: 4-8, alpha: 8-12, beta: 16-31, gamma: 32-60
-bandpassBounds = [32, 60]
-bandpassName = "gamma"
+# delta, 0.1-4, theta: 4-8, alpha: 8-12, beta: 16-31, gamma: 32-60
+frequency_bands = [
+    ("delta", [0.1, 4]),
+    ("theta", [4, 8]),
+    ("alpha", [8, 12]),
+    ("beta", [16, 31]),
+    ("gamma", [32, 60])]
 
 
 # VIIs. FILTER PLOTS
@@ -147,5 +185,11 @@ filterPlotContig = "104_77"
 
 # VIII. MNE PLOT
 # ====================
-# stepEightTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
-# plotSource = studyDirectory+"/contigs_p300_250_no/101_29.csv"
+stepEightTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
+plotSource = studyDirectory+"/contigs_p300_250_no/101_29.csv"
+
+# IX. SUPPORT VECTOR MACHINE
+# ====================
+stepNineTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
+svm_source = studyDirectory+"/spectral/"+selectedTask+"_"+str(contigLength)
+kernel_type = 'rbf' # one of ['linear', 'poly', 'rbf']

@@ -9,9 +9,13 @@ rocfig, rocax = plt.subplots(1, 1, figsize=(10, 5))
 
 # set list of colors for limited number of filters
 if config.roc_type == "filter":
-    resultsFolders = os.listdir(config.roc_source)
-    resultsFolders = [config.roc_source+"/"+folder for folder in resultsFolders if "jacknife_evaluation" in folder]
+    resultsFolders = os.listdir(config.resultsBaseDir)
+    if config.req_results_keyword != "":
+        resultsFolders = [config.resultsBaseDir+"/"+folder for folder in resultsFolders if config.req_results_keyword in folder]
+    else:
+        resultsFolders = [config.resultsBaseDir+"/"+folder for folder in resultsFolders]
 
+    print(resultsFolders)
     # colors = ['bo', 'rs', 'y1', 'k*', 'm+', 'gx']
     colors = ['b', 'r', 'y', 'k', 'm', 'g']
 
