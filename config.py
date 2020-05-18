@@ -9,7 +9,7 @@ import os
 # --------------------> *.eeg
 # --------------------> *.evt
 # --------------------> *.art
-studyDirectory = "/home/clayton/science/CANlab/EEGstudies/CANlabStudy"
+studyDirectory = "/home/clayton/science/CANlab/EEGstudies/ref 24-30"
 resultsBaseDir = studyDirectory+"/results"
 max_tree_depth = 3
 
@@ -56,15 +56,6 @@ stepOneTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 # Ex: 104_p300.eeg
 # if you want to use a different length participant identifier, specify it here
 participantNumLen = 3
-
-# subjectsTasksKeys={}
-#
-# for task in os.listdir(studyDirectory):
-#     if task != "raw":
-#         subjectsTasksKeys[task]=[[os.listdir(studyDirectory+"/"+task)]:2]
-#
-# for key in subjectsTasksKeys:
-#     print(key, " : ", subjectsTasksKeys[key])
 
 # current supported tasks are
 # p300
@@ -114,7 +105,7 @@ permuteLabels = False
 learningRate = 0.001
 betaOne = 0.99
 betaTwo = 0.999
-numEpochs = 100
+numEpochs = 1000
 
 
 # IVa. TRAIN / SAVE NEURAL NETWORK WEIGHTS
@@ -153,14 +144,14 @@ plot_contig_lead = "209_1"
 
 # VIa. ROC CURVE
 # ====================
-stepSixATrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
+stepSixATrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 roc_source = resultsBaseDir+"/jacknife_evaluation_p300_1250"
 req_results_keyword = "jacknife" # optional to require roc source folders to contain a keyword
 roc_type = "filter" # 'shuffle' or 'filter'
 
 # VIb. Plot Many Probability Distribution Functions
 # ====================
-stepSixBTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
+stepSixBTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
 roc_sourceDir_many = "/home/clayton/science/CANlab/EEGstudies"
 roc_source_keyword_many = "ref"
 req_many_eval_path = "/results/model_evaluation_p300_1250" # path of specific evaluation within each study folder
@@ -169,6 +160,7 @@ req_many_eval_path = "/results/model_evaluation_p300_1250" # path of specific ev
 # ====================
 stepSevenTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 # delta, 0.1-4, theta: 4-8, alpha: 8-12, beta: 16-31, gamma: 32-60
+# you can comment out different bands to mute them from being admitted to the network training / evaluation
 frequency_bands = [
     ("delta", [0.1, 4]),
     ("theta", [4, 8]),

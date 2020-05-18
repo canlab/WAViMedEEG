@@ -55,6 +55,15 @@ def generate_paths_and_labels():
 
     return(train_image_paths, train_image_labels)
 
+def reshape_paths(path_list, path_labels):
+    fnames_stacked = []
+    paths_and_labels = list(zip(path_list, path_labels))
+    for band in config.frequency_bands:
+        band_names = [pair for pair in paths_and_labels if band[0] in pair[0]]
+        band_names = sorted(band_names)
+        fnames_stacked.append(band_names)
+    return(fnames_stacked)
+
 def normalize(array):
     nom = (array - array.min())*(1 - 0)
     denom = array.max() - array.min()
@@ -63,16 +72,39 @@ def normalize(array):
 
 def load_numpy_stack(lead, paths):
     numpy_stack = []
-    for path in paths:
-        path = str(lead)+"/"+str(path)
-        array = genfromtxt(path, delimiter=",")
-        array = normalize(array)
-        array = array.reshape(array.shape +(1,))
-        numpy_stack.append(array)
-    numpy_dataset = np.rollaxis(np.block(numpy_stack), 2, 0)
-    numpy_dataset = numpy_dataset.reshape(numpy_dataset.shape+(1,))
-    print("Original Shape of Dataset:", numpy_dataset.shape, "\n")
-    return(numpy_dataset)
+    label_stack = []
+    i=0
+    # once on every contig we have in paths
+    print("\nLoading", config.selectedTask, "contigs into Tensor objects")
+    print("==========\n")
+    pbar_len = len(paths[0])*len(paths)
+    pbar = tqdm(total=pbar_len)
+    while i < len(paths[0]):
+        contigs_each_band = []
+        for band in paths:
+            fpath = str(lead)+"/"+str(band[i][0])
+            array = genfromtxt(fpath, delimiter=",")
+            array = normalize(array)
+            contigs_each_band.append(array)
+            pbar.update(1)
+        contigs_each_band = np.stack(contigs_each_band, axis=2)
+        numpy_stack.append(contigs_each_band)
+        if band[i][0][0] == "1":
+            label_stack.append(0)
+        elif band[i][0][0] == "2":
+            label_stack.append(1)
+        i+=1
+    pbar.close()
+    # labels as array, for each contig
+    label_stack = np.array(label_stack)
+    # make samples 1st-read axis
+    numpy_dataset = np.stack(numpy_stack, axis=0)
+
+    # randomly shuffle them, with same permutation
+    idx = np.random.permutation(len(numpy_dataset))
+    numpy_dataset, label_stack = numpy_dataset[idx], label_stack[idx]
+
+    return(numpy_dataset, label_stack)
 
 def createModel(train_arrays, train_image_labels, learn, num_epochs, betaOne, betaTwo):
     # Introduce sequential Set
@@ -95,7 +127,7 @@ def createModel(train_arrays, train_image_labels, learn, num_epochs, betaOne, be
     model.add(tf.keras.layers.Flatten(data_format="channels_last"))
 
     # Hidden layers
-    model.add(tf.keras.layers.Dense(2, activation='softmax'))
+    model.add(tf.keras.layers.Dense(2, activation='softmax', use_bias=True))
 
     model.build(train_arrays.shape)
     model.summary()
@@ -160,7 +192,9 @@ for sub in subject_list:
 
 train_paths, train_labels = generate_paths_and_labels()
 
-train_data = load_numpy_stack(train_path, train_paths)
+train_paths_and_labels = reshape_paths(train_paths, train_labels)
+
+train_data, train_labels = load_numpy_stack(train_path, train_paths_and_labels)
 
 fitted, modelvar = createModel(train_data, train_labels, rate, epochs, beta1, beta2)
 modelvar.save('pain_model/MyModel')
