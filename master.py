@@ -5,6 +5,17 @@ import config
 
 from pathlib import Path
 
+print("""\
+                                  ,,,,
+     ,,,,,,        ,,,,,       ,,,,,,,,,,   ,,,,,,           ,,,,,  #####
+      ,,,,,,      ,,,,,,,    ,,,,,, ,,,,,,   ,,,,,,        ,,,,,,    ##
+        ,,,,,,    ,,,,,,    ,,,,,     ,,,,,.   ,,,,,      ,,,,,     ,,,,
+         ,,,,,,   ,,,,,,   ,,,,,       ,,,,,,   ,,,,,.   ,,,,,      ,,,,,
+           ,,,,,,,,,,,,,,,,,,,,         ,,,,,,,  ,,,,,,,,,,,,       ,,,,,
+             ,,,,,,, ,,,,,,,,             ,,,,     ,,,,,,,,         ,,,,,
+
+""")
+
 def viewStudyTree(startpath, max_depth=3):
     print("Please review your study directory. \n")
     for root, dirs, files in os.walk(startpath):
@@ -17,7 +28,6 @@ def viewStudyTree(startpath, max_depth=3):
             #    print('{}{}'.format(subindent, f))
 
 viewStudyTree(config.studyDirectory, max_depth=config.max_tree_depth)
-
 
 # Step I
 # wavi to csv
@@ -72,7 +82,7 @@ if config.stepFourBTrigger == "yes":
 if (config.stepFourCTrigger != "no")  & (config.stepFourCTrigger != "yes"):
     config.stepFourCTrigger = input("Step IVc: Do you want to evaluate a saved model on your eval folder? yes or no \n")
 if config.stepFourCTrigger == "yes":
-    import evaluate_model_by_contig
+    import evaluate_model
     viewStudyTree(config.studyDirectory)
 
 
@@ -112,7 +122,7 @@ if config.stepSixATrigger == "yes":
 if (config.stepSixBTrigger != "no") & (config.stepSixBTrigger != "yes"):
     config.stepSixBTrigger = input("Step VIb: Would you like to plot many model-evaluation PDFs?")
 if config.stepSixBTrigger == "yes":
-    import plot_many_evals_by_contig
+    import plot_many_evals
 
 
 # Step VII

@@ -9,7 +9,7 @@ import os
 # --------------------> *.eeg
 # --------------------> *.evt
 # --------------------> *.art
-studyDirectory = "/home/clayton/science/CANlab/EEGstudies/ref 24-30"
+studyDirectory = "/home/clayton/science/CANlab/EEGstudies/ref pain"
 resultsBaseDir = studyDirectory+"/results"
 max_tree_depth = 3
 
@@ -93,11 +93,11 @@ network_channels = [
     'Pz'
 ]
 
-# IV. CNN
+# IV. Convolutional Neural Network
 # ====================
 source = "/home/clayton/science/CANlab/EEGstudies/CANlabStudy"+"/contigs/"+selectedTask+"_"+str(contigLength)
 evalPath = studyDirectory+"/contigs/"+selectedTask+"_"+str(contigLength)
-resultsPath = resultsBaseDir+"/model_evaluation"+"_"+selectedTask+"_"+str(contigLength)
+resultsPath = resultsBaseDir+"/model_evaluation"+"_"+selectedTask+"_"+str(contigLength)+"_ab_2"
 
 permuteLabels = False
 
@@ -109,6 +109,7 @@ numEpochs = 1000
 
 
 # IVa. TRAIN / SAVE NEURAL NETWORK WEIGHTS
+# convnet_save_weights
 # ====================
 stepFourATrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 
@@ -151,10 +152,10 @@ roc_type = "filter" # 'shuffle' or 'filter'
 
 # VIb. Plot Many Probability Distribution Functions
 # ====================
-stepSixBTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
+stepSixBTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 roc_sourceDir_many = "/home/clayton/science/CANlab/EEGstudies"
 roc_source_keyword_many = "ref"
-req_many_eval_path = "/results/model_evaluation_p300_1250" # path of specific evaluation within each study folder
+req_many_eval_path = "/results/model_evaluation_p300_1250_ab_2" # path of specific evaluation within each study folder
 
 # VII. BANDPASS FILTER
 # ====================
@@ -162,11 +163,12 @@ stepSevenTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 # delta, 0.1-4, theta: 4-8, alpha: 8-12, beta: 16-31, gamma: 32-60
 # you can comment out different bands to mute them from being admitted to the network training / evaluation
 frequency_bands = [
-    ("delta", [0.1, 4]),
-    ("theta", [4, 8]),
+    # ("delta", [0.1, 4]),
+    # ("theta", [4, 8]),
     ("alpha", [8, 12]),
     ("beta", [16, 31]),
-    ("gamma", [32, 60])]
+    # ("gamma", [32, 60])
+    ]
 
 
 # VIIs. FILTER PLOTS
