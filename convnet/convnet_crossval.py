@@ -1,158 +1,8 @@
-
-from __future__ import absolute_import, division, print_function, unicode_literals
-
-import tensorflow as tf
-from tensorflow.keras.layers import Dense, Flatten, Conv2D
-from tensorflow.keras import Model
-
-import matplotlib.pyplot as plot
-import numpy as np
-from numpy import genfromtxt
-import csv
-import sys, os, re
 import pathlib
-import config
 from tqdm import tqdm
-import random
-
-print("Using Tensorflow version", tf.__version__)
-
-# get all subject numbers in use
-def get_avail_subjects():
-    subs = []
-    for file in os.listdir(train_path):
-        if file[:3] not in subs:
-            if file[0] != "0":
-                subs.append(file[:3])
-    return(subs)
-
-def generate_paths_and_labels(omission=None):
-    image_paths = os.listdir(train_path)
-    image_paths = [path for path in image_paths if path[0] != "0"]
-    #train_image_paths = list(train_path.glob('*/*'))
-    train_image_paths = [str(path) for path in image_paths if omission != path[:3]]
-    test_image_paths = [str(path) for path in image_paths if omission == path[:3]]
-
-    random.shuffle(train_image_paths)
-
-    train_count = len(train_image_paths)
-    print("You have", train_count, "files.")
-
-    #list the available labels
-    label_names = ['ctrl', 'pain']
-    #label_names = sorted(item.name for item in train_path.glob('*/') if item.is_dir())
-    print("Labels discovered:", label_names)
-
-    #assign an index to each label
-    label_to_index = dict((name, index) for index, name in enumerate(label_names))
-    print("Label indices:", label_to_index)
-
-    #create a list of every file and its integer label
-    train_image_groups = [config.subjectKeys.get(int(path[0]), "none") for path in train_image_paths]
-    test_image_groups = [config.subjectKeys.get(int(path[0]), "none") for path in test_image_paths]
-
-    train_image_labels = [label_to_index[group] for group in train_image_groups]
-    test_image_labels = [label_to_index[group] for group in test_image_groups]
-    #train_image_labels = [int(path[0]) for path in train_image_paths]
-
-    # null tests, shuffle labels and randomize test
-    if config.permuteLabels == True:
-        random.shuffle(train_image_labels)
-        rand_group = random.randint(0, 1)
-        test_image_labels = [rand_group for label in test_image_labels]
-
-    # force list of labels to numpy array
-    train_image_labels = np.array(train_image_labels)
-    test_image_labels = np.array(test_image_labels)
-
-    return(train_image_paths, train_image_labels, test_image_paths, test_image_labels)
-
-def reshape_paths(path_list, path_labels):
-    fnames_stacked = []
-    paths_and_labels = list(zip(path_list, path_labels))
-    for band in config.frequency_bands:
-        band_names = [pair for pair in paths_and_labels if band[0] in pair[0]]
-        band_names = sorted(band_names)
-        fnames_stacked.append(band_names)
-    return(fnames_stacked)
-
-def normalize(array):
-    nom = (array - array.min())*(1 - 0)
-    denom = array.max() - array.min()
-    denom+=(10**-10)
-    return 0 + nom/denom
-
-def load_numpy_stack(lead, paths):
-    numpy_stack = []
-    label_stack = []
-    i=0
-    # once on every contig we have in paths
-    print("\nLoading", config.selectedTask, "contigs into Tensor objects")
-    print("==========\n")
-    pbar_len = len(paths[0])*len(paths)
-    pbar = tqdm(total=pbar_len)
-    while i < len(paths[0]):
-        contigs_each_band = []
-        for band in paths:
-            fpath = str(lead)+"/"+str(band[i][0])
-            array = genfromtxt(fpath, delimiter=",")
-            array = normalize(array)
-            contigs_each_band.append(array)
-            pbar.update(1)
-        contigs_each_band = np.stack(contigs_each_band, axis=2)
-        numpy_stack.append(contigs_each_band)
-        if band[i][0][0] == "1":
-            label_stack.append(0)
-        elif band[i][0][0] == "2":
-            label_stack.append(1)
-        i+=1
-    pbar.close()
-    # labels as array, for each contig
-    label_stack = np.array(label_stack)
-    # make samples 1st-read axis
-    numpy_dataset = np.stack(numpy_stack, axis=0)
-
-    # randomly shuffle them, with same permutation
-    idx = np.random.permutation(len(numpy_dataset))
-    numpy_dataset, label_stack = numpy_dataset[idx], label_stack[idx]
-
-    return(numpy_dataset, label_stack)
-
-def createModel(train_arrays, train_image_labels, learn, num_epochs, betaOne, betaTwo):
-    # Introduce sequential Set
-    model = tf.keras.models.Sequential()
-
-    # Create a convolutional base
-    model.add(tf.keras.layers.Conv2D(5, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last', use_bias=False))
-    model.add(tf.keras.layers.Conv2D(5, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last', use_bias=False))
-    model.add(tf.keras.layers.MaxPooling2D(pool_size=(2,2), strides=None, padding='same', data_format=None))
-    model.add(tf.keras.layers.Dropout(0.2))
-
-    model.add(tf.keras.layers.Conv2D(5, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last', use_bias=False))
-    model.add(tf.keras.layers.Conv2D(5, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last', use_bias=False))
-    #model.add(tf.keras.layers.Conv2D(5, kernel_size=5, strides=5, padding='same', activation='relu', data_format='channels_last', use_bias=False))
-    model.add(tf.keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001, center=True, scale=True, beta_initializer='zeros', gamma_initializer='ones', moving_mean_initializer='zeros', moving_variance_initializer='ones', beta_regularizer=None, gamma_regularizer=None, beta_constraint=None, gamma_constraint=None))
-
-    # Layers
-    #model.add(tf.keras.layers.Dropout(0.5))
-    model.add(tf.keras.layers.MaxPooling2D(pool_size=(2,2), strides=None, padding='same', data_format=None))
-    model.add(tf.keras.layers.Flatten(data_format="channels_last"))
-
-    # Hidden layers
-    model.add(tf.keras.layers.Dense(2, activation='softmax'))
-
-    model.build(train_arrays.shape)
-    model.summary()
-
-    # Model compilation
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learn, beta_1=betaOne, beta_2=betaTwo),
-                 loss='sparse_categorical_crossentropy',
-                 metrics=['accuracy'])
-
-    history = model.fit(train_arrays, train_image_labels, epochs=num_epochs,
-                       validation_split=0.33)
-
-    return(history, model)
+import convnet
+import config
+import os
 
 try:
     rate = config.learningRate
@@ -175,35 +25,33 @@ except:
     epochs = int(input("How many epochs? \n"))
 
 try:
+    os.mkdir(config.resultsBaseDir)
+except:
+    print("Results base dir was already created.")
+
+try:
     os.mkdir(config.resultsPath)
 except:
-    print("Results dir already made.")
+    print("Specified results directory already exists. Go back and clean up.")
+    quit()
 
-import matplotlib.pyplot as plt
+path_to_train = pathlib.Path(config.train_source)
 
-train_path = pathlib.Path(config.source)
-subject_list = get_avail_subjects()
+subject_list = convnet.get_avail_subjects(path_to_train)
 print("List of available subjects:")
 for sub in subject_list:
     print(sub)
 
-# for iter in tqdm(range(1000)):
-    # os.mkdir(config.resultsPath+"/iter"+str(iter))
 for sub in tqdm(subject_list):
-    train_paths, train_labels, test_paths, test_labels = generate_paths_and_labels(omission=sub)
+    train_paths, test_paths = convnet.generate_paths_and_labels(path_to_train, omission=sub)
+    train_paths = convnet.reshape_paths_with_bands(train_paths, config.frequency_bands)
+    test_paths = convnet.reshape_paths_with_bands(test_paths, config.frequency_bands)
+    train_data, train_labels = convnet.load_numpy_stack(path_to_train, train_paths, config.permuteLabels)
+    test_data, test_labels = convnet.load_numpy_stack(path_to_train, test_paths, config.permuteLabels)
+    train_data, train_labels = convnet.shuffle_same_perm(train_data, train_labels)
+    test_data, test_labels = convnet.shuffle_same_perm(test_data, test_labels)
 
-    train_paths_and_labels = reshape_paths(train_paths, train_labels)
-    test_paths_and_labels = reshape_paths(test_paths, test_labels)
-
-    train_data, train_labels = load_numpy_stack(train_path, train_paths_and_labels)
-    test_data, test_labels = load_numpy_stack(train_path, test_paths_and_labels)
-
-    # if permute labels trigger on, random sort train labels again
-    if config.permuteLabels == True:
-        idy = np.random.permutation(len(train_labels))
-        train_labels = train_labels[idy]
-
-    fitted, modelvar = createModel(train_data, train_labels, rate, epochs, beta1, beta2)
+    fitted, modelvar = convnet.createModel(train_data, train_labels, rate, epochs, beta1, beta2)
 
     f = open(config.resultsPath+"/"+sub+".txt", 'w')
 

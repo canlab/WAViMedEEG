@@ -15,6 +15,8 @@ import config
 from tqdm import tqdm
 import random
 
+import convnet
+
 print("Using Tensorflow version", tf.__version__)
 
 # get all subject numbers in use

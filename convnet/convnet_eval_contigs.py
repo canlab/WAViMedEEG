@@ -15,50 +15,9 @@ import config
 from tqdm import tqdm
 import random
 
+import convnet
+
 print("Using Tensorflow version", tf.__version__)
-
-# get all subject numbers in use
-def get_avail_subjects():
-    subs = []
-    for file in os.listdir(test_path):
-        if file[:3] not in subs:
-            if file[0] != "0":
-                subs.append(file[:3])
-    return(subs)
-
-def generate_paths_and_labels(omission=None):
-    image_paths = os.listdir(test_path)
-    image_paths = [path for path in image_paths if path[0] != "0"]
-    #train_image_paths = list(train_path.glob('*/*'))
-    test_image_paths = [str(path) for path in image_paths if omission == path[:3]]
-
-    test_count = len(test_image_paths)
-    print("You have", test_count, "files.")
-
-    #list the available labels
-    label_names = ['pain', 'ctrl']
-    #label_names = sorted(item.name for item in train_path.glob('*/') if item.is_dir())
-    print("Labels discovered:", label_names)
-
-    #assign an index to each label
-    label_to_index = dict((name, index) for index, name in enumerate(label_names))
-    print("Label indices:", label_to_index)
-
-    #create a list of every file and its integer label
-    test_image_groups = [config.subjectKeys.get(int(path[0]), "none") for path in test_image_paths]
-
-    test_image_labels = [label_to_index[group] for group in test_image_groups]
-    #train_image_labels = [int(path[0]) for path in train_image_paths]
-
-    # null tests, shuffle labels and randomize test
-    if config.permuteLabels == True:
-        rand_group = random.randint(0, 1)
-        test_image_labels = [rand_group for label in test_image_labels]
-
-    # force list of labels to numpy array
-    test_image_labels = np.array(test_image_labels)
-
-    return(test_image_paths, test_image_labels)
 
 def reshape_paths(path_list, path_labels):
     fnames_stacked = []
@@ -119,7 +78,7 @@ modelvar.summary()
 import matplotlib.pyplot as plt
 
 test_path = pathlib.Path(config.evalPath)
-subject_list = get_avail_subjects()
+subject_list = convnet.get_avail_subjects()
 print("List of available subjects:")
 for sub in subject_list:
     print(sub)
@@ -134,7 +93,7 @@ else:
     os.mkdir(config.resultsPath)
 
 for sub in tqdm(subject_list):
-    test_paths, test_labels = generate_paths_and_labels(sub)
+    , , test_paths, test_labels = convnet.generate_paths_and_labels(sub)
 
     test_paths_and_labels = reshape_paths(test_paths, test_labels)
 

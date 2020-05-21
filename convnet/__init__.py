@@ -1,26 +1,18 @@
-
 from __future__ import absolute_import, division, print_function, unicode_literals
-
+import sys, os, re
+import numpy as np
+from numpy import genfromtxt
+import csv
+from tqdm import tqdm
+# tensorflow imports
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, Flatten, Conv2D
 from tensorflow.keras import Model
 
-import matplotlib.pyplot as plot
-import numpy as np
-from numpy import genfromtxt
-import csv
-import sys, os, re
-import pathlib
-import config
-from tqdm import tqdm
-import random
-
-import convnet
-
 print("Using Tensorflow version", tf.__version__)
 
 # get all subject numbers in use
-def get_avail_subjects():
+def get_avail_subjects(train_path):
     subs = []
     for file in os.listdir(train_path):
         if file[:3] not in subs:
@@ -28,63 +20,80 @@ def get_avail_subjects():
                 subs.append(file[:3])
     return(subs)
 
-def generate_paths_and_labels():
+# generate structure of train paths for contigs
+# if omissions are given, assumed to be test_image_paths,
+# as seen in convnet.cross_val
+def generate_paths_and_labels(train_path, omission=None):
     image_paths = os.listdir(train_path)
     image_paths = [path for path in image_paths if path[0] != "0"]
-    train_image_paths = [str(path) for path in image_paths]
-
-    random.shuffle(train_image_paths)
+    train_image_paths = [str(path) for path in image_paths if omission != path[:3]]
+    test_image_paths = [str(path) for path in image_paths if omission == path[:3]]
 
     train_count = len(train_image_paths)
     print("You have", train_count, "files.")
 
-    #list the available labels
-    label_names = ['pain', 'ctrl']
-    #label_names = sorted(item.name for item in train_path.glob('*/') if item.is_dir())
-    print("Labels discovered:", label_names)
-
-    #assign an index to each label
-    label_to_index = dict((name, index) for index, name in enumerate(label_names))
-    print("Label indices:", label_to_index)
+    # #list the available labels
+    # label_names = ['ctrl', 'pain']
+    # #label_names = sorted(item.name for item in train_path.glob('*/') if item.is_dir())
+    # print("Labels discovered:", label_names)
+    #
+    # #assign an index to each label
+    # label_to_index = dict((name, index) for index, name in enumerate(label_names))
+    # print("Label indices:", label_to_index)
 
     #create a list of every file and its integer label
-    train_image_groups = [config.subjectKeys.get(int(path[0]), "none") for path in train_image_paths]
+    # train_image_groups = [config.subjectKeys.get(int(path[0]), "none") for path in train_image_paths]
+    # test_image_groups = [config.subjectKeys.get(int(path[0]), "none") for path in test_image_paths]
+    #
+    # train_image_labels = [label_to_index[group] for group in train_image_groups]
+    # test_image_labels = [label_to_index[group] for group in test_image_groups]
+    #train_image_labels = [int(path[0]) for path in train_image_paths]
 
-    train_image_labels = [label_to_index[group] for group in train_image_groups]
+    # null tests, shuffle labels and randomize test
+    # if config.permuteLabels == True:
+    #     random.shuffle(train_image_labels)
+    #     rand_group = random.randint(0, 1)
+    #     test_image_labels = [rand_group for label in test_image_labels]
 
     # force list of labels to numpy array
-    train_image_labels = np.array(train_image_labels)
+    # train_image_labels = np.array(train_image_labels)
+    # test_image_labels = np.array(test_image_labels)
 
-    return(train_image_paths, train_image_labels)
+    return(train_image_paths, test_image_paths)
 
-def reshape_paths(path_list, path_labels):
+# this will reshape paths to accomodate a new dimension for bandpassed data
+def reshape_paths_with_bands(path_list, frequency_bands):
     fnames_stacked = []
-    paths_and_labels = list(zip(path_list, path_labels))
-    for band in config.frequency_bands:
-        band_names = [pair for pair in paths_and_labels if band[0] in pair[0]]
+    for band in frequency_bands:
+        band_names = [path for path in path_list if band[0] in path]
         band_names = sorted(band_names)
         fnames_stacked.append(band_names)
     return(fnames_stacked)
 
+# linearly normalizes a contig array to be between 1 and 0
 def normalize(array):
     nom = (array - array.min())*(1 - 0)
     denom = array.max() - array.min()
     denom+=(10**-10)
     return 0 + nom/denom
 
-def load_numpy_stack(lead, paths):
+# loads in list of paths
+# returns paths as desired data shape:
+# (samples, contig length, frequency bands, electrodes)
+# and labels, as 1-dimensional list
+def load_numpy_stack(lead, paths, permuteLabels=False):
     numpy_stack = []
     label_stack = []
     i=0
     # once on every contig we have in paths
-    print("\nLoading", config.selectedTask, "contigs into Tensor objects")
+    print("\nLoading contigs into Tensor objects")
     print("==========\n")
     pbar_len = len(paths[0])*len(paths)
     pbar = tqdm(total=pbar_len)
     while i < len(paths[0]):
         contigs_each_band = []
         for band in paths:
-            fpath = str(lead)+"/"+str(band[i][0])
+            fpath = str(lead)+"/"+str(band[i])
             array = genfromtxt(fpath, delimiter=",")
             array = normalize(array)
             contigs_each_band.append(array)
@@ -101,13 +110,19 @@ def load_numpy_stack(lead, paths):
     label_stack = np.array(label_stack)
     # make samples 1st-read axis
     numpy_dataset = np.stack(numpy_stack, axis=0)
-    numpy_dataset = np.swapaxes(numpy_dataset, 2, 3)
 
-    # randomly shuffle them, with same permutation
-    idx = np.random.permutation(len(numpy_dataset))
-    numpy_dataset, label_stack = numpy_dataset[idx], label_stack[idx]
+    # if permute labels trigger on, random sort train labels
+    if permuteLabels == True:
+        idy = np.random.permutation(len(train_labels))
+        train_labels = train_labels[idy]
 
     return(numpy_dataset, label_stack)
+
+# randomly shuffle them, with same permutation
+def shuffle_same_perm(data, labels):
+    idx = np.random.permutation(len(data))
+    data, labels = data[idx], labels[idx]
+    return(data, labels)
 
 def createModel(train_arrays, train_image_labels, learn, num_epochs, betaOne, betaTwo):
     # Introduce sequential Set
@@ -130,74 +145,17 @@ def createModel(train_arrays, train_image_labels, learn, num_epochs, betaOne, be
     model.add(tf.keras.layers.Flatten(data_format="channels_last"))
 
     # Hidden layers
-    model.add(tf.keras.layers.Dense(2, activation='softmax', use_bias=True))
+    model.add(tf.keras.layers.Dense(2, activation='softmax'))
 
     model.build(train_arrays.shape)
     model.summary()
 
     # Model compilation
-    model.compile(optimizer=tf.keras.optimizers.Adam(beta_1=betaOne, beta_2=betaTwo),
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learn, beta_1=betaOne, beta_2=betaTwo),
                  loss='sparse_categorical_crossentropy',
                  metrics=['accuracy'])
 
-    # Include the epoch in the file name (uses `str.format`)
-    checkpoint_path = "pain_model/cp-{epoch:04d}.ckpt"
-    checkpoint_dir = os.path.dirname(checkpoint_path)
-
-    # Create a callback that saves the model's weights every 5 epochs
-    cp_callback = tf.keras.callbacks.ModelCheckpoint(
-        filepath=checkpoint_path,
-        verbose=1,
-        save_weights_only=True,
-        period=50)
-
-    # Save the weights using the `checkpoint_path` format
-    model.save_weights(checkpoint_path.format(epoch=0))
-
-    # Train the model with the new callback
     history = model.fit(train_arrays, train_image_labels, epochs=num_epochs,
-                       validation_split=0.33, callbacks=[cp_callback])
+                       validation_split=0.33)
 
     return(history, model)
-
-try:
-    rate = config.learningRate
-except:
-    rate = float(input("What's my learning rate? \n"))
-
-try:
-    beta1 = config.betaOne
-except:
-    beta1 = float(input("What's my beta1? \n"))
-
-try:
-    beta2 = config.betaTwo
-except:
-    beta2 = float(input("What's my beta2? \n"))
-
-try:
-    epochs = config.numEpochs
-except:
-    epochs = int(input("How many epochs? \n"))
-
-try:
-    os.mkdir(config.resultsPath)
-except:
-    print("Results dir already made.")
-
-import matplotlib.pyplot as plt
-
-train_path = pathlib.Path(config.source)
-subject_list = get_avail_subjects()
-print("List of available subjects:")
-for sub in subject_list:
-    print(sub)
-
-train_paths, train_labels = generate_paths_and_labels()
-
-train_paths_and_labels = reshape_paths(train_paths, train_labels)
-
-train_data, train_labels = load_numpy_stack(train_path, train_paths_and_labels)
-
-fitted, modelvar = createModel(train_data, train_labels, rate, epochs, beta1, beta2)
-modelvar.save('pain_model/MyModel')

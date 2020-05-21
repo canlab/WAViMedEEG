@@ -1,19 +1,22 @@
+# Welcome to the WAVi EEG Analysis Toolbox
+# Before running this code, set your configuration variables below
+# then import config
 import os
 
 # INITIALIZING STUDY FILES
 # ====================
-
-# full path of study directory
-# Ex. /StudyDirectory
+# before beginning with new data, format your
+# new study directory as follows:
+# /path/to/mystudies/newstudydir
 # ----------> /raw
 # --------------------> *.eeg
 # --------------------> *.evt
 # --------------------> *.art
-studyDirectory = "/home/clayton/science/CANlab/EEGstudies/ref pain"
-resultsBaseDir = studyDirectory+"/results"
-max_tree_depth = 3
 
-sampleRate = 250 # in Hz
+myStudies = "/home/clayton/science/CANlab/EEGstudies" # if you are working with multiple studies at once, set the parent directory where you will keep them all
+studyDirectory = myStudies+"/CANlabStudy" # more specific study, for functions that only deal with 1 at a time
+
+selectedTask = "p300" # in general, the task which will be used for triggered analysis step
 
 # dictionary of first-index subject number and a respective 4-character name for the group
 subjectKeys = {
@@ -22,6 +25,17 @@ subjectKeys = {
     2: "ctrl"
 }
 
+
+# WAVi to CSV CONVERSIONS AND HEADSET CONFIGURATION
+# ====================
+# this package expects a naming convention for raw EEG files:
+# n-digit participant number, underscore, task name, .art / .eeg / .evt
+# Ex: 104_p300.eeg
+# if you want to use a different length participant identifier, specify it here
+participantNumLen = 3 # default 3
+sampleRate = 250 # in Hz
+
+# default channel names, customize if using non-WAVi headset
 channel_names = [
     'Fp1',
     'Fp2',
@@ -44,19 +58,6 @@ channel_names = [
     'Pz'
 ]
 
-selectedTask = "p300" # in general, the task which will be used for triggered analysis step
-
-
-# I. WAVi to CSV CONVERSIONS
-# ====================
-stepOneTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-
-# this package expects a naming convention for raw EEG files:
-# 3-digit participant number, underscore, task name, .art / .eeg / .evt
-# Ex: 104_p300.eeg
-# if you want to use a different length participant identifier, specify it here
-participantNumLen = 3
-
 # current supported tasks are
 # p300
 # flanker
@@ -68,122 +69,72 @@ participantNumLen = 3
 # once you do, please make a pull request so others can use it as well
 
 
-# II. MNE CONFIGURATION
+# CONTIG GENERATION
 # ====================
-stepTwoTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-# numChannels = 19 # default 19 for WAVi headset
-
-
-# III. CONTIG GENERATION
-# ====================
-stepThreeTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
 contigLength = 1250 # length of segmented epochs, in cycles, at 250 Hz
+
+
+# MACHINE LEARNING SETTINGS
+# ====================
+# train and eval sources for various ML functions
+train_source = studyDirectory+"/contigs/"+selectedTask+"_"+str(contigLength)
+eval_source = studyDirectory+"/contigs/"+selectedTask+"_"+str(contigLength)
+permuteLabels = False # set to True if you want to permute labels during convnet.load_numpy_stack or other similar functions
+
+# RESULTS FOLDER SETUP
+# ====================
+resultsBaseDir = studyDirectory+"/results" # change this if you want to rename your study's base results folder
+resultsPath = resultsBaseDir+"/model_evaluation"+"_"+selectedTask+"_"+str(contigLength)+"_ab_2" # path to which current analysis results will be written
+# will break if tries to write on existing folder
 
 # for accurate sensors in spectral analysis,
 # keep these in the same order
 # as the default list above (channel_names)
-# network_channels = [
-#     'P3',
-#     'P4',
-#     'Pz'
-# ]
 network_channels = [
     'P3',
     'P4',
     'Pz'
 ]
 
-# IV. Convolutional Neural Network
+
+# CONVOLUTIONAL NEURAL NETWORK
 # ====================
-source = "/home/clayton/science/CANlab/EEGstudies/CANlabStudy"+"/contigs/"+selectedTask+"_"+str(contigLength)
-evalPath = studyDirectory+"/contigs/"+selectedTask+"_"+str(contigLength)
-resultsPath = resultsBaseDir+"/model_evaluation"+"_"+selectedTask+"_"+str(contigLength)+"_ab_2"
-
-permuteLabels = False
-
 # network hyperparameters
 learningRate = 0.001
 betaOne = 0.99
 betaTwo = 0.999
-numEpochs = 1000
+numEpochs = 100
 
-
-# IVa. TRAIN / SAVE NEURAL NETWORK WEIGHTS
-# convnet_save_weights
+# SUPPORT VECTOR MACHINE
 # ====================
-stepFourATrigger = "no" # enter 'yes' or 'no' to skip command line prompt
+kernel_type = 'rbf' # one of ['linear', 'poly', 'rbf']
 
 
-# IVb. NEURAL NETWORK DIFFERENTIATION JACKNIFE
+# PLOTTING
 # ====================
-stepFourBTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
+plot_subject = "209" # if not defined, just chooses random, and assumes path from studyDirectory and selectedTask
+plot_contig = "1" # same as above
+
+plot_req_results_keyword = "ref" # optional to require roc/pdf plot study folders to contain a keyword
+plot_req_results_path = resultsBaseDir+"/model_evaluation_p300_1250_ab_2" # optional to require path of specific evaluation within 1 or many study folder(s)
 
 
-# IVc. EVALUATE A SAVED MODEL
+# BANDPASS FILTER
 # ====================
-stepFourCTrigger = "no"
-
-
-# Va. POWER SPECTRAL DENSITY CURVES
-# ====================
-stepFiveATrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-# alphaRange = [7.0, 13.0] # bounds of alpha peak search windows frequencies
-# Savitzky-Golay filter
-# window_length = 11
-# poly_order = 5
-# mdiff = 0.2 # minimal height difference distinguishing a primary peak from competitors
-
-# Vb. CEPSTRUMS
-# ====================
-stepFiveBTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-
-# Vs. PLOT POWER SPECTRAL DENSITY CURVES
-# ====================
-stepFiveSTrigger = "no"
-plot_contig_lead = "209_1"
-
-
-# VIa. ROC CURVE
-# ====================
-stepSixATrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-roc_source = resultsBaseDir+"/jacknife_evaluation_p300_1250"
-req_results_keyword = "jacknife" # optional to require roc source folders to contain a keyword
-roc_type = "filter" # 'shuffle' or 'filter'
-
-# VIb. Plot Many Probability Distribution Functions
-# ====================
-stepSixBTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-roc_sourceDir_many = "/home/clayton/science/CANlab/EEGstudies"
-roc_source_keyword_many = "ref"
-req_many_eval_path = "/results/model_evaluation_p300_1250_ab_2" # path of specific evaluation within each study folder
-
-# VII. BANDPASS FILTER
-# ====================
-stepSevenTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-# delta, 0.1-4, theta: 4-8, alpha: 8-12, beta: 16-31, gamma: 32-60
 # you can comment out different bands to mute them from being admitted to the network training / evaluation
+# format is ("name", [low-end, high-end]) tuple, in Hz
 frequency_bands = [
-    # ("delta", [0.1, 4]),
-    # ("theta", [4, 8]),
+    ("delta", [0.1, 4]),
+    ("theta", [4, 8]),
     ("alpha", [8, 12]),
     ("beta", [16, 31]),
-    # ("gamma", [32, 60])
+    ("gamma", [32, 60]),
     ]
 
 
-# VIIs. FILTER PLOTS
+# MISCELLANEOUS
 # ====================
-stepSevenSuppTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-filterPlotContig = "104_77"
-
-
-# VIII. MNE PLOT
-# ====================
-stepEightTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-plotSource = studyDirectory+"/contigs_p300_250_no/101_29.csv"
-
-# IX. SUPPORT VECTOR MACHINE
-# ====================
-stepNineTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-svm_source = studyDirectory+"/spectral/"+selectedTask+"_"+str(contigLength)
-kernel_type = 'rbf' # one of ['linear', 'poly', 'rbf']
+roc_type = "filter" if permuteLabels==False else "shuffle" # this determines whether plot colors are generated or hard-coded, hard-coded by default
+max_tree_depth = 2 # max depth traversed by study trees printed by the program template 'master.py'
+import help
+help.viewStudyTree(studyDirectory, max_tree_depth)
