@@ -6,7 +6,7 @@
 # this adds convenience for running as executable
 # while still performing imports correctly
 
-print("""\
+print("""
                                   ,,,,
      ,,,,,,        ,,,,,       ,,,,,,,,,,   ,,,,,,           ,,,,,  #####
       ,,,,,,      ,,,,,,,    ,,,,,, ,,,,,,   ,,,,,,        ,,,,,,    ##

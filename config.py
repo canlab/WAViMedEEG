@@ -26,7 +26,7 @@ subjectKeys = {
 }
 
 
-# WAVi to CSV CONVERSIONS AND HEADSET CONFIGURATION
+# WAVi to CSV CONVERSIONS / HEADSET CONFIG
 # ====================
 # this package expects a naming convention for raw EEG files:
 # n-digit participant number, underscore, task name, .art / .eeg / .evt
@@ -69,7 +69,7 @@ channel_names = [
 # once you do, please make a pull request so others can use it as well
 
 
-# CONTIG GENERATION
+# CONTIG SETTINGS
 # ====================
 contigLength = 1250 # length of segmented epochs, in cycles, at 250 Hz
 
@@ -79,7 +79,9 @@ contigLength = 1250 # length of segmented epochs, in cycles, at 250 Hz
 # train and eval sources for various ML functions
 train_source = studyDirectory+"/contigs/"+selectedTask+"_"+str(contigLength)
 eval_source = studyDirectory+"/contigs/"+selectedTask+"_"+str(contigLength)
+model_file = "/saved_models/convnet/pain_model/MyModel" # path where model will be saved to / loaded from
 permuteLabels = False # set to True if you want to permute labels during convnet.load_numpy_stack or other similar functions
+
 
 # RESULTS FOLDER SETUP
 # ====================

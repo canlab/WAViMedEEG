@@ -15,7 +15,7 @@ i = 0
 for folder in folders:
     source = config.studyDirectory+"/"+folder
     filtertype = folder.rsplit('_', 1)[1]
-    arr = np.genfromtxt(source+"/"+config.filterPlotContig+".csv", delimiter=",")
+    arr = np.genfromtxt(source+"/"+config.plot_subject+"_"+config.plot_contig+".csv", delimiter=",")
     j = 0
     for sig in arr.T:
         axs[i][j].plot(t, sig)

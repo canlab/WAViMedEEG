@@ -1,8 +1,9 @@
 import pathlib
 from tqdm import tqdm
-import convnet
 import config
 import os
+
+import convnet
 
 try:
     rate = config.learningRate
@@ -46,8 +47,8 @@ for sub in tqdm(subject_list):
     train_paths, test_paths = convnet.generate_paths_and_labels(path_to_train, omission=sub)
     train_paths = convnet.reshape_paths_with_bands(train_paths, config.frequency_bands)
     test_paths = convnet.reshape_paths_with_bands(test_paths, config.frequency_bands)
-    train_data, train_labels = convnet.load_numpy_stack(path_to_train, train_paths, config.permuteLabels)
-    test_data, test_labels = convnet.load_numpy_stack(path_to_train, test_paths, config.permuteLabels)
+    train_data, train_labels = convnet.load_numpy_stack(path_to_train, train_paths, permuteLabels=config.permuteLabels)
+    test_data, test_labels = convnet.load_numpy_stack(path_to_train, test_paths, permuteLabels=config.permuteLabels)
     train_data, train_labels = convnet.shuffle_same_perm(train_data, train_labels)
     test_data, test_labels = convnet.shuffle_same_perm(test_data, test_labels)
 

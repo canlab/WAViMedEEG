@@ -10,8 +10,8 @@ rocfig, rocax = plt.subplots(1, 1, figsize=(10, 5))
 # set list of colors for limited number of filters
 if config.roc_type == "filter":
     resultsFolders = os.listdir(config.resultsBaseDir)
-    if config.req_results_keyword != "":
-        resultsFolders = [config.resultsBaseDir+"/"+folder for folder in resultsFolders if config.req_results_keyword in folder]
+    if config.plot_req_results_keyword != "":
+        resultsFolders = [config.resultsBaseDir+"/"+folder for folder in resultsFolders if config.plot_req_results_keyword in folder]
     else:
         resultsFolders = [config.resultsBaseDir+"/"+folder for folder in resultsFolders]
 
@@ -21,9 +21,9 @@ if config.roc_type == "filter":
 
 # color generator for shuffle / permuted label roc
 if config.roc_type == "shuffle":
-    resultsFolders = os.listdir(config.roc_source+"/jacknife_shuffle")
-    resultsFolders = [config.roc_source+"/jacknife_shuffle/"+folder for folder in resultsFolders]
-    resultsFolders.append(config.roc_source+"/jacknife_evaluation")
+    resultsFolders = os.listdir(config.resultsBaseDir+"/jacknife_shuffle")
+    resultsFolders = [config.resultsBaseDir+"/jacknife_shuffle/"+folder for folder in resultsFolders]
+    resultsFolders.append(config.resultsBaseDir+"/jacknife_evaluation")
 
     NUM_COLORS = len(resultsFolders)
     cm = plt.get_cmap('gist_rainbow')
@@ -36,7 +36,7 @@ def plot_pdf(pos_pdf, neg_pdf, ax):
     ax.fill(xax, neg_pdf, "r", alpha=0.5)
     ax.set_xlim([0, 1])
     ax.set_ylim([0, 5])
-    ax.set_title("Probability Distribution: " + resultsFolder.replace(config.roc_source, ''))
+    ax.set_title("Probability Distribution: " + resultsFolder.replace(config.resultsBaseDir, ''))
     ax.set_ylabel('Counts')
     ax.set_xlabel('P(X="pain")')
     ax.legend(["pain", "control"])
@@ -70,7 +70,7 @@ def plot_roc(pos_pdf, neg_pdf, ax, color=None, marker=None, markersize=None):
     ax.set_xlabel('FPR')
     ax.grid()
     if config.roc_type == "filter":
-        ax.legend([folder.replace(config.roc_source+"/", '') for folder in resultsFolders])
+        ax.legend([folder.replace(config.resultsBaseDir+"/", '') for folder in resultsFolders])
 
 for resultsFolder in resultsFolders:
     fnames = [fname for fname in os.listdir(resultsFolder) if ".txt" in fname]
@@ -102,7 +102,7 @@ for resultsFolder in resultsFolders:
     pos_pdf = norm.pdf(xax, pos_mu, pos_std)
     neg_pdf = norm.pdf(xax, neg_mu, neg_std)
 
-    if (config.roc_type == "shuffle") & (resultsFolder == config.roc_source+"/jacknife_evaluation"):
+    if (config.roc_type == "shuffle") & (resultsFolder == config.resultsBaseDir+"/jacknife_evaluation"):
         plot_roc(pos_pdf, neg_pdf, rocax, color='r', marker='o', markersize=2)
     if (config.roc_type == "shuffle"):
         plot_roc(pos_pdf, neg_pdf, rocax)

@@ -84,7 +84,7 @@ j = 0
 
 
 pbarlen = len(targetzero)-len(targetone)
-print("Slowly, very slowly equalizing the size of your class data:")
+print("Equalizing the size of your class data:")
 print("=================\n")
 pbar = tqdm(total=pbar_len)
 while j < (len(targetzero)-len(targetone)):

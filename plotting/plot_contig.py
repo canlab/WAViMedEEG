@@ -4,36 +4,10 @@ import config
 import numpy as np
 import matplotlib.pyplot as plt
 
-array = np.genfromtxt(config.plotSource, delimiter=",")
+array = np.genfromtxt(config.studyDirectory+"/contigs/"+config.selectedTask+"_"+config.contigLength+"/"+config.plot_subject+"_nofilter_"+config.plot_contig, delimiter=",")
 n_channels = len(config.network_channels)
 ch_names = config.network_channels
-#
-# step = 1. / n_channels
-# kwargs = dict(domain=[1 - step, 1], showticklabels=False, zeroline=False, showgrid=False)
-# times = [i for i in range(250)]
-#
-# # create objects for layout and traces
-# layout = Layout(yaxis=layout.YAxis(kwargs), showlegend=False)
-# traces = [Scatter(x=times, y=array.T[:, 0])]
-#
-# # loop over the channels
-# for ii in range(1, n_channels):
-#         kwargs.update(domain=[1 - (ii + 1) * step, 1 - ii * step])
-#         layout.update({'yaxis%d' % (ii + 1): layout.YAxis(kwargs), 'showlegend': False})
-#         traces.append(Scatter(x=times, y=data.T[:, ii], yaxis='y%d' % (ii + 1)))
-#
-# # add channel names using Annotations
-# annotations = Annotations([Annotation(x=-0.06, y=0, xref='paper', yref='y%d' % (ii + 1),
-#                                       text=ch_name, font=Font(size=9), showarrow=False)
-#                           for ii, ch_name in enumerate(ch_names)])
-# layout.update(annotations=annotations)
-#
-# # set the size of the figure and plot it
-# layout.update(autosize=False, width=1000, height=600)
-# fig = Figure(data=array, layout=layout)
-# py.iplot(fig, filename='shared xaxis')
 
-#%matplotlib qt5
 import os
 import mne
 import matplotlib.pyplot as plt
@@ -42,9 +16,6 @@ from numpy import array
 import pandas as pd
 import pathlib
 import config
-
-#data_folder = config.studyDirectory+"/"+config.mneTask
-#data_folder = [os.path.join(data_folder, group) for group in os.listdir(data_folder)]
 
 hasStim = False
 # if config.selectedTask in ['p300', 'flanker', 'chronic']:

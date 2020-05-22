@@ -4,8 +4,8 @@ import numpy as np
 from scipy.stats import norm
 from matplotlib import pyplot as plt
 
-studyFolders = [folder for folder in os.listdir(config.roc_sourceDir_many) if config.roc_source_keyword_many in folder]
-resultsFolders = [config.roc_sourceDir_many+"/"+folder+config.req_many_eval_path for folder in studyFolders]
+studyFolders = [folder for folder in os.listdir(config.myStudies) if config.plot_req_results_keyword in folder]
+resultsFolders = [config.myStudies+"/"+folder+config.plot_req_results_path for folder in studyFolders]
 resultsFolders = sorted(resultsFolders)
 
 # PDF plot setup
@@ -23,7 +23,7 @@ def plot_pdf(pos_pdf, neg_pdf, ax, foldername, color):
     ax.fill(xax, neg_pdf, color, alpha=0.5)
     ax.set_xlim([0, 1])
     ax.set_ylim([0, 5])
-    ax.set_title("PDF: " + foldername.replace(config.roc_sourceDir_many, "").replace(config.req_many_eval_path, ""))
+    ax.set_title("PDF: " + foldername.replace(config.myStudies, "").replace(config.plot_req_results_path, ""))
     ax.set_ylabel('Counts')
     ax.set_xlabel('P(X="pain")')
     ax.legend(["pain", "control"])

@@ -4,7 +4,7 @@ import numpy as np
 import os
 
 spectral_folder = config.studyDirectory+"/spectral/"+config.selectedTask+"_"+str(config.contigLength)
-fnames = [fname for fname in os.listdir(spectral_folder) if config.plot_contig_lead+"_" in fname]
+fnames = [fname for fname in os.listdir(spectral_folder) if (config.plot_subject+"_"+config.plot_contig) in fname]
 if len(fnames)<1:
     print("Are you sure that contig exists? I couldn't find it in the specified spectral folder.")
     quit()
