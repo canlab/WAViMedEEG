@@ -79,8 +79,8 @@ contigLength = 1250 # length of segmented epochs, in cycles, at 250 Hz
 # train and eval sources for various ML functions
 train_source = studyDirectory+"/contigs/"+selectedTask+"_"+str(contigLength)
 eval_source = studyDirectory+"/contigs/"+selectedTask+"_"+str(contigLength)
-model_file = "/saved_models/convnet/pain_model/MyModel" # path where model will be saved to / loaded from
-permuteLabels = False # set to True if you want to permute labels during convnet.load_numpy_stack or other similar functions
+model_file = "/home/clayton/science/CANlab/WAViMedEEG/saved_models/convnet/pain_model_ab_1/MyModel" # path where model will be saved to / loaded from
+wumbo = False # set to True if you want to permute labels during convnet.load_numpy_stack or other similar functions
 
 
 # RESULTS FOLDER SETUP

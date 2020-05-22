@@ -27,7 +27,7 @@ else:
 for sub in tqdm(subject_list):
     , test_paths = convnet.generate_paths_and_labels(path_to_test, omission=sub)
     test_paths = convnet.reshape_paths_with_bands(test_paths, config.frequency_bands)
-    test_data, test_labels = convnet.load_numpy_stack(path_to_test, test_paths, permuteLabels=config.permuteLabels)
+    test_data, test_labels = convnet.load_numpy_stack(path_to_test, test_paths, permuteLabels=config.wumbo)
     test_data, test_labels = convnet.shuffle_same_perm(test_data, test_labels)
 
     f = open(config.resultsPath+"/"+sub+".txt", 'w')

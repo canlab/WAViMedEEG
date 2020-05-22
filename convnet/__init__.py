@@ -32,33 +32,6 @@ def generate_paths_and_labels(train_path, omission=None):
     train_count = len(train_image_paths)
     print("You have", train_count, "files.")
 
-    # #list the available labels
-    # label_names = ['ctrl', 'pain']
-    # #label_names = sorted(item.name for item in train_path.glob('*/') if item.is_dir())
-    # print("Labels discovered:", label_names)
-    #
-    # #assign an index to each label
-    # label_to_index = dict((name, index) for index, name in enumerate(label_names))
-    # print("Label indices:", label_to_index)
-
-    #create a list of every file and its integer label
-    # train_image_groups = [config.subjectKeys.get(int(path[0]), "none") for path in train_image_paths]
-    # test_image_groups = [config.subjectKeys.get(int(path[0]), "none") for path in test_image_paths]
-    #
-    # train_image_labels = [label_to_index[group] for group in train_image_groups]
-    # test_image_labels = [label_to_index[group] for group in test_image_groups]
-    #train_image_labels = [int(path[0]) for path in train_image_paths]
-
-    # null tests, shuffle labels and randomize test
-    # if config.permuteLabels == True:
-    #     random.shuffle(train_image_labels)
-    #     rand_group = random.randint(0, 1)
-    #     test_image_labels = [rand_group for label in test_image_labels]
-
-    # force list of labels to numpy array
-    # train_image_labels = np.array(train_image_labels)
-    # test_image_labels = np.array(test_image_labels)
-
     return(train_image_paths, test_image_paths)
 
 # this will reshape paths to accomodate a new dimension for bandpassed data
