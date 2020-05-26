@@ -41,7 +41,8 @@ def reshape_paths_with_bands(path_list, frequency_bands):
         band_names = [path for path in path_list if band[0] in path]
         band_names = sorted(band_names)
         fnames_stacked.append(band_names)
-    return(fnames_stacked)
+    return(fnames_stacked) # list of paths for each band, fnames_stacked is list equal length to frequency_bands
+    # each item in list contains paths for that band, equal to total number of contigs collected
 
 # linearly normalizes a contig array to be between 1 and 0
 def normalize(array):
@@ -56,6 +57,7 @@ def normalize(array):
 # and labels, as 1-dimensional list
 def load_numpy_stack(lead, paths, permuteLabels=False):
     numpy_stack = []
+    index_stack = []
     label_stack = []
     i=0
     # once on every contig we have in paths
@@ -63,15 +65,17 @@ def load_numpy_stack(lead, paths, permuteLabels=False):
     print("==========\n")
     pbar_len = len(paths[0])*len(paths)
     pbar = tqdm(total=pbar_len)
-    while i < len(paths[0]):
+    while i < len(paths[0]): # while i less than number of contigs
         contigs_each_band = []
-        for band in paths:
-            fpath = str(lead)+"/"+str(band[i])
-            array = genfromtxt(fpath, delimiter=",")
+        index_stack.append(paths[0][i].split('_')[2][:-4])
+        for band in paths: # for each frequency band
+            fpath = str(lead)+"/"+str(band[i]) # set path to contig i in that band
+            array = genfromtxt(fpath, delimiter=",") # read that array
             array = normalize(array)
-            contigs_each_band.append(array)
+            contigs_each_band.append(array) # add it to list of arrays for that contig
             pbar.update(1)
-        contigs_each_band = np.stack(contigs_each_band, axis=2)
+        contigs_each_band = np.stack(contigs_each_band, axis=2) # collapse list into np axis
+        # shape of contigs_each_band: (contig length, n electrodes, n freq bands)
         numpy_stack.append(contigs_each_band)
         if band[i][0][0] == "1":
             label_stack.append(0)
@@ -79,23 +83,29 @@ def load_numpy_stack(lead, paths, permuteLabels=False):
             label_stack.append(1)
         i+=1
     pbar.close()
+    # start_indexes as array, for each contig
+    index_stack = np.array(index_stack)
+
     # labels as array, for each contig
     label_stack = np.array(label_stack)
     # make samples 1st-read axis
-    numpy_dataset = np.stack(numpy_stack, axis=0)
+    numpy_dataset = np.stack(numpy_stack, axis=0) # collapse list into np axis
+    # new shape of structure: (n contigs, contig length, n electrodes, n freq bands)
+    numpy_dataset = numpy_dataset.transpose(0, 1, 3, 2) # reshape to:
+    # (n contigs, contig length, n frequency bands, n electrodes)
 
     # if permute labels trigger on, random sort train labels
     if permuteLabels == True:
         idy = np.random.permutation(len(train_labels))
         train_labels = train_labels[idy]
 
-    return(numpy_dataset, label_stack)
+    return(numpy_dataset, index_stack, label_stack)
 
 # randomly shuffle them, with same permutation
-def shuffle_same_perm(data, labels):
+def shuffle_same_perm(data, start_indeces, labels):
     idx = np.random.permutation(len(data))
-    data, labels = data[idx], labels[idx]
-    return(data, labels)
+    data, start_indeces, labels = data[idx], start_indeces[idx], labels[idx]
+    return(data, start_indeces, labels)
 
 def createModel(train_arrays, train_image_labels, learn, num_epochs, betaOne, betaTwo):
     # Introduce sequential Set

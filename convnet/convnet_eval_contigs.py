@@ -3,6 +3,8 @@ from tqdm import tqdm
 import config
 import os
 import numpy as np
+import tensorflow as tf
+
 
 import convnet
 
@@ -12,7 +14,7 @@ modelvar = tf.keras.models.load_model(config.model_file)
 modelvar.summary()
 
 path_to_test = pathlib.Path(config.eval_source)
-subject_list = convnet.get_avail_subjects()
+subject_list = convnet.get_avail_subjects(path_to_test)
 print("List of available subjects:")
 for sub in subject_list:
     print(sub)
@@ -27,20 +29,17 @@ else:
     os.mkdir(config.resultsPath)
 
 for sub in tqdm(subject_list):
-    , test_paths = convnet.generate_paths_and_labels(sub)
+    _, test_paths = convnet.generate_paths_and_labels(path_to_test, omission=sub)
     test_paths = convnet.reshape_paths_with_bands(test_paths, config.frequency_bands)
-    test_data, test_labels = convnet.load_numpy_stack(path_to_test, test_paths, permuteLabels=config.wumbo)
-    test_data, test_labels = convnet.shuffle_same_perm(test_data, test_labels)
-
-    i = 0
-    for contig in zip(test_data, test_labels):
-        f = open(config.resultsPath+"/"+sub+"-"+str(i)+".txt", 'w')
+    test_data, test_indeces, test_labels = convnet.load_numpy_stack(path_to_test, test_paths, permuteLabels=config.wumbo)
+    test_data, test_indeces, test_labels = convnet.shuffle_same_perm(test_data, test_indeces, test_labels)
+    for contig in zip(test_data, test_indeces, test_labels):
         array = np.expand_dims(contig[0], axis=0)
         array = np.asarray(contig[0][np.newaxis,:])
-        labels = np.asarray(contig[1][np.newaxis])
+        labels = np.asarray(contig[2][np.newaxis])
         score = modelvar.predict(array)
         print(score)
-        f.write("Group: " + repr(contig[1])+"\n")
+        f = open(config.resultsPath+"/"+sub+"_"+contig[1]+".txt", 'w')
+        f.write("Group: " + repr(contig[2])+"\n")
         f.write("Pain Prediction: " + repr(score[0][1]) + "\n")
         f.close()
-        i+=1

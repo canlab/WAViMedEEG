@@ -86,7 +86,7 @@ wumbo = False # set to True if you want to permute labels during convnet.load_nu
 # RESULTS FOLDER SETUP
 # ====================
 resultsBaseDir = studyDirectory+"/results" # change this if you want to rename your study's base results folder
-resultsPath = resultsBaseDir+"/model_evaluation"+"_"+selectedTask+"_"+str(contigLength)+"_ab_2" # path to which current analysis results will be written
+resultsPath = resultsBaseDir+"/model_evaluation"+"_"+selectedTask+"_"+str(contigLength)+"_indeces" # path to which current analysis results will be written
 # will break if tries to write on existing folder
 
 # for accurate sensors in spectral analysis,
@@ -136,7 +136,7 @@ frequency_bands = [
 
 # MISCELLANEOUS
 # ====================
-roc_type = "filter" if permuteLabels==False else "shuffle" # this determines whether plot colors are generated or hard-coded, hard-coded by default
+roc_type = "filter" if wumbo==False else "shuffle" # this determines whether plot colors are generated or hard-coded, hard-coded by default
 max_tree_depth = 2 # max depth traversed by study trees printed by the program template 'master.py'
 import help
 help.viewStudyTree(studyDirectory, max_tree_depth)

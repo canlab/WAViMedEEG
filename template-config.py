@@ -1,54 +1,41 @@
+# Welcome to the WAVi EEG Analysis Toolbox
+# Before running this code, set your configuration variables below
+# then import config
 import os
 
 # INITIALIZING STUDY FILES
 # ====================
-
-# full path of study directory
-# Ex. /StudyDirectory
+# before beginning with new data, format your
+# new study directory as follows:
+# /path/to/mystudies/newstudydir
 # ----------> /raw
 # --------------------> *.eeg
 # --------------------> *.evt
 # --------------------> *.art
-studyDirectory = "/home/clayton/science/CANlab/EEGstudies/CANlabStudy"
-resultsBaseDir = studyDirectory+"/results"
-sampleRate = 250 # in Hz
+
+myStudies = "/home/clayton/science/CANlab/EEGstudies" # if you are working with multiple studies at once, set the parent directory where you will keep them all
+studyDirectory = myStudies+"/CANlabStudy" # more specific study, for functions that only deal with 1 at a time
 
 selectedTask = "p300" # in general, the task which will be used for triggered analysis step
 
-# I. WAVi to CSV CONVERSIONS
-# ====================
-stepOneTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
+# dictionary of first-index subject number and a respective 4-character name for the group
+subjectKeys = {
+    0: "pilt", # pilot
+    1: "pain",
+    2: "ctrl"
+}
 
+
+# WAVi to CSV CONVERSIONS / HEADSET CONFIG
+# ====================
 # this package expects a naming convention for raw EEG files:
-# 3-digit participant number, underscore, task name, .art / .eeg / .evt
+# n-digit participant number, underscore, task name, .art / .eeg / .evt
 # Ex: 104_p300.eeg
 # if you want to use a different length participant identifier, specify it here
-participantNumLen = 3
+participantNumLen = 3 # default 3
+sampleRate = 250 # in Hz
 
-# subjectsTasksKeys={}
-#
-# for task in os.listdir(studyDirectory):
-#     if task != "raw":
-#         subjectsTasksKeys[task]=[[os.listdir(studyDirectory+"/"+task)]:2]
-#
-# for key in subjectsTasksKeys:
-#     print(key, " : ", subjectsTasksKeys[key])
-
-# current supported tasks are
-# p300
-# flanker
-# chronic
-# rest
-
-# if you need to add a new one, you currently have to specify
-# whether it will use .evt in the loadEEGdataNumpy function of wavi_to_csv
-# once you do, please make a pull request so others can use it as well
-
-# II. MNE CONFIGURATION
-# ====================
-stepTwoTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-# numChannels = 19 # default 19 for WAVi headset
-
+# default channel names, customize if using non-WAVi headset
 channel_names = [
     'Fp1',
     'Fp2',
@@ -71,81 +58,85 @@ channel_names = [
     'Pz'
 ]
 
-# III. CONTIG GENERATION
+# current supported tasks are
+# p300
+# flanker
+# chronic
+# rest
+
+# if you need to add a new one, you currently have to specify
+# whether it will use .evt in the loadEEGdataNumpy function of wavi_to_csv.py
+# once you do, please make a pull request so others can use it as well
+
+
+# CONTIG SETTINGS
 # ====================
-stepThreeTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-contigLength = 250 # length of segmented epochs, in cycles, at 250 Hz
+contigLength = 1250 # length of segmented epochs, in cycles, at 250 Hz
+
+
+# MACHINE LEARNING SETTINGS
+# ====================
+# train and eval sources for various ML functions
+train_source = studyDirectory+"/contigs/"+selectedTask+"_"+str(contigLength)
+eval_source = studyDirectory+"/contigs/"+selectedTask+"_"+str(contigLength)
+model_file = "/home/clayton/science/CANlab/WAViMedEEG/saved_models/convnet/pain_model_ab_1/MyModel" # path where model will be saved to / loaded from
+wumbo = False # set to True if you want to permute labels during convnet.load_numpy_stack or other similar functions
+
+
+# RESULTS FOLDER SETUP
+# ====================
+resultsBaseDir = studyDirectory+"/results" # change this if you want to rename your study's base results folder
+resultsPath = resultsBaseDir+"/model_evaluation"+"_"+selectedTask+"_"+str(contigLength)+"_indeces" # path to which current analysis results will be written
+# will break if tries to write on existing folder
 
 # for accurate sensors in spectral analysis,
 # keep these in the same order
 # as the default list above (channel_names)
-# it will not affect contigs themselves
-# and you can change the order after you've run step 3
 network_channels = [
     'P3',
     'P4',
     'Pz'
 ]
 
-# IV. NEURAL NETWORK DIFFERENTIATION
+
+# CONVOLUTIONAL NEURAL NETWORK
 # ====================
-stepFourTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-
-source = studyDirectory+"/contigs_p300_250_alpha"
-evalPath = studyDirectory+"/contigs_p300_250_alpha"
-resultsPath = studyDirectory+"/results/jacknife_evaluation_alpha"
-
-permuteLabels = False
-
-# dictionary of first-index subject number and a respective 4-character name for the group
-subjectKeys = {
-    0: "pilt", # pilot
-    1: "pain",
-    2: "ctrl"
-}
-
 # network hyperparameters
 learningRate = 0.001
 betaOne = 0.99
 betaTwo = 0.999
 numEpochs = 100
 
-# Supplement
-# SCORE DISTRIBUTIONS
+# SUPPORT VECTOR MACHINE
 # ====================
-stepFourSuppTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
+kernel_type = 'rbf' # one of ['linear', 'poly', 'rbf']
 
-# V. FREQUENCY DECOMPOSITION
+
+# PLOTTING
 # ====================
-stepFiveTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-alphaRange = [7.0, 13.0] # bounds of alpha peak search windows frequencies
-# Savitzky-Golay filter
-window_length = 11
-poly_order = 5
-mdiff = 0.2 # minimal height difference distinguishing a primary peak from competitors
+plot_subject = "209" # if not defined, just chooses random, and assumes path from studyDirectory and selectedTask
+plot_contig = "1" # same as above
 
-# VI. ROC CURVE
+plot_req_results_keyword = "ref" # optional to require roc/pdf plot study folders to contain a keyword
+plot_req_results_path = resultsBaseDir+"/model_evaluation_p300_1250_ab_2" # optional to require path of specific evaluation within 1 or many study folder(s)
+
+
+# BANDPASS FILTER
 # ====================
-stepSixTrigger = "yes" # enter 'yes' or 'no' to skip command line prompt
-roc_source = studyDirectory+"/results/"
-roc_type = "shuffle" # 'shuffle' or 'filter'
+# you can comment out different bands to mute them from being admitted to the network training / evaluation
+# format is ("name", [low-end, high-end]) tuple, in Hz
+frequency_bands = [
+    ("delta", [0.1, 4]),
+    ("theta", [4, 8]),
+    ("alpha", [8, 12]),
+    ("beta", [16, 31]),
+    ("gamma", [32, 60]),
+    ]
 
-# VII. BANDPASS FILTER
+
+# MISCELLANEOUS
 # ====================
-stepSevenTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-bandpassSource = source
-#   delta, 0.1-4, theta: 4-8, alpha: 8-12, beta: 16-31, gamma: 32-60
-bandpassBounds = [32, 60]
-bandpassName = "gamma"
-
-numberExamples = 5
-
-# VIIs. FILTER PLOTS
-# ====================
-stepSevenSuppTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-filterPlotContig = "104_77"
-
-# VIII. CONTIG PLOT
-# ====================
-stepEightTrigger = "no" # enter 'yes' or 'no' to skip command line prompt
-plotSource = studyDirectory+"/contigs_p300_250/101_29.csv"
+roc_type = "filter" if wumbo==False else "shuffle" # this determines whether plot colors are generated or hard-coded, hard-coded by default
+max_tree_depth = 2 # max depth traversed by study trees printed by the program template 'master.py'
+import help
+help.viewStudyTree(studyDirectory, max_tree_depth)

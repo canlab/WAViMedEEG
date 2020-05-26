@@ -95,7 +95,7 @@ def generate_sparse_contigs(run, length):
             i+=length
         else:
             i+=1
-    return contigs
+    return contigs, startindexes
 
 def generate_all_contigs(run, length):
     i = 0
@@ -110,8 +110,8 @@ def generate_all_contigs(run, length):
 
 def get_contigs_from_trials(trial):
     cycles = config.contigLength
-    sub_contigs = generate_sparse_contigs(trial, cycles)
-    return(sub_contigs)
+    sub_contigs, startindexes = generate_sparse_contigs(trial, cycles)
+    return(sub_contigs, startindexes)
 
 def filter_amplitude(contig, bads):
     amp = np.sum(np.square(contig))
@@ -120,16 +120,16 @@ def filter_amplitude(contig, bads):
     else:
         return(False)
 
-def contigs_to_csv(batch, trial_fname):
+def contigs_to_csv(batch, indeces, trial_fname):
     num_tossed = 0
     i = 0
     sub_step = 0
-    for contig in batch:
+    for contig in zip(batch, indeces):
         if (len(contig)>0):
-            if filter_amplitude(contig, bads=[0]):
+            if filter_amplitude(contig[0], bads=[0]):
                 num_tossed+=1
             else:
-                np.savetxt(contigsFolder+"/"+str(trial_fname[:3])+"_"+str(trial_fname[8:-4])+"_"+str(i)+".csv", contig, delimiter=",", fmt="%2.0f")
+                np.savetxt(contigsFolder+"/"+str(trial_fname[:3])+"_"+str(trial_fname[8:-4])+"_"+str(contig[1])+".csv", contig[0], delimiter=",", fmt="%2.0f")
                 i+=1
         sub_step+=1
 
@@ -143,8 +143,8 @@ subject_filenames = [set[1] for set in subject_filenames]
 for sub_trial in zip(trials_array, subject_filenames):
     i = 0
     for band_eeg in sub_trial[0]:
-        contigs = get_contigs_from_trials(band_eeg)
-        contigs_to_csv(contigs, sub_trial[1][i])
+        contigs, startindexes = get_contigs_from_trials(band_eeg)
+        contigs_to_csv(contigs, startindexes, sub_trial[1][i])
         pbar.update(1)
         i+=1
 pbar.close()
