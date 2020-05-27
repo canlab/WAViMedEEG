@@ -30,17 +30,16 @@ try:
 except:
     print("Results dir already made.")
 
-path_to_train = pathlib.Path(config.source)
-subject_list = convnet.get_avail_subjects()
+path_to_train = pathlib.Path(config.train_source)
+subject_list = convnet.get_avail_subjects(path_to_train)
 print("List of available subjects:")
 for sub in subject_list:
     print(sub)
 
 train_paths, _= convnet.generate_paths_and_labels(path_to_train)
 train_paths = convnet.reshape_paths_with_bands(train_paths, config.frequency_bands)
-train_data, train_labels = convnet.load_numpy_stack(path_to_train, train_paths, permuteLabels=config.wumbo)
-train_data, train_labels = convnet.shuffle_same_perm(train_data, train_labels)
+train_data, train_indeces, train_labels = convnet.load_numpy_stack(path_to_train, train_paths, permuteLabels=config.wumbo)
+train_data, train_indeces, train_labels = convnet.shuffle_same_perm(train_data, train_indeces, train_labels)
 
 fitted, modelvar = convnet.createModel(train_data, train_labels, rate, epochs, beta1, beta2)
 modelvar.save(config.model_file)
-)

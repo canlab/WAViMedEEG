@@ -112,31 +112,49 @@ def createModel(train_arrays, train_image_labels, learn, num_epochs, betaOne, be
     model = tf.keras.models.Sequential()
 
     # Create a convolutional base
-    model.add(tf.keras.layers.Conv2D(5, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last', use_bias=False))
-    model.add(tf.keras.layers.Conv2D(5, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last', use_bias=False))
-    model.add(tf.keras.layers.MaxPooling2D(pool_size=(2,2), strides=None, padding='same', data_format=None))
+    model.add(tf.keras.layers.Conv2D(16, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last', use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
+    model.add(tf.keras.layers.BatchNormalization())
+
+    model.add(tf.keras.layers.Conv2D(32, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last', use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
+    model.add(tf.keras.layers.BatchNormalization())
+
+    model.add(tf.keras.layers.MaxPooling2D(pool_size=(2,2), strides=None, padding='same', data_format='channels_last'))
     model.add(tf.keras.layers.Dropout(0.2))
 
-    model.add(tf.keras.layers.Conv2D(5, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last', use_bias=False))
-    model.add(tf.keras.layers.Conv2D(5, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last', use_bias=False))
-    #model.add(tf.keras.layers.Conv2D(5, kernel_size=5, strides=5, padding='same', activation='relu', data_format='channels_last', use_bias=False))
-    model.add(tf.keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001, center=True, scale=True, beta_initializer='zeros', gamma_initializer='ones', moving_mean_initializer='zeros', moving_variance_initializer='ones', beta_regularizer=None, gamma_regularizer=None, beta_constraint=None, gamma_constraint=None))
+    model.add(tf.keras.layers.Conv2D(64, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last', use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
+    model.add(tf.keras.layers.BatchNormalization())
+
+    model.add(tf.keras.layers.Conv2D(128, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last', use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
+    model.add(tf.keras.layers.BatchNormalization())
+
+    model.add(tf.keras.layers.MaxPooling2D(pool_size=(2,2), strides=None, padding='same', data_format='channels_last'))
+    model.add(tf.keras.layers.Dropout(0.2))
+
+    #model.add(tf.keras.layers.Conv2D(5, kernel_size=5, strides=5, padding='same', activation='relu', data_format='channels_last', use_bias=True))
+	# model.add(tf.keras.layers.BatchNormalization())
+    # model.add(tf.keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001, center=True, scale=True, beta_initializer='zeros', gamma_initializer='ones', moving_mean_initializer='zeros', moving_variance_initializer='ones', beta_regularizer=None, gamma_regularizer=None, beta_constraint=None, gamma_constraint=None))
 
     # Layers
     #model.add(tf.keras.layers.Dropout(0.5))
-    model.add(tf.keras.layers.MaxPooling2D(pool_size=(2,2), strides=None, padding='same', data_format=None))
+    # model.add(tf.keras.layers.MaxPooling2D(pool_size=(2,2), strides=None, padding='same', data_format=None))
     model.add(tf.keras.layers.Flatten(data_format="channels_last"))
 
     # Hidden layers
-    model.add(tf.keras.layers.Dense(2, activation='softmax'))
+    # model.add(tf.keras.layers.Dense(64, activation='softmax', use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
+    # model.add(tf.keras.layers.Dense(128, activation='sigmoid'))
+    model.add(tf.keras.layers.Dense(64, activation='sigmoid'))
+    model.add(tf.keras.layers.Dense(2, activation='sigmoid'))
 
     model.build(train_arrays.shape)
     model.summary()
 
     # Model compilation
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learn, beta_1=betaOne, beta_2=betaTwo),
-                 loss='sparse_categorical_crossentropy',
-                 metrics=['accuracy'])
+    # model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learn, beta_1=betaOne, beta_2=betaTwo, amsgrad=True),
+    #              loss='sparse_categorical_crossentropy',
+    #              metrics=['accuracy'])
+    model.compile(optimizer = tf.keras.optimizers.SGD(learning_rate=learn, momentum=0.01, nesterov=True),
+                    loss='sparse_categorical_crossentropy',
+                    metrics=['accuracy'])
 
     history = model.fit(train_arrays, train_image_labels, epochs=num_epochs,
                        validation_split=0.33)
