@@ -71,7 +71,7 @@ channel_names = [
 
 # CONTIG SETTINGS
 # ====================
-contigLength = 1250 # length of segmented epochs, in cycles, at 250 Hz
+contigLength = 750 # length of segmented epochs, in cycles, at 250 Hz
 
 
 # MACHINE LEARNING SETTINGS
@@ -102,10 +102,10 @@ network_channels = [
 # CONVOLUTIONAL NEURAL NETWORK
 # ====================
 # network hyperparameters
-learningRate = 0.005
+learningRate = 0.001
 betaOne = 0.99
 betaTwo = 0.999
-numEpochs = 1000
+numEpochs = 10000
 
 # SUPPORT VECTOR MACHINE
 # ====================
@@ -131,6 +131,7 @@ frequency_bands = [
     ("alpha", [8, 12]),
     ("beta", [16, 31]),
     ("gamma", [32, 60]),
+    ("nofilter", []),
     ]
 
 

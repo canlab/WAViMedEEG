@@ -8,6 +8,7 @@ from tqdm import tqdm
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, Flatten, Conv2D
 from tensorflow.keras import Model
+import datetime
 
 print("Using Tensorflow version", tf.__version__)
 
@@ -74,7 +75,7 @@ def load_numpy_stack(lead, paths, permuteLabels=False):
             array = normalize(array)
             contigs_each_band.append(array) # add it to list of arrays for that contig
             pbar.update(1)
-        contigs_each_band = np.stack(contigs_each_band, axis=2) # collapse list into np axis
+        contigs_each_band = np.block(contigs_each_band) # collapse list into last np axis
         # shape of contigs_each_band: (contig length, n electrodes, n freq bands)
         numpy_stack.append(contigs_each_band)
         if band[i][0][0] == "1":
@@ -90,8 +91,9 @@ def load_numpy_stack(lead, paths, permuteLabels=False):
     label_stack = np.array(label_stack)
     # make samples 1st-read axis
     numpy_dataset = np.stack(numpy_stack, axis=0) # collapse list into np axis
+    numpy_dataset = np.expand_dims(numpy_dataset,-1)
     # new shape of structure: (n contigs, contig length, n electrodes, n freq bands)
-    numpy_dataset = numpy_dataset.transpose(0, 1, 3, 2) # reshape to:
+    # numpy_dataset = numpy_dataset.transpose(0, 1, 3, 2) # reshape to:
     # (n contigs, contig length, n frequency bands, n electrodes)
 
     # if permute labels trigger on, random sort train labels
@@ -108,55 +110,66 @@ def shuffle_same_perm(data, start_indeces, labels):
     return(data, start_indeces, labels)
 
 def createModel(train_arrays, train_image_labels, learn, num_epochs, betaOne, betaTwo):
+    # tf.keras.backend.set_floatx('float64')
     # Introduce sequential Set
     model = tf.keras.models.Sequential()
 
-    # Create a convolutional base
-    model.add(tf.keras.layers.Conv2D(16, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last', use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
-    model.add(tf.keras.layers.BatchNormalization())
+    model.add(tf.keras.layers.Conv2D(5, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last'))#, use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
+    model.add(tf.keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001, center=True, scale=True, beta_initializer='zeros', gamma_initializer='ones',
+        moving_mean_initializer='zeros', moving_variance_initializer='ones', beta_regularizer=None, gamma_regularizer=None, beta_constraint=None,
+        gamma_constraint=None))#, renorm=False, renorm_clipping=None, renorm_momentum=0.99, fused=None, trainable=True, virtual_batch_size=None, adjustment=None, name=None))
 
-    model.add(tf.keras.layers.Conv2D(32, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last', use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
-    model.add(tf.keras.layers.BatchNormalization())
 
-    model.add(tf.keras.layers.MaxPooling2D(pool_size=(2,2), strides=None, padding='same', data_format='channels_last'))
-    model.add(tf.keras.layers.Dropout(0.2))
+    model.add(tf.keras.layers.Conv2D(5, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last'))#, use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
+    model.add(tf.keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001, center=True, scale=True, beta_initializer='zeros', gamma_initializer='ones',
+        moving_mean_initializer='zeros', moving_variance_initializer='ones', beta_regularizer=None, gamma_regularizer=None, beta_constraint=None,
+        gamma_constraint=None))#, renorm=False, renorm_clipping=None, renorm_momentum=0.99, fused=None, trainable=True, virtual_batch_size=None, adjustment=None, name=None))
 
-    model.add(tf.keras.layers.Conv2D(64, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last', use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
-    model.add(tf.keras.layers.BatchNormalization())
-
-    model.add(tf.keras.layers.Conv2D(128, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last', use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
-    model.add(tf.keras.layers.BatchNormalization())
 
     model.add(tf.keras.layers.MaxPooling2D(pool_size=(2,2), strides=None, padding='same', data_format='channels_last'))
     model.add(tf.keras.layers.Dropout(0.2))
 
-    #model.add(tf.keras.layers.Conv2D(5, kernel_size=5, strides=5, padding='same', activation='relu', data_format='channels_last', use_bias=True))
-	# model.add(tf.keras.layers.BatchNormalization())
-    # model.add(tf.keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001, center=True, scale=True, beta_initializer='zeros', gamma_initializer='ones', moving_mean_initializer='zeros', moving_variance_initializer='ones', beta_regularizer=None, gamma_regularizer=None, beta_constraint=None, gamma_constraint=None))
+    model.add(tf.keras.layers.Conv2D(5, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last'))#, use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
+    model.add(tf.keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001, center=True, scale=True, beta_initializer='zeros', gamma_initializer='ones',
+        moving_mean_initializer='zeros', moving_variance_initializer='ones', beta_regularizer=None, gamma_regularizer=None, beta_constraint=None,
+        gamma_constraint=None))#, renorm=False, renorm_clipping=None, renorm_momentum=0.99, fused=None, trainable=True, virtual_batch_size=None, adjustment=None, name=None))
 
-    # Layers
-    #model.add(tf.keras.layers.Dropout(0.5))
-    # model.add(tf.keras.layers.MaxPooling2D(pool_size=(2,2), strides=None, padding='same', data_format=None))
+    # model.add(tf.keras.layers.Conv2D(5, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last'))#, use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
+
+    model.add(tf.keras.layers.MaxPooling2D(pool_size=(2,2), strides=None, padding='same', data_format='channels_last'))
     model.add(tf.keras.layers.Flatten(data_format="channels_last"))
 
-    # Hidden layers
-    # model.add(tf.keras.layers.Dense(64, activation='softmax', use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
-    # model.add(tf.keras.layers.Dense(128, activation='sigmoid'))
-    model.add(tf.keras.layers.Dense(64, activation='sigmoid'))
-    model.add(tf.keras.layers.Dense(2, activation='sigmoid'))
+    model.add(tf.keras.layers.Dense(2, activation='softmax'))
 
     model.build(train_arrays.shape)
     model.summary()
+    print("Input shape:", train_arrays.shape)
+
+    # adaptive learning rate
+    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+    initial_learning_rate=1e-2,
+    decay_steps=10000,
+    decay_rate=0.9)
 
     # Model compilation
-    # model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learn, beta_1=betaOne, beta_2=betaTwo, amsgrad=True),
-    #              loss='sparse_categorical_crossentropy',
-    #              metrics=['accuracy'])
-    model.compile(optimizer = tf.keras.optimizers.SGD(learning_rate=learn, momentum=0.01, nesterov=True),
-                    loss='sparse_categorical_crossentropy',
-                    metrics=['accuracy'])
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=lr_schedule, beta_1=betaOne, beta_2=betaTwo, amsgrad=True),
+                 loss='sparse_categorical_crossentropy',
+                 metrics=['accuracy'])
+    # model.compile(optimizer = tf.keras.optimizers.SGD(learning_rate=learn, momentum=0.01, nesterov=True),
+    #                 loss='sparse_categorical_crossentropy',
+    #                 metrics=['accuracy'])
 
-    history = model.fit(train_arrays, train_image_labels, epochs=num_epochs,
-                       validation_split=0.33)
+    # tensorboard setup
+    log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+
+    history = model.fit(
+        train_arrays,
+        train_image_labels,
+        epochs=num_epochs,
+        validation_split=0.33,
+        batch_size=32,
+        callbacks=[tensorboard_callback]
+    )
 
     return(history, model)
