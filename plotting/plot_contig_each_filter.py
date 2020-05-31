@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
-folders = [f for f in os.listdir(config.studyDirectory) if "contigs" in f]
+folders = [f for f in os.listdir(config.studyDirectory+"/contigs/"+config.selectedTask+"_"+str(config.contigLength))]
 
 fig, axs = plt.subplots(nrows=len(folders), ncols=len(config.network_channels), sharex=True, figsize=(12, 8))
 cols = [str(channel) for channel in config.network_channels]

@@ -1,12 +1,14 @@
 import os, sys, shutil
+import config
 
 # another helpful example for renaming default filenames
 # after exporting MATLAB-compatible data directly from the WAVi Desktop application
 # note the following inputs below
 
-target_folder = "/home/clayton/science/CANlab/EEGstudies/ref pain"
+target_folder = config.studyDirectory
 string_to_replace = "P300_Eyes_Closed"
 replace_with = "p300"
+subject_code = "2"
 
 
 fnames = os.listdir(target_folder+'/raw')
@@ -16,7 +18,7 @@ translator = {}
 subject_leads = set([fname.replace(string_to_replace, '')[:-4] for fname in fnames])
 i = 0
 for lead in subject_leads:
-    translator[lead] = "2"+"0"*(2-len(str(i)))+str(i)
+    translator[lead] = subject_code+"0"*((config.participantNumLen-1)-len(str(i)))+str(i)
     i+=1
 
 f = open(target_folder+"/translator.txt", "w")

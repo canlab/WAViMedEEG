@@ -47,10 +47,10 @@ for sub in tqdm(subject_list):
     train_paths, test_paths = convnet.generate_paths_and_labels(path_to_train, omission=sub)
     train_paths = convnet.reshape_paths_with_bands(train_paths, config.frequency_bands)
     test_paths = convnet.reshape_paths_with_bands(test_paths, config.frequency_bands)
-    train_data, train_labels = convnet.load_numpy_stack(path_to_train, train_paths, permuteLabels=config.wumbo)
-    test_data, test_labels = convnet.load_numpy_stack(path_to_train, test_paths, permuteLabels=config.wumbo)
-    train_data, train_labels = convnet.shuffle_same_perm(train_data, train_labels)
-    test_data, test_labels = convnet.shuffle_same_perm(test_data, test_labels)
+    train_data, train_indeces, train_labels = convnet.load_numpy_stack(path_to_train, train_paths, permuteLabels=config.wumbo)
+    test_data, test_indeces, test_labels = convnet.load_numpy_stack(path_to_train, test_paths, permuteLabels=config.wumbo)
+    train_data, train_indeces, train_labels = convnet.shuffle_same_perm(train_data, train_indeces, train_labels)
+    test_data, test_indeces, test_labels = convnet.shuffle_same_perm(test_data, test_indeces, test_labels)
 
     fitted, modelvar = convnet.createModel(train_data, train_labels, rate, epochs, beta1, beta2)
 

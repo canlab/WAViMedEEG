@@ -115,28 +115,30 @@ def createModel(train_arrays, train_image_labels, learn, num_epochs, betaOne, be
     model = tf.keras.models.Sequential()
 
     model.add(tf.keras.layers.Conv2D(5, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last'))#, use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
-    model.add(tf.keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001, center=True, scale=True, beta_initializer='zeros', gamma_initializer='ones',
-        moving_mean_initializer='zeros', moving_variance_initializer='ones', beta_regularizer=None, gamma_regularizer=None, beta_constraint=None,
-        gamma_constraint=None))#, renorm=False, renorm_clipping=None, renorm_momentum=0.99, fused=None, trainable=True, virtual_batch_size=None, adjustment=None, name=None))
+    # model.add(tf.keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001, center=True, scale=True, beta_initializer='zeros', gamma_initializer='ones',
+    #     moving_mean_initializer='zeros', moving_variance_initializer='ones', beta_regularizer=None, gamma_regularizer=None, beta_constraint=None,
+    #     gamma_constraint=None))#, renorm=False, renorm_clipping=None, renorm_momentum=0.99, fused=None, trainable=True, virtual_batch_size=None, adjustment=None, name=None))
 
 
     model.add(tf.keras.layers.Conv2D(5, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last'))#, use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
-    model.add(tf.keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001, center=True, scale=True, beta_initializer='zeros', gamma_initializer='ones',
-        moving_mean_initializer='zeros', moving_variance_initializer='ones', beta_regularizer=None, gamma_regularizer=None, beta_constraint=None,
-        gamma_constraint=None))#, renorm=False, renorm_clipping=None, renorm_momentum=0.99, fused=None, trainable=True, virtual_batch_size=None, adjustment=None, name=None))
+    # model.add(tf.keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001, center=True, scale=True, beta_initializer='zeros', gamma_initializer='ones',
+    #     moving_mean_initializer='zeros', moving_variance_initializer='ones', beta_regularizer=None, gamma_regularizer=None, beta_constraint=None,
+    #     gamma_constraint=None))#, renorm=False, renorm_clipping=None, renorm_momentum=0.99, fused=None, trainable=True, virtual_batch_size=None, adjustment=None, name=None))
 
 
     model.add(tf.keras.layers.MaxPooling2D(pool_size=(2,2), strides=None, padding='same', data_format='channels_last'))
     model.add(tf.keras.layers.Dropout(0.2))
 
     model.add(tf.keras.layers.Conv2D(5, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last'))#, use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
-    model.add(tf.keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001, center=True, scale=True, beta_initializer='zeros', gamma_initializer='ones',
-        moving_mean_initializer='zeros', moving_variance_initializer='ones', beta_regularizer=None, gamma_regularizer=None, beta_constraint=None,
-        gamma_constraint=None))#, renorm=False, renorm_clipping=None, renorm_momentum=0.99, fused=None, trainable=True, virtual_batch_size=None, adjustment=None, name=None))
+    # model.add(tf.keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001, center=True, scale=True, beta_initializer='zeros', gamma_initializer='ones',
+    #     moving_mean_initializer='zeros', moving_variance_initializer='ones', beta_regularizer=None, gamma_regularizer=None, beta_constraint=None,
+    #     gamma_constraint=None))#, renorm=False, renorm_clipping=None, renorm_momentum=0.99, fused=None, trainable=True, virtual_batch_size=None, adjustment=None, name=None))
 
     # model.add(tf.keras.layers.Conv2D(5, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last'))#, use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
+    model.add(tf.keras.layers.Conv2D(5, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last'))#, use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
 
     model.add(tf.keras.layers.MaxPooling2D(pool_size=(2,2), strides=None, padding='same', data_format='channels_last'))
+
     model.add(tf.keras.layers.Flatten(data_format="channels_last"))
 
     model.add(tf.keras.layers.Dense(2, activation='softmax'))
@@ -152,7 +154,7 @@ def createModel(train_arrays, train_image_labels, learn, num_epochs, betaOne, be
     decay_rate=0.9)
 
     # Model compilation
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=lr_schedule, beta_1=betaOne, beta_2=betaTwo, amsgrad=True),
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learn, beta_1=betaOne, beta_2=betaTwo),
                  loss='sparse_categorical_crossentropy',
                  metrics=['accuracy'])
     # model.compile(optimizer = tf.keras.optimizers.SGD(learning_rate=learn, momentum=0.01, nesterov=True),

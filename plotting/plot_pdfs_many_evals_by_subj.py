@@ -5,7 +5,8 @@ from scipy.stats import norm
 from matplotlib import pyplot as plt
 
 studyFolders = [folder for folder in os.listdir(config.myStudies) if config.plot_req_results_keyword in folder]
-resultsFolders = [config.myStudies+"/"+folder+config.plot_req_results_path for folder in studyFolders]
+resultsFolders = [config.myStudies+"/"+folder+"/results"+config.plot_req_results_path for folder in studyFolders]
+resultsFolders = [folder for folder in resultsFolders if os.path.isdir(folder)]
 resultsFolders = sorted(resultsFolders)
 
 # PDF plot setup

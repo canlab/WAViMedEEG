@@ -129,7 +129,7 @@ def contigs_to_csv(batch, indeces, trial_fname):
             if filter_amplitude(contig[0], bads=[0]):
                 num_tossed+=1
             else:
-                np.savetxt(contigsFolder+"/"+str(trial_fname[:3])+"_"+str(trial_fname[8:-4])+"_"+str(contig[1])+".csv", contig[0], delimiter=",", fmt="%2.0f")
+                np.savetxt(contigsFolder+"/"+str(trial_fname[:3])+"_"+str(trial_fname[8:-4])+"_"+str(contig[1])+".csv", contig[0], delimiter=",", fmt="%2.1f")
                 i+=1
         sub_step+=1
 

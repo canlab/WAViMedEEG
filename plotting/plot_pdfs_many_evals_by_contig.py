@@ -5,7 +5,7 @@ from scipy.stats import norm
 from matplotlib import pyplot as plt
 
 studyFolders = [folder for folder in os.listdir(config.myStudies) if config.plot_req_results_keyword in folder]
-resultsFolders = [config.mystudies+"/"+folder+config.plot_req_results_path for folder in studyFolders]
+resultsFolders = [config.myStudies+"/"+folder+"/results"+config.plot_req_results_path for folder in studyFolders]
 resultsFolders = [folder for folder in resultsFolders if os.path.isdir(folder)]
 resultsFolders = sorted(resultsFolders)
 
@@ -15,7 +15,7 @@ pdffig, pdfax = plt.subplots(nrows=len(resultsFolders), ncols=1, figsize=(16, 8)
 # set list of colors
 print(resultsFolders)
 # colors = ['bo', 'rs', 'y1', 'k*', 'm+', 'gx']
-colors = ['b', 'r', 'y', 'k', 'm', 'g']
+colors = ['b', 'r', 'y', 'k', 'm', 'g', 'w']
 
 color = 0
 

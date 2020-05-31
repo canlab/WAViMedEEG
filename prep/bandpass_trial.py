@@ -30,4 +30,4 @@ for band in bands:
                 filtered = scipy.signal.sosfilt(sos, sig)
                 post[j] = filtered
                 j+=1
-            np.savetxt(config.studyDirectory+"/"+task+"/"+fname[:7]+"_"+band[0]+".csv", post.T, delimiter=",", fmt="%2.0f")
+            np.savetxt(config.studyDirectory+"/"+task+"/"+fname[:7]+"_"+band[0]+".csv", post.T, delimiter=",", fmt="%2.1f")
