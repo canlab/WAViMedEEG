@@ -118,7 +118,7 @@ plot_subject = "121" # if not defined, just chooses random, and assumes path fro
 plot_contig = "43534" # same as above
 
 plot_req_results_keyword = "ref" # optional to require roc/pdf plot study folders to contain a keyword
-plot_req_results_path = "/model_evaluation_p300_1250_contigs" # optional to require path of specific evaluation within 1 or many study folder(s)
+plot_req_results_path = "/model_evaluation_p300_1250_subjects" # optional to require path of specific evaluation within 1 or many study folder(s)
 
 
 # BANDPASS FILTER

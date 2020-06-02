@@ -19,6 +19,15 @@ def get_avail_subjects(train_path):
         if file[:3] not in subs:
             if file[0] != "0":
                 subs.append(file[:3])
+
+    return(subs)
+
+def get_pilot_subjects(train_path):
+    subs = []
+    for file in os.listdir(train_path):
+        if file[:3] not in subs:
+            if file[0] == "0":
+                subs.append(file[:3])
     return(subs)
 
 # generate structure of train paths for contigs
@@ -26,7 +35,7 @@ def get_avail_subjects(train_path):
 # as seen in convnet.cross_val
 def generate_paths_and_labels(train_path, omission=None):
     image_paths = os.listdir(train_path)
-    image_paths = [path for path in image_paths if path[0] != "0"]
+    image_paths = [path for path in image_paths if path[0]]
     train_image_paths = [str(path) for path in image_paths if omission != path[:3]]
     test_image_paths = [str(path) for path in image_paths if omission == path[:3]]
 
@@ -78,9 +87,14 @@ def load_numpy_stack(lead, paths, permuteLabels=False):
         contigs_each_band = np.block(contigs_each_band) # collapse list into last np axis
         # shape of contigs_each_band: (contig length, n electrodes, n freq bands)
         numpy_stack.append(contigs_each_band)
+        # if fname index label pain
         if band[i][0][0] == "1":
             label_stack.append(0)
+        # if fname index label control
         elif band[i][0][0] == "2":
+            label_stack.append(1)
+        # if pilot assume control
+        elif band[i][0][0] == "0":
             label_stack.append(1)
         i+=1
     pbar.close()
