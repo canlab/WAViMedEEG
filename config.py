@@ -86,7 +86,7 @@ wumbo = False # set to True if you want to permute labels during convnet.load_nu
 # RESULTS FOLDER SETUP
 # ====================
 resultsBaseDir = studyDirectory+"/results" # change this if you want to rename your study's base results folder
-resultsPath = resultsBaseDir+"/model_evaluation"+"_"+selectedTask+"_"+str(contigLength)+"_contigs" # path to which current analysis results will be written
+resultsPath = resultsBaseDir+"/model_evaluation"+"_"+selectedTask+"_"+str(contigLength)+"_subjects" # path to which current analysis results will be written
 # will break if tries to write on existing folder
 
 # for accurate sensors in spectral analysis,
@@ -117,7 +117,7 @@ kernel_type = 'rbf' # one of ['linear', 'poly', 'rbf']
 plot_subject = "121" # if not defined, just chooses random, and assumes path from studyDirectory and selectedTask
 plot_contig = "43534" # same as above
 
-plot_req_results_keyword = "ref" # optional to require roc/pdf plot study folders to contain a keyword
+plot_req_results_keyword = "david" # optional to require roc/pdf plot study folders to contain a keyword
 plot_req_results_path = "/model_evaluation_p300_1250_subjects" # optional to require path of specific evaluation within 1 or many study folder(s)
 
 

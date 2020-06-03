@@ -33,7 +33,8 @@ for sub in tqdm(subject_list):
 
     f = open(config.resultsPath+"/"+sub+".txt", 'w')
 
-    score = modelvar.predict(test_data)
+    score = modelvar.evaluate(test_data, test_labels)
 
+    f.write("AssumedGroup:" + "2\n")
     f.write("Loss: " + repr(score[0]) + "\n" + "Accuracy: " + repr(score[1]) + "\n")
     f.close()
