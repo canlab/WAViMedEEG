@@ -14,7 +14,7 @@ import os
 # --------------------> *.art
 
 myStudies = "/home/clayton/science/CANlab/EEGstudies" # if you are working with multiple studies at once, set the parent directory where you will keep them all
-studyDirectory = myStudies+"/CANlabStudy" # more specific study, for functions that only deal with 1 at a time
+studyDirectory = myStudies+"/david files" # more specific study, for functions that only deal with 1 at a time
 
 selectedTask = "p300" # in general, the task which will be used for triggered analysis step
 
@@ -79,14 +79,14 @@ contigLength = 1250 # length of segmented epochs, in cycles, at 250 Hz
 # train and eval sources for various ML functions
 train_source = studyDirectory+"/contigs/"+selectedTask+"_"+str(contigLength)
 eval_source = studyDirectory+"/contigs/"+selectedTask+"_"+str(contigLength)
-model_file = "/home/clayton/science/CANlab/WAViMedEEG/saved_models/convnet/pain_model_ab_1/MyModel" # path where model will be saved to / loaded from
+model_file = "/home/clayton/science/CANlab/WAViMedEEG/saved_models/convnet/pain_model/MyModel" # path where model will be saved to / loaded from, might overwrite!
 wumbo = False # set to True if you want to permute labels during convnet.load_numpy_stack or other similar functions
 
 
 # RESULTS FOLDER SETUP
 # ====================
 resultsBaseDir = studyDirectory+"/results" # change this if you want to rename your study's base results folder
-resultsPath = resultsBaseDir+"/model_evaluation"+"_"+selectedTask+"_"+str(contigLength)+"_indeces" # path to which current analysis results will be written
+resultsPath = resultsBaseDir+"/model_evaluation"+"_"+selectedTask+"_"+str(contigLength)+"_subjects" # path to which current analysis results will be written
 # will break if tries to write on existing folder
 
 # for accurate sensors in spectral analysis,
@@ -95,7 +95,7 @@ resultsPath = resultsBaseDir+"/model_evaluation"+"_"+selectedTask+"_"+str(contig
 network_channels = [
     'P3',
     'P4',
-    'Pz'
+    'Pz',
 ]
 
 
@@ -105,7 +105,7 @@ network_channels = [
 learningRate = 0.001
 betaOne = 0.99
 betaTwo = 0.999
-numEpochs = 100
+numEpochs = 1000
 
 # SUPPORT VECTOR MACHINE
 # ====================
@@ -114,11 +114,11 @@ kernel_type = 'rbf' # one of ['linear', 'poly', 'rbf']
 
 # PLOTTING
 # ====================
-plot_subject = "209" # if not defined, just chooses random, and assumes path from studyDirectory and selectedTask
-plot_contig = "1" # same as above
+plot_subject = "121" # if not defined, just chooses random, and assumes path from studyDirectory and selectedTask
+plot_contig = "43534" # same as above
 
-plot_req_results_keyword = "ref" # optional to require roc/pdf plot study folders to contain a keyword
-plot_req_results_path = resultsBaseDir+"/model_evaluation_p300_1250_ab_2" # optional to require path of specific evaluation within 1 or many study folder(s)
+plot_req_results_keyword = "david" # optional to require roc/pdf plot study folders to contain a keyword
+plot_req_results_path = "/model_evaluation_p300_1250_subjects" # optional to require path of specific evaluation within 1 or many study folder(s)
 
 
 # BANDPASS FILTER
@@ -131,6 +131,7 @@ frequency_bands = [
     ("alpha", [8, 12]),
     ("beta", [16, 31]),
     ("gamma", [32, 60]),
+    # ("nofilter", []),
     ]
 
 
