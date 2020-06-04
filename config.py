@@ -14,7 +14,7 @@ import os
 # --------------------> *.art
 
 myStudies = "/home/clayton/science/CANlab/EEGstudies" # if you are working with multiple studies at once, set the parent directory where you will keep them all
-studyDirectory = myStudies+"/david files" # more specific study, for functions that only deal with 1 at a time
+studyDirectory = myStudies+"/CANlabStudy" # more specific study, for functions that only deal with 1 at a time
 
 selectedTask = "p300" # in general, the task which will be used for triggered analysis step
 
@@ -114,10 +114,14 @@ kernel_type = 'rbf' # one of ['linear', 'poly', 'rbf']
 
 # PLOTTING
 # ====================
-plot_subject = "121" # if not defined, just chooses random, and assumes path from studyDirectory and selectedTask
+plot_waves = studyDirectory+"/raw/001_p300.eeg"
+plot_art = studyDirectory+"/raw/001_p300.art"
+
+# for contig plotting
+plot_subject = "001" # just for title if not defined, just chooses random, and assumes path from studyDirectory and selectedTask
 plot_contig = "43534" # same as above
 
-plot_req_results_keyword = "david" # optional to require roc/pdf plot study folders to contain a keyword
+plot_req_results_keyword = "practice" # optional to require roc/pdf plot study folders to contain a keyword
 plot_req_results_path = "/model_evaluation_p300_1250_subjects" # optional to require path of specific evaluation within 1 or many study folder(s)
 
 

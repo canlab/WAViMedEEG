@@ -8,7 +8,7 @@ studyFolders = [folder for folder in os.listdir(config.myStudies) if config.plot
 resultsFolders = [config.myStudies+"/"+folder+"/results"+config.plot_req_results_path for folder in studyFolders]
 resultsFolders = [folder for folder in resultsFolders if os.path.isdir(folder)]
 resultsFolders = sorted(resultsFolders)
-
+`   `
 # PDF plot setup
 pdffig, pdfax = plt.subplots(nrows=len(resultsFolders), ncols=1, figsize=(16, 8))
 
