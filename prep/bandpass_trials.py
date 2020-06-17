@@ -13,7 +13,7 @@ from scipy.signal import butter, lfilter
 bands = config.frequency_bands
 
 taskfolders = os.listdir(config.studyDirectory)
-taskfolders = [folder for folder in taskfolders if folder in ["chronic", "p300", "flanker", "rest"]]
+taskfolders = [folder for folder in taskfolders if folder in ["chronic", "p300", "flanker", "rest", "SMS"]]
 
 for band in bands:
     print("Filter range:", band[0])
@@ -30,4 +30,4 @@ for band in bands:
                 filtered = scipy.signal.sosfilt(sos, sig)
                 post[j] = filtered
                 j+=1
-            np.savetxt(config.studyDirectory+"/"+task+"/"+fname[:7]+"_"+band[0]+".csv", post.T, delimiter=",", fmt="%2.1f")
+            np.savetxt(config.studyDirectory+"/"+task+"/"+fname[:config.participantNumLen+4]+"_"+band[0]+".csv", post.T, delimiter=",", fmt="%2.1f")

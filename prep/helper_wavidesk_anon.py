@@ -6,9 +6,9 @@ import config
 # note the following inputs below
 
 target_folder = config.studyDirectory
-string_to_replace = "Eyes_Closed_Resting"
-replace_with = "rest"
-subject_code = "0"
+string_to_replace = "P300_Eyes_Closed"
+replace_with = "p300"
+subject_code = "1"
 
 
 fnames = os.listdir(target_folder+'/raw')

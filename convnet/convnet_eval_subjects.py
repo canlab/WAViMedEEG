@@ -12,7 +12,7 @@ modelvar = tf.keras.models.load_model(config.model_file)
 modelvar.summary()
 
 path_to_test = pathlib.Path(config.eval_source)
-subject_list = convnet.get_avail_subjects(path_to_test)
+subject_list = convnet.get_avail_subjects(path_to_test, subLen=config.participantNumLen)
 print("List of available subjects:")
 for sub in subject_list:
     print(sub)
@@ -26,7 +26,7 @@ else:
     os.mkdir(config.resultsPath)
 
 for sub in tqdm(subject_list):
-    _, test_paths = convnet.generate_paths_and_labels(path_to_test, omission=sub)
+    _, test_paths = convnet.generate_paths_and_labels(path_to_test, omission=sub, subLen=config.participantNumLen)
     test_paths = convnet.reshape_paths_with_bands(test_paths, config.frequency_bands)
     test_data, test_indeces, test_labels = convnet.load_numpy_stack(path_to_test, test_paths, permuteLabels=config.wumbo)
     test_data, test_indeces, test_labels = convnet.shuffle_same_perm(test_data, test_indeces, test_labels)

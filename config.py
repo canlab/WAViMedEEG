@@ -14,7 +14,7 @@ import os
 # --------------------> *.art
 
 myStudies = "/home/clayton/science/CANlab/EEGstudies" # if you are working with multiple studies at once, set the parent directory where you will keep them all
-studyDirectory = myStudies+"/CANlabStudy" # more specific study, for functions that only deal with 1 at a time
+studyDirectory = myStudies+"/large chronic pain" # more specific study, for functions that only deal with 1 at a time
 
 selectedTask = "p300" # in general, the task which will be used for triggered analysis step
 
@@ -32,7 +32,7 @@ subjectKeys = {
 # n-digit participant number, underscore, task name, .art / .eeg / .evt
 # Ex: 104_p300.eeg
 # if you want to use a different length participant identifier, specify it here
-participantNumLen = 3 # default 3
+participantNumLen = 4 # default 4
 sampleRate = 250 # in Hz
 
 # default channel names, customize if using non-WAVi headset
@@ -102,7 +102,7 @@ network_channels = [
 # CONVOLUTIONAL NEURAL NETWORK
 # ====================
 # network hyperparameters
-learningRate = 0.001
+learningRate = 0.01
 betaOne = 0.99
 betaTwo = 0.999
 numEpochs = 1000
@@ -114,15 +114,16 @@ kernel_type = 'rbf' # one of ['linear', 'poly', 'rbf']
 
 # PLOTTING
 # ====================
-plot_waves = studyDirectory+"/raw/001_p300.eeg"
+plot_waves = studyDirectory+"/contigs/SMS_1250/002_alpha_17472.csv"
 plot_art = studyDirectory+"/raw/001_p300.art"
 
 # for contig plotting
 plot_subject = "001" # just for title if not defined, just chooses random, and assumes path from studyDirectory and selectedTask
 plot_contig = "43534" # same as above
 
-plot_req_results_keyword = "practice" # optional to require roc/pdf plot study folders to contain a keyword
-plot_req_results_path = "/model_evaluation_p300_1250_subjects" # optional to require path of specific evaluation within 1 or many study folder(s)
+# for results plotting / PDFs and ROCs
+plot_req_results_keyword = "cusm" # optional to require roc/pdf plot study folders to contain a keyword
+plot_req_results_path = "/model_evaluation_SMS_1250_subjects" # optional to require path of specific evaluation within 1 or many study folder(s)
 
 
 # BANDPASS FILTER
@@ -135,7 +136,7 @@ frequency_bands = [
     ("alpha", [8, 12]),
     ("beta", [16, 31]),
     ("gamma", [32, 60]),
-    # ("nofilter", []),
+    ("nofilter", []),
     ]
 
 

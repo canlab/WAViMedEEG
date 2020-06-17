@@ -33,7 +33,7 @@ def plot_pdf(pos_pdf, neg_pdf, ax):
     ax.fill(xax, pos_pdf, "b", alpha=0.5)
     ax.fill(xax, neg_pdf, "r", alpha=0.5)
     ax.set_xlim([0, 1])
-    ax.set_ylim([0, 5])
+    ax.set_ylim([0, 50])
     ax.set_title("Probability Distribution: " + resultsFolder.replace(config.resultsBaseDir, ''))
     ax.set_ylabel('Counts')
     ax.set_xlabel('P(X="pain")')
@@ -67,52 +67,52 @@ def plot_roc(pos_pdf, neg_pdf, ax, color=None, marker=None, markersize=None):
     ax.set_ylabel('TPR')
     ax.set_xlabel('FPR')
     ax.grid()
-    if config.roc_type == "filter":
-        ax.legend([folder.replace(config.resultsBaseDir+"/", '') for folder in resultsFolders])
+    # if config.roc_type == "filter":
+        # ax.legend([folder.replace(config.resultsBaseDir+"/", '') for folder in resultsFolders])
+
+roc = []
+pos_predicts = []
+neg_predicts = []
 
 for resultsFolder in resultsFolders:
     fnames = [fname for fname in os.listdir(resultsFolder) if ".txt" in fname]
     subjects = [fname[:config.participantNumLen] for fname in fnames]
-
-    roc = []
-    pos_predicts = []
-    neg_predicts = []
 
     for fname in fnames:
         f = open(resultsFolder+"/"+fname, 'r')
         f.readline()
         f.readline()
         true_group = int(fname[0])
-        prediction_group = float(f.readline().split(' ')[1])
+        prediction_group = float(f.readline().split()[1])
         if true_group == 1:
             pos_predicts.append(prediction_group)
         elif true_group == 2:
             neg_predicts.append(prediction_group)
         roc.append((true_group, prediction_group))
 
-    pos_mu = np.mean(pos_predicts)
-    pos_std = np.std(pos_predicts)
-    neg_mu = np.mean(neg_predicts)
-    neg_std = np.std(neg_predicts)
+pos_mu = np.mean(pos_predicts)
+pos_std = np.std(pos_predicts)
+neg_mu = np.mean(neg_predicts)
+neg_std = np.std(neg_predicts)
 
-    xax = np.linspace(-0.5, 1.5, num=1000)
+xax = np.linspace(-0.5, 1.5, num=1000)
 
-    pos_pdf = norm.pdf(xax, pos_mu, pos_std)
-    neg_pdf = norm.pdf(xax, neg_mu, neg_std)
+pos_pdf = norm.pdf(xax, pos_mu, pos_std)
+neg_pdf = norm.pdf(xax, neg_mu, neg_std)
 
-    if (config.roc_type == "shuffle") & (resultsFolder == config.resultsBaseDir+"/jacknife_evaluation"):
-        plot_roc(pos_pdf, neg_pdf, rocax, color='r', marker='o', markersize=2)
-    if (config.roc_type == "shuffle"):
-        plot_roc(pos_pdf, neg_pdf, rocax)
-    elif (config.roc_type == "filter"):
-        plot_roc(pos_pdf, neg_pdf, rocax, colors[color])
-    color+=1
+if (config.roc_type == "shuffle") & (resultsFolder == config.resultsBaseDir+"/jacknife_evaluation"):
+    plot_roc(pos_pdf, neg_pdf, rocax, color='r', marker='o', markersize=2)
+if (config.roc_type == "shuffle"):
+    plot_roc(pos_pdf, neg_pdf, rocax)
+elif (config.roc_type == "filter"):
+    plot_roc(pos_pdf, neg_pdf, rocax, colors[color])
+color+=1
 
-    if config.roc_type == "filter":
-        pdffig, pdfax = plt.subplots(1, 1, figsize=(10, 5))
-        plot_pdf(pos_pdf, neg_pdf, pdfax)
-        plt.hist(pos_predicts, bins=25, alpha=0.6, color='b')
-        plt.hist(neg_predicts, bins=25, alpha=0.6, color='r')
+if config.roc_type == "filter":
+    pdffig, pdfax = plt.subplots(1, 1, figsize=(10, 5))
+    plot_pdf(pos_pdf, neg_pdf, pdfax)
+    plt.hist(pos_predicts, bins=25, alpha=0.6, color='b')
+    plt.hist(neg_predicts, bins=25, alpha=0.6, color='r')
 
 rocax.plot(xax, xax, "--")
 

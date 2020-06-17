@@ -7,14 +7,14 @@ import os
 wav_fname = config.plot_waves
 art_fname = config.plot_art
 
-# fig, axs = plt.subplots(nrows=len(config.channel_names), figsize=(16, 8), sharex=True, sharey=True)
+# fig, axs = plt.subplots(nrows=len(config.network_channels), figsize=(16, 8), sharex=True, sharey=True)
 fig, axs = plt.subplots(nrows=1, figsize=(16, 8))
 
 trials = []
 plots = []
-for channel in config.channel_names:
-    i = config.channel_names.index(channel)
-    trial = np.genfromtxt(wav_fname, delimiter=" ").T[i]
+for channel in config.network_channels:
+    i = config.network_channels.index(channel)
+    trial = np.genfromtxt(wav_fname, delimiter=",").T[i]
     trials.append(trial)
     wavs = trial * 0.1
     print(wavs)
@@ -23,8 +23,8 @@ for channel in config.channel_names:
     plots.append(axs.plot(t, wavs)[0])
 
 # def
-axs.axis([t[0], t[-1], -25*len(config.channel_names), 5*len(config.channel_names)])
-leg = axs.legend(config.channel_names, loc="right", fancybox=True)
+axs.axis([t[0], t[-1], -25*len(config.network_channels), 5*len(config.network_channels)])
+leg = axs.legend(config.network_channels, loc="right", fancybox=True)
 leg.get_frame().set_alpha(0.4)
 axs.grid(b=True)
 axs.set_title("Raw Waveforms: Subject " + config.plot_subject + " " + config.selectedTask)

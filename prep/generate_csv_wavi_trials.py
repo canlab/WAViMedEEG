@@ -10,9 +10,9 @@ def getRawFnames(raw_path):
     ends = []
     print("Using the following filename endings:")
     for e in filenames:
-        if((".eeg" in e) & (e[4:] not in ends)):
-            ends.append(e[4:])
-            print("\t",e[4:])
+        if((".eeg" in e) & (e[config.participantNumLen+1:] not in ends)):
+            ends.append(e[config.participantNumLen+1:])
+            print("\t",e[config.participantNumLen+1:])
     print("\n")
     return(filenames, ends)
 
@@ -58,6 +58,10 @@ def populateTasks(df, filenames):
             df.loc[sub]['thumper']=[['eeg','NaN'],['art','NaN'],['evt','NaN']]
         else:
             df.loc[sub]['thumper']="none"
+        if (sub + "_" + "SMS.eeg") in filenames:
+            df.loc[sub]['SMS']=[['eeg','NaN'],['art','NaN'],['evt','NaN']]
+        else:
+            df.loc[sub]['SMS']="none"
     return(df)
 
 def loadEEGdataNumpy(df):
@@ -84,6 +88,10 @@ def loadEEGdataNumpy(df):
                         df.loc[sub][task][0][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'thumper.eeg', delimiter=' ')
                         df.loc[sub][task][1][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'thumper.art', delimiter=' ')
                         df.loc[sub][task][2][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'thumper.evt', delimiter=' ')
+                    if task=="SMS":
+                        df.loc[sub][task][0][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'SMS.eeg', delimiter=' ')
+                        df.loc[sub][task][1][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'SMS.art', delimiter=' ')
+                        df.loc[sub][task][2][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'SMS.evt', delimiter=' ')
     return(df)
 
 def writeCSVs(df):

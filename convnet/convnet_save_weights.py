@@ -2,6 +2,7 @@ import pathlib
 from tqdm import tqdm
 import config
 import os
+import random
 
 import convnet
 
@@ -25,21 +26,34 @@ try:
 except:
     epochs = int(input("How many epochs? \n"))
 
-try:
-    os.mkdir(config.resultsPath)
-except:
-    print("Results dir already made.")
-
 path_to_train = pathlib.Path(config.train_source)
 subject_list = convnet.get_avail_subjects(path_to_train)
-print("List of available subjects:")
-for sub in subject_list:
-    print(sub)
+# shuffle subject list randomly and then
+random.shuffle(subject_list)
 
-train_paths, _= convnet.generate_paths_and_labels(path_to_train)
+
+split = len(subject_list)//3
+
+train_subjects = subject_list[:split*-1]
+test_subjects = subject_list[split*-1:]
+
+# print("List of available subjects:")
+# for sub in subject_list:
+#     print(sub)
+
+print("Train subjects:", train_subjects)
+print("Validation subjects:", test_subjects)
+
+train_paths, _= convnet.generate_paths_and_labels(path_to_train, train_subjects, subLen=config.participantNumLen)
+test_paths, _= convnet.generate_paths_and_labels(path_to_train, test_subjects, subLen=config.participantNumLen)
 train_paths = convnet.reshape_paths_with_bands(train_paths, config.frequency_bands)
+test_paths = convnet.reshape_paths_with_bands(test_paths, config.frequency_bands)
 train_data, train_indeces, train_labels = convnet.load_numpy_stack(path_to_train, train_paths, permuteLabels=config.wumbo)
+test_data, test_indeces, test_labels = convnet.load_numpy_stack(path_to_train, test_paths, permuteLabels=config.wumbo)
 train_data, train_indeces, train_labels = convnet.shuffle_same_perm(train_data, train_indeces, train_labels)
+test_data, test_indeces, test_labels = convnet.shuffle_same_perm(test_data, test_indeces, test_labels)
 
-fitted, modelvar = convnet.createModel(train_data, train_labels, rate, epochs, beta1, beta2)
+input_shape = train_data[0].shape
+print("Input shape:", input_shape)
+fitted, modelvar = convnet.createModel(train_data, train_labels, test_data, test_labels, rate, epochs, beta1, beta2)
 modelvar.save(config.model_file)

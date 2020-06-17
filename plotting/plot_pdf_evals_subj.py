@@ -15,7 +15,7 @@ pdffig, pdfax = plt.subplots(nrows=len(resultsFolders), ncols=1, figsize=(16, 8)
 # set list of colors for limited number of filters
 print(resultsFolders)
 # colors = ['bo', 'rs', 'y1', 'k*', 'm+', 'gx']
-colors = ['b', 'r', 'y', 'k', 'm', 'g']
+colors = ['b', 'r', 'y', 'k', 'm', 'g', 'm', 'g']
 
 color = 0
 
@@ -23,7 +23,7 @@ def plot_pdf(pos_pdf, neg_pdf, ax, foldername, color):
     ax.fill(xax, pos_pdf, 'c', alpha=0.5)
     ax.fill(xax, neg_pdf, color, alpha=0.5)
     ax.set_xlim([0, 1])
-    ax.set_ylim([0, 5])
+    ax.set_ylim([0, 20])
     ax.set_title("PDF: " + foldername.replace(config.myStudies, "").replace(config.plot_req_results_path, ""))
     ax.set_ylabel('Counts')
     ax.set_xlabel('P(X="pain")')
@@ -31,7 +31,7 @@ def plot_pdf(pos_pdf, neg_pdf, ax, foldername, color):
 
 for resultsFolder in resultsFolders:
     fnames = [fname for fname in os.listdir(resultsFolder) if ".txt" in fname]
-    subjects = [fname[:3] for fname in fnames]
+    subjects = [fname[:config.participantNumLen] for fname in fnames]
 
     pos_predicts = []
     neg_predicts = []
