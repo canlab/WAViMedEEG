@@ -14,7 +14,7 @@ import os
 # --------------------> *.art
 
 myStudies = "/home/clayton/science/CANlab/EEGstudies" # if you are working with multiple studies at once, set the parent directory where you will keep them all
-studyDirectory = myStudies+"/fake" # more specific study, for functions that only deal with 1 at a time
+studyDirectory = myStudies+"/large chronic pain" # more specific study, for functions that only deal with 1 at a time
 
 selectedTask = "p300" # in general, the task which will be used for triggered analysis step
 
@@ -131,12 +131,12 @@ plot_req_results_path = "/model_evaluation_SMS_1250_subjects" # optional to requ
 # you can comment out different bands to mute them from being admitted to the network training / evaluation
 # format is ("name", [low-end, high-end]) tuple, in Hz
 frequency_bands = [
-    # ("delta", [0.1, 4]),
-    # ("theta", [4, 8]),
+    ("delta", [0.1, 4]),
+    ("theta", [4, 8]),
     ("alpha", [8, 12]),
-    # ("beta", [16, 31]),
-    # ("gamma", [32, 60]),
-    # ("nofilter", []),
+    ("beta", [16, 31]),
+    ("gamma", [32, 60]),
+    ("nofilter", []),
     ]
 
 

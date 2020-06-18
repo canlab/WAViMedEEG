@@ -184,33 +184,30 @@ def shuffle_same_perm(data, start_indeces, labels):
     data, start_indeces, labels = data[idx], start_indeces[idx], labels[idx]
     return(data, start_indeces, labels)
 
+# input shape: (# timepoints, (3))
 def createModel(train_arrays, train_image_labels, test_arrays, test_image_labels, learn, num_epochs, betaOne, betaTwo):
     # Introduce sequential Set
     model = tf.keras.models.Sequential()
 
     # temporal convolution
-    model.add(Conv2D(16, kernel_size=(10, 1), strides=(10,1), padding='same', input_shape=train_arrays[0].shape, data_format='channels_last', kernel_initializer='glorot_uniform'))
-    model.add(LeakyReLU(alpha=0.1))
+    model.add(Conv2D(16, kernel_size=(16, 3), strides=3, padding='same', activation='relu', input_shape=train_arrays[0].shape, data_format='channels_last', kernel_initializer='glorot_uniform'))
 
     # cross-channel convolution
-    model.add(Conv2D(32, kernel_size=(1, 3), strides=(1,3), padding='same', data_format='channels_last', kernel_initializer='glorot_uniform'))
-    model.add(LeakyReLU(alpha=0.1))
+    model.add(Conv2D(16, kernel_size=(16, 3), strides=3, padding='same', activation='relu', data_format='channels_last', kernel_initializer='glorot_uniform'))
 
     # pooling & dropout
-    model.add(MaxPooling2D(pool_size=(1,3), strides=None, padding='same', data_format='channels_last'))
-    model.add(Dropout(0.5))
+    model.add(MaxPooling2D(pool_size=(3,3), strides=None, padding='same', data_format='channels_last'))
 
     # deep conv layers, cross-bandpass
-    model.add(Conv2D(16, kernel_size=6, strides=3, padding='same', data_format='channels_last', kernel_initializer='glorot_uniform'))
-    model.add(LeakyReLU(alpha=0.1))
+    model.add(Conv2D(16, kernel_size=(16,3), strides=3, padding='same', data_format='channels_last', activation='relu', kernel_initializer='glorot_uniform'))
 
-    model.add(Conv2D(32, kernel_size=6, strides=6, padding='same', data_format='channels_last', kernel_initializer='glorot_uniform'))
-    model.add(LeakyReLU(alpha=0.1))
+    model.add(Conv2D(16, kernel_size=(16,3), strides=3, padding='same', data_format='channels_last', activation='relu', kernel_initializer='glorot_uniform'))
 
     # model.add(Dropout(0.5))
 
     # model.add(Conv2D(64, kernel_size=3, strides=3, padding='same', data_format='channels_last', kernel_initializer='glorot_uniform'))
-    # model.add(LeakyReLU(alpha=0.1))
+
+    model.add(Dropout(0.5))
 
     # flatten
     model.add(Flatten(data_format="channels_last"))
@@ -218,8 +215,8 @@ def createModel(train_arrays, train_image_labels, test_arrays, test_image_labels
     # batch normalize
     # model.add(BatchNormalization())
 
-    model.add(Dense(25, activation='softmax', kernel_initializer='glorot_uniform'))
-    model.add(Dense(2, activation='softmax', kernel_initializer='glorot_uniform'))
+    model.add(Dense(25, activation='relu', kernel_initializer='glorot_uniform', kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4)))
+    model.add(Dense(2, activation='#logit/relu', kernel_initializer='glorot_uniform', kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4)))
 
     model.build(train_arrays.shape)
     model.summary()
@@ -249,7 +246,7 @@ def createModel(train_arrays, train_image_labels, test_arrays, test_image_labels
         epochs=num_epochs,
         # validation_split=0.33,
         validation_data=(test_arrays, test_image_labels),
-        batch_size=64,
+        batch_size=32,
         callbacks=[tensorboard_callback]
     )
 
