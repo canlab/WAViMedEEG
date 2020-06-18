@@ -21,8 +21,11 @@ newsig = signal.convolve(sig, sq, mode='same') / 600
 # frequency-swept signal
 sweep = signal.sweep_poly(t, np.poly1d([1, 2]))
 
+# random noise
+noise = np.random.normal(0, 1, 1250)
+
 # 3 channels, small difference
-i = np.array(sweep)
+i = np.array(sig+noise)
 j = i - 0.1
 k = i - 0.2
 
@@ -40,6 +43,6 @@ print(arr.shape)
 #     # 20 random indeces / contigs
 #     for r in range(20):
 #         index = random.randint(0, 75000)
-#         fname = "2"+"0"*(config.participantNumLen-len(str(a))-1)+str(a)+"_alpha_"+str(index)
+#         fname = "1"+"0"*(config.participantNumLen-len(str(a))-1)+str(a)+"_alpha_"+str(index)
 #         np.savetxt(config.studyDirectory+"/contigs/p300_1250/"+fname+".csv", arr, delimiter=",", fmt="%2.1f")
 #     a+=1

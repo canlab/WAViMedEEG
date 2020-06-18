@@ -6,9 +6,9 @@ import csv
 from tqdm import tqdm
 # tensorflow imports
 import tensorflow as tf
-from tensorflow.keras.layers import Dense, Flatten, Conv2D
 from tensorflow.keras import Model
 from tensorflow.keras import regularizers
+from tensorflow.keras.layers import Dense, Flatten, Conv2D, LeakyReLU, MaxPooling2D, Dropout, BatchNormalization
 import datetime
 
 print("Using Tensorflow version", tf.__version__)
@@ -185,27 +185,41 @@ def shuffle_same_perm(data, start_indeces, labels):
     return(data, start_indeces, labels)
 
 def createModel(train_arrays, train_image_labels, test_arrays, test_image_labels, learn, num_epochs, betaOne, betaTwo):
-    # tf.keras.backend.set_floatx('float64')
     # Introduce sequential Set
     model = tf.keras.models.Sequential()
 
-    model.add(tf.keras.layers.Conv2D(32, kernel_size=(10, 1), strides=(10,1), padding='same', activation='relu', input_shape=train_arrays[0].shape, data_format='channels_last', kernel_regularizer=regularizers.l2(0.0001))) #, use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
-    model.add(tf.keras.layers.Conv2D(64, kernel_size=(1, 3), strides=(1,3), padding='same', activation='relu', data_format='channels_last', kernel_regularizer=regularizers.l2(0.0001))) #, use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
+    # temporal convolution
+    model.add(Conv2D(16, kernel_size=(10, 1), strides=(10,1), padding='same', input_shape=train_arrays[0].shape, data_format='channels_last', kernel_initializer='glorot_uniform'))
+    model.add(LeakyReLU(alpha=0.1))
 
-    model.add(tf.keras.layers.MaxPooling2D(pool_size=(2,2), strides=None, padding='same', data_format='channels_last'))
-    model.add(tf.keras.layers.Dropout(0.25))
+    # cross-channel convolution
+    model.add(Conv2D(32, kernel_size=(1, 3), strides=(1,3), padding='same', data_format='channels_last', kernel_initializer='glorot_uniform'))
+    model.add(LeakyReLU(alpha=0.1))
 
-    model.add(tf.keras.layers.Conv2D(16, kernel_size=6, strides=1, padding='same', activation='relu', data_format='channels_last', kernel_regularizer=regularizers.l2(0.0001))) #, use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
-    model.add(tf.keras.layers.Conv2D(32, kernel_size=6, strides=6, padding='same', activation='relu', data_format='channels_last', kernel_regularizer=regularizers.l2(0.0001))) #, use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
-    model.add(tf.keras.layers.Conv2D(64, kernel_size=3, strides=3, padding='same', activation='relu', data_format='channels_last', kernel_regularizer=regularizers.l2(0.0001))) #, use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
-    model.add(tf.keras.layers.Dropout(0.25))
+    # pooling & dropout
+    model.add(MaxPooling2D(pool_size=(1,3), strides=None, padding='same', data_format='channels_last'))
+    model.add(Dropout(0.5))
 
-    model.add(tf.keras.layers.Flatten(data_format="channels_last"))
+    # deep conv layers, cross-bandpass
+    model.add(Conv2D(16, kernel_size=6, strides=3, padding='same', data_format='channels_last', kernel_initializer='glorot_uniform'))
+    model.add(LeakyReLU(alpha=0.1))
 
-    model.add(tf.keras.layers.Dense(25, activation='softmax', kernel_regularizer=regularizers.l2(0.0001)))
-    model.add(tf.keras.layers.Dropout(0.25))
+    model.add(Conv2D(32, kernel_size=6, strides=6, padding='same', data_format='channels_last', kernel_initializer='glorot_uniform'))
+    model.add(LeakyReLU(alpha=0.1))
 
-    model.add(tf.keras.layers.Dense(2, activation='softmax', kernel_regularizer=regularizers.l2(0.0001)))
+    # model.add(Dropout(0.5))
+
+    # model.add(Conv2D(64, kernel_size=3, strides=3, padding='same', data_format='channels_last', kernel_initializer='glorot_uniform'))
+    # model.add(LeakyReLU(alpha=0.1))
+
+    # flatten
+    model.add(Flatten(data_format="channels_last"))
+
+    # batch normalize
+    # model.add(BatchNormalization())
+
+    model.add(Dense(25, activation='softmax', kernel_initializer='glorot_uniform'))
+    model.add(Dense(2, activation='softmax', kernel_initializer='glorot_uniform'))
 
     model.build(train_arrays.shape)
     model.summary()
@@ -213,17 +227,17 @@ def createModel(train_arrays, train_image_labels, test_arrays, test_image_labels
 
     # adaptive learning rate
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-    initial_learning_rate=0.96,
-    decay_steps=100,
-    decay_rate=0.5)
+        initial_learning_rate=0.001,
+        decay_steps=100,
+        decay_rate=0.96)
 
     # Model compilation
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learn, beta_1=betaOne, beta_2=betaTwo, decay=1e-1),
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learn, beta_1=betaOne, beta_2=betaTwo),
                  loss='sparse_categorical_crossentropy',
                  metrics=['accuracy'])
     # model.compile(optimizer = tf.keras.optimizers.SGD(learning_rate=learn, momentum=0.01, nesterov=True),
-    #                 loss='sparse_categorical_crossentropy',
-    #                 metrics=['accuracy'])
+    #                  loss='binary_crossentropy',
+    #                  metrics=['accuracy'])
 
     # tensorboard setup
     log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -235,7 +249,7 @@ def createModel(train_arrays, train_image_labels, test_arrays, test_image_labels
         epochs=num_epochs,
         # validation_split=0.33,
         validation_data=(test_arrays, test_image_labels),
-        batch_size=32,
+        batch_size=64,
         callbacks=[tensorboard_callback]
     )
 
