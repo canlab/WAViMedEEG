@@ -11,6 +11,9 @@ subject_code = input()
 print("Enter number of peaks you'd like to use:")
 peaks = int(input())
 
+print("Enter the scale of the noise you'd like to use (can be float or int):")
+noise_scale = float(input())
+
 # 2nd parameter is number of peaks
 t = np.linspace(0, peaks, 1250, endpoint=False)
 # i = signal.gausspulse(t, fc=1/100)
@@ -40,9 +43,9 @@ while a < 20:
         index = random.randint(0, 75000)
 
         # 3 channels, each with random noise
-        i = np.array(sig+np.random.normal(0, 2, 1250))
-        j = np.array(sig+np.random.normal(0, 2, 1250))
-        k = np.array(sig+np.random.normal(0, 2, 1250))
+        i = np.array(sig+np.random.normal(0, noise_scale, 1250))
+        j = np.array(sig+np.random.normal(0, noise_scale, 1250))
+        k = np.array(sig+np.random.normal(0, noise_scale, 1250))
 
         # plot first contig
         if a == 0:
