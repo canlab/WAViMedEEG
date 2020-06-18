@@ -215,8 +215,8 @@ def createModel(train_arrays, train_image_labels, test_arrays, test_image_labels
     # batch normalize
     # model.add(BatchNormalization())
 
-    model.add(Dense(25, activation='relu', kernel_initializer='glorot_uniform', kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4)))
-    model.add(Dense(2, activation='#logit/relu', kernel_initializer='glorot_uniform', kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4)))
+    model.add(Dense(25, activation='softmax', kernel_initializer='glorot_uniform', kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4)))
+    model.add(Dense(2, activation='softmax', kernel_initializer='glorot_uniform', kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4)))
 
     model.build(train_arrays.shape)
     model.summary()
