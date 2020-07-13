@@ -13,18 +13,23 @@ import os
 # --------------------> *.evt
 # --------------------> *.art
 
-myStudies = "/home/clayton/science/CANlab/EEGstudies" # if you are working with multiple studies at once, set the parent directory where you will keep them all
-studyDirectory = myStudies+"/large chronic pain" # more specific study, for functions that only deal with 1 at a time
+myStudies = "/wavi/EEGstudies" # if you are working with multiple studies at once, set the parent directory where you will keep them all
+studyDirectory = myStudies+"/eyes closed" # specific study, for functions that only deal with 1 at a time
 
-selectedTask = "p300" # in general, the task which will be used for triggered analysis step
+selectedTask = "fcsd" # in general, the task which will be used for triggered analysis step
 
 # dictionary of first-index subject number and a respective 4-character name for the group
+# subjectKeys = {
+#     0: "pilt", # pilot
+#     1: "pain",
+#     2: "ctrl"
+# }
+
 subjectKeys = {
     0: "pilt", # pilot
-    1: "pain",
-    2: "ctrl"
+    1: "clsd",
+    2: "open"
 }
-
 
 # WAVi to CSV CONVERSIONS / HEADSET CONFIG
 # ====================
@@ -58,11 +63,16 @@ channel_names = [
     'Pz'
 ]
 
+artDegree = 1 # highest number of WAVi-supplied artifact
+# still accepted by the program, 0 (strict), 1 (loose), or 2 (none)
+
 # current supported tasks are
 # p300
-# flanker
+# flanker / flnk
 # chronic
 # rest
+# fcsd (eyes open focused)
+# clsd (eyes closed rest)
 
 # if you need to add a new one, you currently have to specify
 # whether it will use .evt in the loadEEGdataNumpy function of wavi_to_csv.py
@@ -79,7 +89,7 @@ contigLength = 1250 # length of segmented epochs, in cycles, at 250 Hz
 # train and eval sources for various ML functions
 train_source = studyDirectory+"/contigs/"+selectedTask+"_"+str(contigLength)
 eval_source = studyDirectory+"/contigs/"+selectedTask+"_"+str(contigLength)
-model_file = "/home/clayton/science/CANlab/WAViMedEEG/saved_models/convnet/pain_model/MyModel" # path where model will be saved to / loaded from, might overwrite!
+model_file = "/home/clayton/science/CANlab/WAViMedEEG/saved_models/convnet/eye_model_latest/MyModel" # path where model will be saved to / loaded from, will overwrite!
 wumbo = False # set to True if you want to permute labels during convnet.load_numpy_stack or other similar functions
 
 
@@ -93,9 +103,11 @@ resultsPath = resultsBaseDir+"/model_evaluation"+"_"+selectedTask+"_"+str(contig
 # keep these in the same order
 # as the default list above (channel_names)
 network_channels = [
+    'Fp1',
+    'Fp2',
     'P3',
     'P4',
-    'Pz',
+    'Pz'
 ]
 
 
@@ -122,8 +134,8 @@ plot_subject = "001" # just for title if not defined, just chooses random, and a
 plot_contig = "43534" # same as above
 
 # for results plotting / PDFs and ROCs
-plot_req_results_keyword = "cusm" # optional to require roc/pdf plot study folders to contain a keyword
-plot_req_results_path = "/model_evaluation_SMS_1250_subjects" # optional to require path of specific evaluation within 1 or many study folder(s)
+plot_req_results_keyword = "eyes" # optional to require roc/pdf plot study folders to contain a keyword
+plot_req_results_path = "" # optional to require path of specific evaluation within 1 or many study folder(s)
 
 
 # BANDPASS FILTER
@@ -131,11 +143,11 @@ plot_req_results_path = "/model_evaluation_SMS_1250_subjects" # optional to requ
 # you can comment out different bands to mute them from being admitted to the network training / evaluation
 # format is ("name", [low-end, high-end]) tuple, in Hz
 frequency_bands = [
-    ("delta", [0.1, 4]),
-    ("theta", [4, 8]),
-    ("alpha", [8, 12]),
-    ("beta", [16, 31]),
-    ("gamma", [32, 60]),
+    # ("delta", [0.1, 4]),
+    # ("theta", [4, 8]),
+    # ("alpha", [8, 12]),
+    # ("beta", [16, 31]),
+    # ("gamma", [32, 60]),
     ("nofilter", []),
     ]
 

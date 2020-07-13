@@ -13,7 +13,7 @@ from scipy.signal import butter, lfilter
 bands = config.frequency_bands
 
 taskfolders = os.listdir(config.studyDirectory)
-taskfolders = [folder for folder in taskfolders if folder in ["chronic", "p300", "flanker", "rest", "SMS"]]
+taskfolders = [folder for folder in taskfolders if folder in ["chronic", "p300", "flanker", "rest", "SMS", "flnk", "fcsd"]]
 
 for band in bands:
     print("Filter range:", band[0])

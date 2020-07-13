@@ -5,11 +5,13 @@ import pandas as pd
 import config
 from tqdm import tqdm
 
+# make a parent directory called contigs
 try:
     os.mkdir(config.studyDirectory+"/contigs")
 except:
     print("Contigs folder already exists.")
 
+# make a child subdirectory called contigs_<task>_<contig_length>
 try:
     contigsFolder = config.studyDirectory+"/contigs"+"/"+config.selectedTask+"_"+str(config.contigLength)
     os.mkdir(contigsFolder)
@@ -30,6 +32,10 @@ def load_csv(task_folder, sub):
 def apply_art_mask_nan(data, artifact):
     mx = []
     for band_eeg in data:
+        if config.artDegree == 1:
+            artifact = ma.masked_less(artifact, 2)
+        elif config.artDegree == 2:
+            artifact = ma.masked_less(artifact, 3)
         mxi = ma.masked_array(band_eeg, mask=artifact)
         mxi = ma.filled(mxi.astype(float), np.nan)
         mx.append(mxi)
@@ -60,7 +66,7 @@ def filter_my_channels(dataset, keep_channels, axisNum):
     return(network_dataset)
 
 def loadTaskCSVs(task_folder):
-    print("\nLoading", config.selectedTask, "CSVs for contigification")
+    print("\nLoading", config.selectedTask, "CSV Filenames")
     print("==========\n")
     arrays = []
     subjectWriteOrder = []
@@ -68,6 +74,7 @@ def loadTaskCSVs(task_folder):
         subNum = sub[:config.participantNumLen]
         if subNum not in subjectWriteOrder:
             subjectWriteOrder.append(subNum)
+
     print("\nApplying Artifact Masks")
     print("==========\n")
 

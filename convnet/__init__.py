@@ -8,7 +8,7 @@ from tqdm import tqdm
 import tensorflow as tf
 from tensorflow.keras import Model
 from tensorflow.keras import regularizers
-from tensorflow.keras.layers import Dense, Flatten, Conv2D, LeakyReLU, MaxPooling2D, Dropout, BatchNormalization
+from tensorflow.keras.layers import Dense, Flatten, Conv2D, Conv2DTranspose, LeakyReLU, UpSampling2D, MaxPooling2D, Dropout, BatchNormalization
 import datetime
 
 print("Using Tensorflow version", tf.__version__)
@@ -190,18 +190,26 @@ def createModel(train_arrays, train_image_labels, test_arrays, test_image_labels
     model = tf.keras.models.Sequential()
 
     # temporal convolution
-    model.add(Conv2D(16, kernel_size=(16, 3), strides=3, padding='same', activation='relu', input_shape=train_arrays[0].shape, data_format='channels_last', kernel_initializer='glorot_uniform'))
+    # model.add(Conv2D(10, kernel_size=(10, 1), strides=3, padding='same', activation='relu', input_shape=train_arrays[0].shape, data_format='channels_last', kernel_initializer='glorot_uniform'))
+
+    model.add(Conv2D(10, kernel_size=(50, 1), strides=1, padding='same', activation='relu', input_shape=train_arrays[0].shape, data_format='channels_last', kernel_initializer='glorot_uniform'))
+
+    # model.add(Conv2D(10, kernel_size=(50, 1), strides=1, padding='same', activation='relu', input_shape=train_arrays[0].shape, data_format='channels_last', kernel_initializer='glorot_uniform'))
+
+    # model.add(Conv2D(10, kernel_size=(250, 1), strides=3, padding='same', activation='relu', input_shape=train_arrays[0].shape, data_format='channels_last', kernel_initializer='glorot_uniform'))
+
+    model.add(Conv2D(5, kernel_size=(16, 3), strides=3, padding='same', activation='relu', input_shape=train_arrays[0].shape, data_format='channels_last', kernel_initializer='glorot_uniform'))
 
     # cross-channel convolution
-    model.add(Conv2D(16, kernel_size=(16, 3), strides=3, padding='same', activation='relu', data_format='channels_last', kernel_initializer='glorot_uniform'))
+    # model.add(Conv2D(16, kernel_size=(16, 3), strides=3, padding='same', activation='relu', data_format='channels_last', kernel_initializer='glorot_uniform'))
 
     # pooling & dropout
     model.add(MaxPooling2D(pool_size=(3,3), strides=None, padding='same', data_format='channels_last'))
 
     # deep conv layers, cross-bandpass
-    model.add(Conv2D(16, kernel_size=(16,3), strides=3, padding='same', data_format='channels_last', activation='relu', kernel_initializer='glorot_uniform'))
+    # model.add(Conv2D(16, kernel_size=(16,3), strides=3, padding='same', activation='relu', data_format='channels_last', kernel_initializer='glorot_uniform'))
 
-    model.add(Conv2D(16, kernel_size=(16,3), strides=3, padding='same', data_format='channels_last', activation='relu', kernel_initializer='glorot_uniform'))
+    # model.add(Conv2D(16, kernel_size=(16,3), strides=3, padding='same', activation='relu', data_format='channels_last', kernel_initializer='glorot_uniform'))
 
     # model.add(Dropout(0.5))
 
@@ -215,8 +223,8 @@ def createModel(train_arrays, train_image_labels, test_arrays, test_image_labels
     # batch normalize
     # model.add(BatchNormalization())
 
-    model.add(Dense(25, activation='softmax', kernel_initializer='glorot_uniform', kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4)))
-    model.add(Dense(2, activation='softmax', kernel_initializer='glorot_uniform', kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4)))
+    # model.add(Dense(25, activation='sigmoid', kernel_initializer='glorot_uniform', kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4)))
+    model.add(Dense(2, activation='sigmoid', kernel_initializer='glorot_uniform', kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4)))
 
     model.build(train_arrays.shape)
     model.summary()
@@ -252,42 +260,34 @@ def createModel(train_arrays, train_image_labels, test_arrays, test_image_labels
 
     return(history, model)
 
-def createAgeModel(train_arrays, train_image_labels, test_arrays, test_image_labels, learn, num_epochs, betaOne, betaTwo):
-    # tf.keras.backend.set_floatx('float64')
+# input shape: (# timepoints, (3))
+def autoencoder(train_arrays, train_image_labels, test_arrays, test_image_labels, learn, num_epochs, betaOne, betaTwo):
     # Introduce sequential Set
     model = tf.keras.models.Sequential()
 
-    # time-series
-    model.add(tf.keras.layers.Conv2D(25, kernel_size=(10, 1), strides=1, padding='same', activation='relu', data_format='channels_last')) #, use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
-    model.add(tf.keras.layers.Conv2D(15, kernel_size=(100, 1), strides=50, padding='same', activation='relu', data_format='channels_last')) #, use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
-    model.add(tf.keras.layers.Conv2D(10, kernel_size=(1250, 1), strides=250, padding='same', activation='relu', data_format='channels_last')) #, use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
-    model.add(tf.keras.layers.BatchNormalization())
+    model.add(Conv2D(10, kernel_size=(50, 1), strides=1, padding='same', activation='relu', input_shape=train_arrays[0].shape, data_format='channels_last', kernel_initializer='glorot_uniform'))
 
+    model.add(Conv2D(5, kernel_size=(16, 3), strides=3, padding='same', activation='relu', data_format='channels_last', kernel_initializer='glorot_uniform'))
 
-    # time-pooling
-    model.add(tf.keras.layers.MaxPooling2D(pool_size=(10,1), strides=None, padding='same', data_format='channels_last'))
-    model.add(tf.keras.layers.Dropout(0.4))
+    # pooling & dropout
+    model.add(MaxPooling2D(pool_size=(3,3), strides=None, padding='same', data_format='channels_last'))
 
-    # cross-channel
-    model.add(tf.keras.layers.Conv2D(25, kernel_size=(10, 3), strides=1, padding='same', activation='relu', data_format='channels_last')) #, use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
-    model.add(tf.keras.layers.Conv2D(15, kernel_size=(100, 3), strides=1, padding='same', activation='relu', data_format='channels_last')) #, use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
-    model.add(tf.keras.layers.Conv2D(10, kernel_size=(1250, 3), strides=1, padding='same', activation='relu', data_format='channels_last')) #, use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
-    model.add(tf.keras.layers.BatchNormalization())
+    model.add(Dropout(0.5))
 
-    # channel-pooling
-    model.add(tf.keras.layers.MaxPooling2D(pool_size=(2,2), strides=None, padding='same', data_format='channels_last'))
-    # model.add(tf.keras.layers.Dropout(0.2))
+    # flatten
+    # model.add(Flatten(data_format="channels_last"))
 
-    # cross-bandpass
-    model.add(tf.keras.layers.Conv2D(15, kernel_size=6, strides=3, padding='same', activation='relu', data_format='channels_last')) #, use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
-    model.add(tf.keras.layers.Conv2D(15, kernel_size=6, strides=3, padding='same', activation='relu', data_format='channels_last')) #, use_bias=True, bias_initializer=tf.keras.initializers.Constant(0.6574402652980739)))
+    model.add(Dense(2, activation='sigmoid', kernel_initializer='glorot_uniform', kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4)))
 
-    # model.add(tf.keras.layers.MaxPooling2D(pool_size=(6,6), strides=None, padding='same', data_format='channels_last'))
+    # ////
 
-    model.add(tf.keras.layers.Flatten(data_format="channels_last"))
+    model.add(Dense(2, activation='sigmoid', kernel_initializer='glorot_uniform', kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4)))
 
-    # model.add(tf.keras.layers.Dense(100, activation='softmax'))
-    model.add(tf.keras.layers.Dense(7, activation='softmax'))
+    model.add(UpSampling2D((3, 3)))
+
+    model.add(Conv2DTranspose(5, kernel_size=(16, 3), strides=3, padding='same', activation='relu', data_format='channels_last', kernel_initializer='glorot_uniform'))
+
+    model.add(Conv2DTranspose(10, kernel_size=(50, 1), strides=1, padding='same', activation='relu', data_format='channels_last', kernel_initializer='glorot uniform'))
 
     model.build(train_arrays.shape)
     model.summary()
@@ -295,17 +295,17 @@ def createAgeModel(train_arrays, train_image_labels, test_arrays, test_image_lab
 
     # adaptive learning rate
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-    initial_learning_rate=1e-2,
-    decay_steps=10000,
-    decay_rate=0.2)
+        initial_learning_rate=0.001,
+        decay_steps=100,
+        decay_rate=0.96)
 
     # Model compilation
-    # model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learn, beta_1=betaOne, beta_2=betaTwo),
-    #              loss='sparse_categorical_crossentropy',
-    #              metrics=['accuracy'])
-    model.compile(optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=0.01, nesterov=True),
-                    loss='sparse_categorical_crossentropy',
-                    metrics=['accuracy'])
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learn, beta_1=betaOne, beta_2=betaTwo),
+                 loss='sparse_categorical_crossentropy',
+                 metrics=['accuracy'])
+    # model.compile(optimizer = tf.keras.optimizers.SGD(learning_rate=learn, momentum=0.01, nesterov=True),
+    #                  loss='binary_crossentropy',
+    #                  metrics=['accuracy'])
 
     # tensorboard setup
     log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -317,7 +317,7 @@ def createAgeModel(train_arrays, train_image_labels, test_arrays, test_image_lab
         epochs=num_epochs,
         # validation_split=0.33,
         validation_data=(test_arrays, test_image_labels),
-        batch_size=64,
+        batch_size=32,
         callbacks=[tensorboard_callback]
     )
 

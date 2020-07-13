@@ -62,6 +62,14 @@ def populateTasks(df, filenames):
             df.loc[sub]['SMS']=[['eeg','NaN'],['art','NaN'],['evt','NaN']]
         else:
             df.loc[sub]['SMS']="none"
+        if (sub + "_" + "flnk.eeg") in filenames:
+            df.loc[sub]['flnk']=[['eeg','NaN'],['art','NaN'],['evt','NaN']]
+        else:
+            df.loc[sub]['flnk']="none"
+        if (sub + "_" + "fcsd.eeg") in filenames:
+            df.loc[sub]['fcsd']=[['eeg','NaN'],['art','NaN']]
+        else:
+            df.loc[sub]['fcsd']="none"
     return(df)
 
 def loadEEGdataNumpy(df):
@@ -74,10 +82,14 @@ def loadEEGdataNumpy(df):
                         df.loc[sub][task][0][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'p300.eeg', delimiter=' ')
                         df.loc[sub][task][1][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'p300.art', delimiter=' ')
                         df.loc[sub][task][2][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'p300.evt', delimiter=' ')
-                    if task=="flanker":
+                    if (task=="flanker"):
                         df.loc[sub][task][0][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'flanker.eeg', delimiter=' ')
                         df.loc[sub][task][1][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'flanker.art', delimiter=' ')
                         df.loc[sub][task][2][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'flanker.evt', delimiter=' ')
+                    if (task=="flnk"):
+                        df.loc[sub][task][0][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'flnk.eeg', delimiter=' ')
+                        df.loc[sub][task][1][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'flnk.art', delimiter=' ')
+                        df.loc[sub][task][2][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'flnk.evt', delimiter=' ')
                     if task=="chronic":
                         df.loc[sub][task][1][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'chronic.art', delimiter=' ')
                         df.loc[sub][task][0][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'chronic.eeg', delimiter=' ')
@@ -92,6 +104,10 @@ def loadEEGdataNumpy(df):
                         df.loc[sub][task][0][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'SMS.eeg', delimiter=' ')
                         df.loc[sub][task][1][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'SMS.art', delimiter=' ')
                         df.loc[sub][task][2][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'SMS.evt', delimiter=' ')
+                    if task=="fcsd":
+                        df.loc[sub][task][0][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'fcsd.eeg', delimiter=' ')
+                        df.loc[sub][task][1][1]=np.genfromtxt(raw_folder+"/"+sub+"_"+'fcsd.art', delimiter=' ')
+
     return(df)
 
 def writeCSVs(df):

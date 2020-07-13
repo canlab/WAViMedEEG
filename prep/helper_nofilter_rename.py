@@ -6,7 +6,7 @@ import os, sys
 # the optional multi-band dimension, allowing for refinement of components
 
 taskfolders = os.listdir(config.studyDirectory)
-taskfolders = [folder for folder in taskfolders if folder in ["chronic", "flanker", "p300", "rest", "SMS"]]
+taskfolders = [folder for folder in taskfolders if folder in ["chronic", "flanker", "p300", "rest", "SMS", "flnk", "fcsd"]]
 
 for folder in taskfolders:
     fnames = os.listdir(config.studyDirectory+"/"+folder)
