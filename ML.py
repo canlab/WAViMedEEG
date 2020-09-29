@@ -19,6 +19,7 @@ from sklearn.metrics import average_precision_score
 from sklearn.metrics import precision_recall_curve
 from sklearn.metrics import plot_precision_recall_curve
 from sklearn.feature_selection import SelectKBest, f_classif
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 
@@ -78,6 +79,47 @@ class Classifier:
             while i < fill:
                 self.LoadData(parentPath+"/"+folder+"/"+spectralFolder+"/"+fnames[i])
                 i+=1
+
+    def LDA(self, normalize='standard'):
+
+        if normalize == 'standard':
+            myscaler = StandardScaler()
+        elif normalize == 'minmax':
+            myscaler = MinMaxScaler()
+        else:
+            normalize = None
+
+        if self.type == "spectra":
+            # load dataset into np arrays / train & test
+            # make label maps for each set: 1 = positive condition, -1 = negative condition
+            train_dataset = np.stack([SpecObj.data[int(lowbound//SpecObj.freq_res)+1:int(highbound//SpecObj.freq_res)+2] for SpecObj in self.data if (SpecObj.source, SpecObj.subject) in train_subjects])
+            train_labels = np.array([int(1) if (SpecObj.group==2) else int(-1) for SpecObj in self.data if (SpecObj.source, SpecObj.subject) in train_subjects])
+            # print("Number of train examples:", len(train_dataset))
+
+
+            test_dataset = np.stack([SpecObj.data[int(lowbound//SpecObj.freq_res)+1:int(highbound//SpecObj.freq_res)+2] for SpecObj in self.data if (SpecObj.source, SpecObj.subject) in test_subjects])
+            test_labels = np.array([int(1) if (SpecObj.group==2) else int(-1) for SpecObj in self.data if (SpecObj.source, SpecObj.subject) in test_subjects])
+            # print("Number of test examples:", len(test_dataset))
+
+            # print("Frequency Resolution:", self.data[0].freq_res, "Hz")
+
+        # reshape datasets
+        nsamples, nx, ny = train_dataset.shape
+        train_dataset = train_dataset.reshape((nsamples, nx*ny))
+
+        nsamples, nx, ny = test_dataset.shape
+        test_dataset = test_dataset.reshape((nsamples, nx*ny))
+
+        # << Normalize features (z-score standardization) >> #
+        # create classifier pipeline
+        if normalize != None:
+            clf = make_pipeline(myscaler, LinearDiscriminantAnalysis())
+        else:
+            clf = make_pipeline(LinearDiscriminantAnalysis())
+
+        # fit to train data
+        clf.fit(train_dataset, train_labels)
+        print('Classification accuracy on validation data: {:.3f}'.format(clf.score(test_dataset, test_labels)))
 
     def SVM(self, C=1, kernel=config.kernel_type, normalize=None, iterations=1000, plot_PR=False, plot_Features=False, feat_select=False, num_feats=10, lowbound=3, highbound=20, tt_split=0.33):
         # shuffle dataset
