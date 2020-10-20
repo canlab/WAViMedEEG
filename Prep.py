@@ -144,7 +144,7 @@ class StudyFolder:
 
     # anonymizes sets of standardized task data which can then
     # be read into a Trials object
-    def anon(self, task, groupNum=1):
+    def anon(self, task):
 
         translator = {}
 
@@ -157,6 +157,8 @@ class StudyFolder:
         f = open(self.path + "/translator_" + task + ".txt", "w")
 
         for lead in subject_leads:
+
+            groupNum = lead[0]
 
             translator[lead] = str(groupNum)\
                                 + "0"\
@@ -236,7 +238,7 @@ class Trials:
         self,
         contigLength,
         network_channels=config.network_channels,
-        artDegree=config.artDegree):
+        artDegree=0):
 
         if not hasattr(self, 'subjects'):
 
@@ -290,10 +292,9 @@ class Trials:
 
                 continue
 
-            # get rid of channels we don't want the net to use
-            artifact = FilterChannels(artifact, network_channels, 1)
-
-            if artDegree < 2:
+            else:
+                # get rid of channels we don't want the net to use
+                artifact = FilterChannels(artifact, network_channels, 1)
 
                 # mask artifact array where numbers exceed artDegree
                 mxi = np.ma.masked_where(artifact > artDegree, artifact)
@@ -302,25 +303,26 @@ class Trials:
 
                 artifact = mxi
 
-            # write list of start indexes for windows which meet
-            # contig requirements
-            i = 0
+                # write list of start indexes for windows which meet
+                # contig requirements
+                indeces = []
 
-            indeces = []
+                i = 0
 
-            while i < artifact.shape[0] - contigLength:
+                while i < artifact.shape[0] - contigLength:
 
-                stk = artifact[i:(i + contigLength), :]
+                    stk = artifact[i:(i + contigLength), :]
 
-                if not np.any(np.isnan(stk)):
+                    if not np.any(np.isnan(stk)):
 
-                    indeces.append(i)
+                        indeces.append(i)
 
-                    i += contigLength
+                        i += contigLength
 
-                else:
+                    else:
 
-                    i += 1
+                        # contig alg can be sped up here to jump to last instance of NaN
+                        i += 1
 
                 subfiles = [
                 fname for fname in self.task_fnames
@@ -382,7 +384,7 @@ class Trials:
         self,
         contigLength,
         network_channels=config.network_channels,
-        artDegree=config.artDegree):
+        artDegree=0):
 
         if not hasattr(self, 'spectra'):
 
@@ -487,7 +489,7 @@ class Contig:
 
         self.band = band
 
-        self.group = self.subject[0]
+        self.group = int(self.subject[0])
 
         self.source = source
 

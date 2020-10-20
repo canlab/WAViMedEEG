@@ -758,145 +758,145 @@ class Classifier:
 
                 plt.show()
 
-        def CNN(
-            self,
-            normalize=None,
-            learning_rate=0.01,
-            lr_decay=True,
-            beta1=0.9,
-            beta2=0.99,
-            epochs=100,
-            plot_ROC=False,
-            tt_split=0.33):
+    def CNN(
+        self,
+        normalize=None,
+        learning_rate=0.01,
+        lr_decay=True,
+        beta1=0.9,
+        beta2=0.999,
+        epochs=100,
+        plot_ROC=False,
+        tt_split=0.33):
 
-            import tensorflow as tf
-            from tensorflow.keras import Model
-            from tensorflow.keras import regularizers
-            from tensorflow.keras.layers import Dense, Flatten, Conv2D, Conv2DTranspose, LeakyReLU, UpSampling2d, MaxPooling2D, Dropout, BatchNormalization
-            import datetime
+        import tensorflow as tf
+        from tensorflow.keras import Model
+        from tensorflow.keras import regularizers
+        from tensorflow.keras.layers import Dense, Flatten, Conv2D, Conv2DTranspose, LeakyReLU, UpSampling2D, MaxPooling2D, Dropout, BatchNormalization
+        import datetime
 
-            # shuffle dataset
-            random.shuffle(self.data)
+        # shuffle dataset
+        random.shuffle(self.data)
 
-            # total num for each class
+        # total num for each class
 
-            totalpos = 0
+        totalpos = 0
 
-            totalneg = 0
+        totalneg = 0
 
-            for item in self.data:
+        for item in self.data:
 
-                if item.group == 1:
+            if item.group == 1:
 
-                    totalneg += 1
+                totalneg += 1
 
-                elif item.group == 2:
+            elif item.group == 2:
 
-                    totalpos += 1
+                totalpos += 1
 
-            print("Number of negative outcomes:", totalneg)
+        print("Number of negative outcomes:", totalneg)
 
-            print("Number of positive outcomes:", totalpos)
+        print("Number of positive outcomes:", totalpos)
 
-            # make list of subjects in this dataset
-            subjects = list(set([
-                (item.source, item.subject)
-                for item in self.data]))
+        # make list of subjects in this dataset
+        subjects = list(set([
+            (item.source, item.subject)
+            for item in self.data]))
 
-            # shuffle subject list randomly and then
-            # split data into train and test spectra (no overlapping subjects)
-            # "subject-stratified" train-test split
-            random.shuffle(subjects)
+        # shuffle subject list randomly and then
+        # split data into train and test spectra (no overlapping subjects)
+        # "subject-stratified" train-test split
+        random.shuffle(subjects)
 
-            split = math.floor(len(subjects)*tt_split)
+        split = math.floor(len(subjects)*tt_split)
 
-            train_subjects = subjects[:split*-1]
+        train_subjects = subjects[:split*-1]
 
-            test_subjects = subjects[split*-1:]
+        test_subjects = subjects[split*-1:]
 
-            train_dataset = np.stack(
-                [ContigObj.data
-                    for ContigObj in self.data
-                    if (ContigObj.source, ContigObj.subject) in train_subjects])
+        train_dataset = np.expand_dims(np.stack(
+            [ContigObj.data
+                for ContigObj in self.data
+                if (ContigObj.source, ContigObj.subject) in train_subjects]), -1)
 
-            train_labels = np.array(
-                [int(1) if (ContigObj.group == 2) else int(-1)
-                    for ContigObj in self.data
-                    if (ContigObj.source, ContigObj.subject) in train_subjects])
+        train_labels = np.array(
+            [int(1) if (ContigObj.group == 2) else int(0)
+                for ContigObj in self.data
+                if (ContigObj.source, ContigObj.subject) in train_subjects])
 
-            test_dataset = np.stack(
-                [ContigObj.data
-                    for ContigObj in self.data
-                    if (ContigObj.source, ContigObj.subject) in test_subjects])
+        test_dataset = np.expand_dims(np.stack(
+            [ContigObj.data
+                for ContigObj in self.data
+                if (ContigObj.source, ContigObj.subject) in test_subjects]), -1)
 
-            test_labels = np.array(
-                [int(1) if (ContigObj.group == 2) else int(-1)
-                    for ContigObj in self.data
-                    if (ContigObj.source, ContigObj.subject) in test_subjects])
+        test_labels = np.array(
+            [int(1) if (ContigObj.group == 2) else int(0)
+                for ContigObj in self.data
+                if (ContigObj.source, ContigObj.subject) in test_subjects])
 
-            print("Number of samples in train:", train_dataset.shape[0])
+        print("Number of samples in train:", train_dataset.shape[0])
 
-            print("Number of samples in test:", test_dataset.shape[0])
+        print("Number of samples in test:", test_dataset.shape[0])
 
-            # introduce equential set
-            model = tf.keras.models.Sequential()
+        # introduce equential set
+        model = tf.keras.models.Sequential()
 
-            # temporal convolution
-            model.add(Conv2D(10, kernel_size=(50, 1), strides=1, padding='same', activation='relu', data_format='channels_last', kernel_initializer='glorot_uniform'))
+        # temporal convolution
+        # model.add(Conv2D(10, kernel_size=(50, 1), strides=1, padding='same', activation='relu', data_format='channels_last', kernel_initializer='glorot_uniform'))
 
-            # spatial filter
-            model.add(Conv2D(5, kernel_size=(3, 3), strides=1, padding='same', activation='relu', data_format='channels_last', kernel_initializer='glorot_uniform'))
+        # spatial filter
+        model.add(Conv2D(5, kernel_size=(3, 3), strides=1, padding='same', activation='relu', data_format='channels_last', kernel_initializer='glorot_uniform'))
 
-            # pooling and dropout
-            model.add(MaxPooling2D(pool_size=(3, 3), strides=3, padding='same', data_format='channels_last'))
+        # pooling and dropout
+        # model.add(MaxPooling2D(pool_size=(3, 3), strides=3, padding='same', data_format='channels_last'))
 
-            model.add(Dropout(0.5))
+        # model.add(Dropout(0.5))
 
-            # flatten
-            model.add(Flatten(data_format='channels_last'))
+        # flatten
+        model.add(Flatten(data_format='channels_last'))
 
-            # batch normalize
-            model.add(BatchNormalization())
+        # batch normalize
+        # model.add(BatchNormalization())
 
-            # dense layers
-            model.add(Dense(25, activation='sigmoid', kernel_initializer='glorot_uniform', kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4)))
+        # dense layers
+        # model.add(Dense(25, activation='sigmoid', kernel_initializer='glorot_uniform', kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4)))
 
-            model.add(Dense(2, activation='sigmoid', kernel_initializer='glorot_uniform', kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4)))
+        model.add(Dense(1, activation='softmax', kernel_initializer='glorot_uniform', kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4)))
 
-            # build model
-            model.build(self.data[0].data.shape)
+        # build model
+        model.build(train_dataset.shape)
 
-            # print model summary at buildtime
-            model.summary()
-            print("Input shape:", self.data[0].data.shape)
+        # print model summary at buildtime
+        model.summary()
+        print("Input shape:", train_dataset.shape)
 
-            # adaptive learning rate
-            if lr_decay==True:
-                learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(
-                    initial_learning_rate=learning_rate,
-                    decay_steps=100,
-                    decay_rate=0.96)
+        # adaptive learning rate
+        if lr_decay==True:
+            learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(
+                initial_learning_rate=learning_rate,
+                decay_steps=100,
+                decay_rate=0.96)
 
-            # model compilation
-            model.compile(
-                optimizer=tf.keras.optimizers.Adam(
-                    learning_rate=learning_rate,
-                    beta_1=beta1,
-                    beta_2=beta2),
-                loss='sparse_categorical_crossentropy',
-                metrics=['accuracy'])
+        # model compilation
+        model.compile(
+            optimizer=tf.keras.optimizers.Adam(
+                learning_rate=learning_rate,
+                beta_1=beta1,
+                beta_2=beta2),
+            loss='binary_crossentropy',
+            metrics=['accuracy'])
 
-            # tensorboard setup
-            log_dir = 'logs/fit/' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-            tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+        # tensorboard setup
+        log_dir = 'logs/fit/' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+        tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 
-            history = model.fit(
-                train_dataset,
-                train_labels,
-                epochs=epochs,
-                validation_data=(test_dataset, test_labels),
-                batch_size=32,
-                callbacks=[tensorboard_callback]
-            )
+        history = model.fit(
+            train_dataset,
+            train_labels,
+            epochs=epochs,
+            validation_data=(test_dataset, test_labels),
+            batch_size=32,
+            callbacks=[tensorboard_callback]
+        )
 
-            return(history, model)
+        return(history, model)

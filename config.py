@@ -58,7 +58,7 @@ tasks = {
 
 
 sampleRate = 250  # in Hz
-artDegree = 2  # highest number of WAVi-supplied artifact
+
 # still accepted by the program, 0 (strict), 1 (loose), or 2 (none)
 
 # default channel names, customize if using non-WAVi headset
@@ -108,3 +108,8 @@ network_channels = [
     'Fz',
     'Cz',
     'Pz']
+
+frequency_bands = {
+    "delta": [0, 4],
+    "alpha": [8, 13],
+}
