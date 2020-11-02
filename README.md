@@ -13,18 +13,18 @@ An awesome toolbox for performing rapid machine learning analysis on your EEG da
 * [License](#license)
 * [Contact](#contact)
 * [Acknowledgements](#acknowledgements)
-   * [Special Thanks](#special-thanks)
+   * [Special Thanks](#special-thanks-to)
 
-## About the Project {:#about-the-project}
+## About the Project
 
-### Built With {:#built-with}
+### Built With
 * Python v3.8 and up
 
-## Getting Started {:#getting-started}
+## Getting Started
 
 This should help you get set up running the toolbox on your machine. To get a local copy up and running, follow these simple example steps.
 
-### Prerequisites {:#prerequisites}
+### Prerequisites
 * Python v3.8 or higher
 * The following pip-installable packages:
    * [NumPy](numpy.org)
@@ -34,7 +34,7 @@ This should help you get set up running the toolbox on your machine. To get a lo
    * [MNE](mne.tools)
    * [TQDM](github.com/tqdm/tqdm)
 
-### Installation {:#installation}
+### Installation
 
 1. Clone the repo
 
@@ -46,13 +46,13 @@ This should help you get set up running the toolbox on your machine. To get a lo
 3. Edit EEG headset, task names, and base directory setup in config.py
 `vim config.py`
 
-## Usage {:#usage}
+## Usage
 
-## Roadmap {:#roadmap}
+## Roadmap
 
 See the [open issues](github.com/canlab/WAViMedEEG/issues) for a list of proposed features (and known issues)
 
-## Contributing {:#contributing}
+## Contributing
 
 Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are *greatly appreciated*.
 
@@ -62,17 +62,17 @@ Contributions are what make the open source community such an amazing place to l
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a pull request
 
-## License {:#license}
+## License
 
 Distributed under the MIT License. [See `LICENSE`](../blob/master/LICENSE) for more information.
 
-## Contact {:#contact}
+## Contact
 
 Clayton Schneider - @clayton_goob - claytonjschneider@gmail.com
 
 Project link: https://github.com/canlab/WAViMedEEG
 
-## Acknowledgements {:#acknowledgements}
+## Acknowledgements
 
 * [NumPy](numpy.org)
 * [TensorFlow](tensorflow.org)
@@ -81,7 +81,7 @@ Project link: https://github.com/canlab/WAViMedEEG
 * [MNE](mne.tools)
 * [TQDM](github.com/tqdm/tqdm)
 
-### Special Thanks to: {:#special-thanks}
+### Special Thanks to:
 
 * Lyanna Kessler
 * Will Stritzel
