@@ -76,6 +76,7 @@ If you're exporting your data using the WAVi Desktop software, do so using the '
 
 Regardless of whether your data is already anonymized, we will hash it again and store the original filenames in a new text file and store it again. You should back up this translator file as soon as possible.
 
+```
 Your 'study folder' should be organized as follows:
 +-- /path/on/my/computer
 |   +-- /myStudy
@@ -87,6 +88,7 @@ Your 'study folder' should be organized as follows:
 |   |   |   +-- Jane_Smith_P300.eeg
 |   |   |   +-- Jane_Smith_P300.evt
 |   |   |   +-- ...
+```
 
 Next, we will use the [Prep](../blob/master/Prep.py) module to anonymize and standardize our data.
 
