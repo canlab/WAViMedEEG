@@ -27,12 +27,12 @@ This should help you get set up running the toolbox on your machine. To get a lo
 ### Prerequisites
 * Python v3.8 or higher
 * The following pip-installable packages:
-   * [NumPy](numpy.org)
-   * [TensorFlow (v2.0.0-beta0 or higher)](tensorflow.org)
-   * [Matplotlib](matplotlib.org)
-   * [Scikitlearn](scikit-learn.org)
-   * [MNE](mne.tools)
-   * [TQDM](github.com/tqdm/tqdm)
+   * [NumPy](https://numpy.org)
+   * [TensorFlow (v2.0.0-beta0 or higher)](https://tensorflow.org)
+   * [Matplotlib](https://matplotlib.org)
+   * [Scikitlearn](https://scikit-learn.org)
+   * [MNE](https://mne.tools)
+   * [TQDM](https://github.com/tqdm/tqdm)
 
 ### Installation
 
@@ -41,6 +41,7 @@ This should help you get set up running the toolbox on your machine. To get a lo
 `git clone https://github.com/canlab/WAViMedEEG`
 
 2. Copy template-config.py to config.py
+
 `cp template-config.py config.py`
 
 3. Edit EEG headset, task names, and base directory setup in config.py
@@ -50,7 +51,7 @@ This should help you get set up running the toolbox on your machine. To get a lo
 
 ## Roadmap
 
-See the [open issues](github.com/canlab/WAViMedEEG/issues) for a list of proposed features (and known issues)
+See the [open issues](https://github.com/canlab/WAViMedEEG/issues) for a list of proposed features (and known issues)
 
 ## Contributing
 
@@ -74,12 +75,12 @@ Project link: https://github.com/canlab/WAViMedEEG
 
 ## Acknowledgements
 
-* [NumPy](numpy.org)
-* [TensorFlow](tensorflow.org)
-* [Matplotlib](matplotlib.org)
-* [Scikit-learn](scikit-learn.org)
-* [MNE](mne.tools)
-* [TQDM](github.com/tqdm/tqdm)
+* [NumPy](https://numpy.org)
+* [TensorFlow](https://tensorflow.org)
+* [Matplotlib](https://matplotlib.org)
+* [Scikit-learn](https://scikit-learn.org)
+* [MNE](https://mne.tools)
+* [TQDM](https://github.com/tqdm/tqdm)
 
 ### Special Thanks to:
 
@@ -89,4 +90,4 @@ Project link: https://github.com/canlab/WAViMedEEG
 * Ambarish Jash
 * David Joffe
 * Ryan Layer
-* The wonderful team at WAVi Medical
+* WAVi Medical
