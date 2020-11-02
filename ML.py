@@ -25,9 +25,11 @@ from matplotlib.colors import Normalize
 from Prep import Contig, Spectra
 
 
-# Utility function to move the midpoint of a colormap to be around
-# the values of interest
 class MidpointNormalize(Normalize):
+    """
+    Utility function to move the midpoint of a colormap to be around
+    the values of interest
+    """
 
     def __init__(self, vmin=None, vmax=None, midpoint=None, clip=False):
 
@@ -44,6 +46,14 @@ class MidpointNormalize(Normalize):
 
 # takes one positional argument: either "contigs" or "spectra"
 class Classifier:
+    """
+    Class object to which we can load our data before differentiating
+    using various ML methods
+
+    Parameters:
+        - type (required positional): "contigs" or "spectra"
+        - network_channels (default): list of channel names to be included
+    """
 
     def __init__(self, type, network_channels=config.network_channels):
 
@@ -56,6 +66,14 @@ class Classifier:
         self.trial_name = None
 
     def LoadData(self, path):
+        """
+        Loads one data at a time, appending it to the Classifier.data attribute
+
+        Parameters:
+            - path (required positional): path of file (spectra or contig) \
+              to be loaded and stacked on the parent object's 'data' attribute \
+              note: objects will be loaded in as Contig or Spectra objects (see below)
+        """
         fname = os.path.basename(path)
 
         self.trial_name = os.path.basename(
@@ -81,6 +99,21 @@ class Classifier:
                     source=os.path.basename(os.path.dirname(path))))
 
     def Balance(self, parentPath):
+        """
+        Knowing that reference groups are named as follows:
+            - ref 24-30
+            - ref 31-40
+            - ref 81+
+            - ...
+
+        Balances the classes of a dataset such that Classifier.data \
+        contains an equal number of control and condition-positive \
+        Spectra or Contig objects. New data are added with Classifier.LoadData
+
+        Parameters:
+            - parentPath (required positional): parent path of reference \
+              folders listed above
+        """
         folders = [
                     "ref 24-30",
                     "ref 31-40",
@@ -136,6 +169,16 @@ class Classifier:
             lowbound=3,
             highbound=20,
             plot_data=False):
+        """
+        Linear Discriminant Analysis
+
+        Parameters:
+            - normalize: 'standard', 'minmax', or None
+            - tt_split: (float) default 0.33
+            - lowbound: (int) default 3
+            - highbound: (int) default 20
+            - plot_data: (bool) default False
+        """
 
         # shuffle dataset
         random.shuffle(self.data)
@@ -454,6 +497,23 @@ class Classifier:
             highbound=20,
             tt_split=0.33):
 
+        """
+        Support Vector Machine classifier using scikit-learn base
+
+        Parameters:
+            - C: (float) default 1
+            - kernel: 'linear' or 'rbf'
+            - normalize: 'standard', 'minmax', or None
+            - iterations: (int) default 1000
+            - plot_PR: (bool) default False
+            - plot_Features: (bool) default False
+            - feat_select: (bool) default False
+            - num_feats: (int) default 10
+            - lowbound: (int) default 3
+            - highbound: (int) default 20
+            - tt_split: (float) default 0.33
+        """
+
         # shuffle dataset
         random.shuffle(self.data)
 
@@ -769,6 +829,20 @@ class Classifier:
         plot_ROC=False,
         tt_split=0.33):
 
+        """
+        Convolutional Neural Network classifier, using Tensorflow base
+
+        Parameters:
+            - normalize: 'standard', 'minmax', or None
+            - learning_rate: (float) 0.01
+            - lr_decay: (bool) default True
+            - beta1: (float) default 0.9
+            - beta2: (float) default 0.999
+            - epochs: (int) default 100
+            - plot_ROC: (bool) default False
+            - tt_split: (float) default 0.33 *** which split
+        """
+
         import tensorflow as tf
         from tensorflow.keras import Model
         from tensorflow.keras import regularizers
@@ -842,15 +916,17 @@ class Classifier:
         model = tf.keras.models.Sequential()
 
         # temporal convolution
-        # model.add(Conv2D(10, kernel_size=(50, 1), strides=1, padding='same', activation='relu', data_format='channels_last', kernel_initializer='glorot_uniform'))
+        model.add(Conv2D(10, kernel_size=(50, 1), strides=1, padding='same', activation='relu', data_format='channels_last', kernel_initializer='glorot_uniform'))
+
+        model.add(Conv2D(10, kernel_size=(25, 1), strides=1, padding='same', activation='relu', data_format='channels_last', kernel_initializer='glorot_uniform'))
 
         # spatial filter
         model.add(Conv2D(5, kernel_size=(3, 3), strides=1, padding='same', activation='relu', data_format='channels_last', kernel_initializer='glorot_uniform'))
 
         # pooling and dropout
-        # model.add(MaxPooling2D(pool_size=(3, 3), strides=3, padding='same', data_format='channels_last'))
+        model.add(MaxPooling2D(pool_size=(3, 3), strides=3, padding='same', data_format='channels_last'))
 
-        # model.add(Dropout(0.5))
+        model.add(Dropout(0.5))
 
         # flatten
         model.add(Flatten(data_format='channels_last'))
@@ -861,7 +937,7 @@ class Classifier:
         # dense layers
         # model.add(Dense(25, activation='sigmoid', kernel_initializer='glorot_uniform', kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4)))
 
-        model.add(Dense(1, activation='softmax', kernel_initializer='glorot_uniform', kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4)))
+        model.add(Dense(2, activation='softmax', kernel_initializer='glorot_uniform', kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4)))
 
         # build model
         model.build(train_dataset.shape)
@@ -883,7 +959,7 @@ class Classifier:
                 learning_rate=learning_rate,
                 beta_1=beta1,
                 beta_2=beta2),
-            loss='binary_crossentropy',
+            loss='sparse_categorical_crossentropy',
             metrics=['accuracy'])
 
         # tensorboard setup
