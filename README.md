@@ -3,54 +3,56 @@
 An awesome toolbox for performing rapid machine learning analysis on your EEG data
 
 ## Table of Contents
-* About the Project
-   * Built With
-* Getting Started
-   * Prerequisites
-* Installation
-* Usage
-* Contributing
-* License
-* Contact
-* Acknowledgements
-   * Special Thanks
+* [About the Project](#about-the-project)
+   * [Built With](#built-with)
+* [Getting Started](#getting-started)
+   * [Prerequisites](#prerequisites)
+* [Installation](#installation)
+* [Usage](#usage)
+* [Contributing](#contributing)
+* [License](#license)
+* [Contact](#contact)
+* [Acknowledgements](#acknowledgements)
+   * [Special Thanks](#special-thanks)
 
-## About the Project
+## About the Project {:#about-the-project}
 
-### Built With
+### Built With {:#built-with}
 * Python v3.8 and up
 
-## Getting Started
+## Getting Started {:#getting-started}
 
 This should help you get set up running the toolbox on your machine. To get a local copy up and running, follow these simple example steps.
 
-### Prerequisites
+### Prerequisites {:#prerequisites}
 * Python v3.8 or higher
-   Depends on the following packages:
-   * Numpy
-   * Tensorflow v2.0.0-beta0 or higher
-   * Matplotlib
-   * Scikitlearn
-   * MNE
-   * TQDM
+* The following pip-installable packages:
+   * [NumPy](numpy.org)
+   * [TensorFlow (v2.0.0-beta0 or higher)](tensorflow.org)
+   * [Matplotlib](matplotlib.org)
+   * [Scikitlearn](scikit-learn.org)
+   * [MNE](mne.tools)
+   * [TQDM](github.com/tqdm/tqdm)
 
-### Installation
+### Installation {:#installation}
 
 1. Clone the repo
 
 `git clone https://github.com/canlab/WAViMedEEG`
 
 2. Copy template-config.py to config.py
+`cp template-config.py config.py`
 
-3. Edit EEG headset setup in config.py
+3. Edit EEG headset, task names, and base directory setup in config.py
+`vim config.py`
 
-## Usage
+## Usage {:#usage}
 
-## Roadmap
+## Roadmap {:#roadmap}
 
-See the open issues for a list of proposed features (and known issues)
+See the [open issues](github.com/canlab/WAViMedEEG/issues) for a list of proposed features (and known issues)
 
-## Contributing
+## Contributing {:#contributing}
 
 Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are *greatly appreciated*.
 
@@ -60,26 +62,26 @@ Contributions are what make the open source community such an amazing place to l
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a pull request
 
-## License
+## License {:#license}
 
-Distributed under the MIT License. See `LICENSE` for more information.
+Distributed under the MIT License. [See `LICENSE`](../blob/master/LICENSE) for more information.
 
-## Contact
+## Contact {:#contact}
 
 Clayton Schneider - @clayton_goob - claytonjschneider@gmail.com
 
 Project link: https://github.com/canlab/WAViMedEEG
 
-## Acknowledgements
+## Acknowledgements {:#acknowledgements}
 
-* Tensorflow
-* NumPy
-* Scikitlearn
-* TQDM
-* MNE
-* Matplotlib
+* [NumPy](numpy.org)
+* [TensorFlow](tensorflow.org)
+* [Matplotlib](matplotlib.org)
+* [Scikit-learn](scikit-learn.org)
+* [MNE](mne.tools)
+* [TQDM](github.com/tqdm/tqdm)
 
-### Special Thanks to:
+### Special Thanks to: {:#special-thanks}
 
 * Lyanna Kessler
 * Will Stritzel
