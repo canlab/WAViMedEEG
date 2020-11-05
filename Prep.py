@@ -69,168 +69,6 @@ def FilterChannels(array, keep_channels, axisNum=1):
     return(newarr)
 
 
-# takes one positional argument, path of study folder
-class StudyFolder:
-    """
-    The StudyFolder object can be used for initializing a dataset newly \
-    exported from the WAVi Desktop software, or similar.
-
-    Designed to make organization, cleaning, and preprocessing of mass \
-    datasets dead simple.
-
-    Parameters:
-        - path: path to study folder
-    """
-
-    def __new__(self, path):
-
-        if os.path.isdir(path):
-
-            return super(StudyFolder, self).__new__(self)
-
-        else:
-
-            print("The path supplied is not a valid directory.")
-
-            raise ValueError
-
-    def __init__(self, path):
-
-        self.path = path
-
-        print("\nInitializing New Study Directory at: " + self.path)
-
-        self.raw_fnames = os.listdir(self.path+"/raw")
-
-    def autoclean(self):
-        """
-        For each task defined in config.tasks, performs StudyFolder.standardize \
-        and StudyFolder.anon, standardizing task names / file structure and \
-        anonymizing subject headers, leaving original fnames in translator \
-        stored in StudyFolder/<task>_translator.txt
-        """
-
-        for task in config.tasks:
-
-            for irregular in config.tasks[task]:
-
-                self.standardize(irregular, task)
-
-            if os.path.isdir(self.path + "/" + task):
-
-                try:
-                    self.anon(task)
-
-                except:
-                    print("Exception occured: TaskData.anon()", task)
-
-                try:
-                    self.no_filter_rename(task)
-
-                except:
-                    print("Exception occured: TaskData.no_filter_rename()", task)
-
-        if len(os.listdir(self.path)) != 0:
-
-            print("Some raw files couldn't be automatically standardized. \
-                You should review them in /raw before \
-                moving forward with analysis.")
-
-    def set_raw_fnames(self):
-
-        self.raw_fnames = os.listdir(self.path + "/raw")
-
-    def get_task_fnames(self, task):
-
-        return(os.listdir(self.path + "/" + task))
-
-    def standardize(self, old, new):
-        """
-        Standardizes every filename possible, using alternative (unclean) \
-        fnames from the WAVi desktop which are written in the tasks dict \
-        in config.py
-        """
-
-        if not os.path.isdir(self.path + "/" + new):
-
-            print("Making new task folder: ", new)
-
-            os.mkdir(self.path + "/" + new)
-
-        for fname in [fname for fname in self.raw_fnames if old in fname]:
-
-            newfname = fname.replace(old, new)
-
-            shutil.move(
-                self.path + "/raw/" + fname,
-                self.path + "/" + new + "/" + newfname)
-
-        self.set_raw_fnames()
-
-        if len(os.listdir(self.path + "/" + new)) == 0:
-            os.rmdir(self.path + "/" + new)
-
-    def anon(self, task):
-        """
-        Anonymizes sets of standardized task data which can then be read \
-        into a TaskData object.
-        """
-
-        translator = {}
-
-        subject_leads = set([
-            fname.replace(task, '')[:-4]
-            for fname in self.get_task_fnames(task)])
-
-        i = 0
-
-        f = open(self.path + "/translator_" + task + ".txt", "w")
-
-        for lead in subject_leads:
-
-            groupNum = lead[0]
-
-            translator[lead] = str(groupNum)\
-                                + "0"\
-                                * (config.participantNumLen - len(str(i)) - 1)\
-                                + str(i)
-
-            i += 1
-
-            f.write(lead)
-
-            f.write("\t")
-
-            f.write(translator[lead])
-
-            f.write("\n")
-
-            files = [fname for fname in self.get_task_fnames(task) if lead in fname]
-
-            for file in files:
-
-                newfile = file.replace(lead, translator[lead] + "_")
-
-                shutil.move(
-                    self.path + "/" + task + "/" + file,
-                    self.path + "/" + task + "/" + newfile)
-
-    def no_filter_rename(self, task):
-        """
-        Since alt files can be generated with different bandpass filters, \
-        this function exists to rename original files with '_nofilter' \
-        appended.
-        """
-
-        for fname in self.get_task_fnames(task)]):
-
-            shutil.move(
-                self.path + "/" + task + "/" + fname,
-                self.path + "/" + task + "/" + fname[:-4] + "_nofilter" + fname[-4:])
-
-        self.task_fnames = self.get_task_fnames(self.task)
-
-
 # takes one positional argument, path of TaskData folder
 class TaskData:
     """
@@ -281,7 +119,8 @@ class TaskData:
         contigLength,
         network_channels=config.network_channels,
         artDegree=0,
-        ERP=False):
+        erp=False,
+        erpDegree=1):
 
         """
         Generates Contig objects for every file possible in TaskData.path,\
@@ -292,9 +131,11 @@ class TaskData:
             - network_channels: default config.network_channels
             - artDegree: (int) default 0, minimum value accepted to pass as a \
               "clean" contig, when reading mask from .art file
-            - ERP: (bool) default False, if True then only contigs falling immediately \
+            - erp: (bool) default False, if True then only contigs falling immediately \
               after a "1" or a "2" in the corresponding .evt file will be accepted, \
               i.e. only evoked responses
+            - erpDegree: (int) default 1, lowest number in .evt which will be \
+              accepted as an erp event
         """
 
         if not hasattr(self, 'subjects'):
@@ -306,19 +147,19 @@ class TaskData:
             self.contigs = []
 
         # make parent contigs folder
-        if ERP == False:
+        if erp == False:
             if not os.path.isdir(self.studyFolder + "/contigs"):
 
                 os.mkdir(self.studyFolder + "/contigs")
 
-        elif ERP == True:
-            if not os.path.isdir(self.studyFolder + "/ERPs"):
+        elif erp == True:
+            if not os.path.isdir(self.studyFolder + "/erps"):
 
-                os.mkdir(self.studyFolder + "/ERPs")
+                os.mkdir(self.studyFolder + "/erps")
 
         # make a child subdirectory called contigs_<task>_<contig_length>
         try:
-            if ERP == False:
+            if erp == False:
                 self.contigsFolder = self.studyFolder\
                                     + "/contigs/"\
                                     + self.task\
@@ -330,9 +171,9 @@ class TaskData:
                                     + "_"\
                                     + str(artDegree)
 
-            elif ERP == True:
+            elif erp == True:
                 self.contigsFolder = self.studyFolder\
-                                    + "/ERPs/"\
+                                    + "/erps/"\
                                     + self.task\
                                     + "_"\
                                     + str(contigLength)\
@@ -340,7 +181,9 @@ class TaskData:
                                     + BinarizeChannels(
                                         network_channels=self.network_channels)\
                                     + "_"\
-                                    + str(artDegree)
+                                    + str(artDegree)\
+                                    + "_"\
+                                    + str(erpDegree)
 
             os.mkdir(self.contigsFolder)
 
@@ -354,7 +197,7 @@ class TaskData:
 
             artfile = sub + "_" + self.task + "_nofilter.art"
 
-            if ERP == True:
+            if erp == True:
                 evtfile = sub + "_" + self.task + "_nofilter.evt"
 
             # load in artifact file as np array
@@ -363,7 +206,7 @@ class TaskData:
                 self.path + "/" + artfile,
                 delimiter=" ")
 
-            if ERP == True:
+            if erp == True:
                 events = np.genfromtxt(
                     self.path + "/" + evtfile,
                     delimiter=" ")
@@ -394,7 +237,7 @@ class TaskData:
 
                 indeces = []
 
-                if ERP == False:
+                if erp == False:
                     # write list of start indexes for windows which meet
                     # contig requirements
 
@@ -417,8 +260,8 @@ class TaskData:
                             i += 1
 
                 else:
-                    # only take oddball ERP?
-                    event_indeces = np.where(events > 0)[0]
+                    # only take oddball erp?
+                    event_indeces = np.where(events >= erpDegree)[0]
 
                     for i in event_indeces:
 
@@ -452,14 +295,14 @@ class TaskData:
 
                         for i in indeces:
 
-                            if ERP != True:
+                            if erp == True:
                                 self.contigs.append(
                                     Contig(
                                         data[i:(i + contigLength), :],
                                         i,
                                         sub,
                                         band,
-                                        event=events[i][0]))
+                                        event=events[i]))
 
                             else:
                                 self.contigs.append(

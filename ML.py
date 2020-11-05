@@ -5,23 +5,18 @@ import config
 import random
 import math
 from tqdm import tqdm
-import sklearn
-from sklearn.svm import LinearSVC
-from sklearn.svm import SVC
-from sklearn.model_selection import train_test_split
-from sklearn import svm, metrics
+
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.pipeline import make_pipeline
 from sklearn.model_selection import StratifiedShuffleSplit
-from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import average_precision_score
 from sklearn.metrics import precision_recall_curve
 from sklearn.metrics import plot_precision_recall_curve
 from sklearn.feature_selection import SelectKBest, f_classif
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
+
 from Prep import Contig, Spectra
 
 
@@ -81,13 +76,14 @@ class Classifier:
                 os.path.dirname(path)))\
             + "/"+os.path.basename(os.path.dirname(path))
 
-        if self.type == "contigs":
+        if self.type == "contigs" or self.type == "erps":
             self.data.append(
                 Contig(
                     np.genfromtxt(path, delimiter=","),
                     fname.split('_')[2][:-4],
                     fname[:config.participantNumLen],
-                    fname.split('_')[1]))
+                    fname.split('_')[1],
+                    source=os.path.basename(os.path.dirname(path))))
 
         elif self.type == "spectra":
             self.data.append(
@@ -114,16 +110,9 @@ class Classifier:
             - parentPath (required positional): parent path of reference \
               folders listed above
         """
-        folders = [
-                    "ref 24-30",
-                    "ref 31-40",
-                    "ref 41-50",
-                    "ref 51-60",
-                    "ref 61-70",
-                    "ref 71-80",
-                    "ref 81+"]
+        folders = config.refGroupFolders
 
-        spectralFolder = self.trial_name
+        dataFolder = self.trial_name
 
         totalpos = 0
 
@@ -139,28 +128,47 @@ class Classifier:
 
                 totalpos += 1
 
-        fill = (totalpos - totalneg) / len(folders)
+        fill = (totalpos - totalneg)
 
-        for folder in tqdm(folders):
+        filled_subs = []
 
-            fnames = os.listdir(parentPath+"/"+folder+"/"+spectralFolder)
+        i = 0
+        j = 0
+        while i < fill:
 
-            random.shuffle(fnames)
+            folder = folders[j]
 
-            i = 0
+            fnames = os.listdir(parentPath+"/"+folder+"/"+dataFolder)
 
-            while i < fill:
+            subjects = list(set([fname[:config.participantNumLen] for fname in fnames]))
 
+            random.shuffle(subjects)
+
+            h = 0
+            while (subjects[h], folder) in filled_subs:
+                h += 1
+
+            sub_fnames = [fname for fname in fnames if subjects[h] in fname[:config.participantNumLen]]
+
+            for sub_fname in sub_fnames:
                 self.LoadData(
                     parentPath
                     + "/"
                     + folder
                     + "/"
-                    + spectralFolder
+                    + dataFolder
                     + "/"
-                    + fnames[i])
+                    + sub_fname)
 
                 i += 1
+
+            filled_subs.append((subjects[0], folder))
+
+            if j != len(folders) - 1:
+                j += 1
+
+            else:
+                j = 0
 
     def LDA(
             self,
@@ -179,6 +187,8 @@ class Classifier:
             - highbound: (int) default 20
             - plot_data: (bool) default False
         """
+
+        from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
         # shuffle dataset
         random.shuffle(self.data)
@@ -514,6 +524,11 @@ class Classifier:
             - tt_split: (float) default 0.33
         """
 
+        from sklearn.svm import LinearSVC
+        from sklearn.svm import SVC
+        from sklearn import svm, metrics
+
+
         # shuffle dataset
         random.shuffle(self.data)
 
@@ -822,7 +837,7 @@ class Classifier:
         self,
         normalize=None,
         learning_rate=0.01,
-        lr_decay=True,
+        lr_decay=False,
         beta1=0.9,
         beta2=0.999,
         epochs=100,
@@ -853,29 +868,28 @@ class Classifier:
         random.shuffle(self.data)
 
         # total num for each class
-
         totalpos = 0
-
         totalneg = 0
-
         for item in self.data:
-
             if item.group == 1:
-
                 totalneg += 1
-
             elif item.group == 2:
-
                 totalpos += 1
-
         print("Number of negative outcomes:", totalneg)
-
         print("Number of positive outcomes:", totalpos)
 
         # make list of subjects in this dataset
         subjects = list(set([
             (item.source, item.subject)
             for item in self.data]))
+        print("Total number of subjects:", len(subjects))
+
+        j = 0
+        for sub in subjects:
+            if sub[1][0] == "2":
+                j +=1
+        print("% Positive in all subjects:", j / len(subjects))
+        print("% Negative in all subjects:", (len(subjects) - j) / len(subjects))
 
         # shuffle subject list randomly and then
         # split data into train and test spectra (no overlapping subjects)
@@ -884,9 +898,19 @@ class Classifier:
 
         split = math.floor(len(subjects)*tt_split)
 
-        train_subjects = subjects[:split*-1]
+        pos_subjects = [sub for sub in subjects if sub[1][0] == "2"]
+        pos_split = math.floor(len(pos_subjects)*tt_split)
 
-        test_subjects = subjects[split*-1:]
+        neg_subjects = [sub for sub in subjects if sub[1][0] == "1"]
+        neg_split = math.floor(len(neg_subjects)*tt_split)
+
+        train_subjects = pos_subjects[:pos_split*-1]
+        for sub in neg_subjects[:neg_split*-1]:
+            train_subjects.append(sub)
+
+        test_subjects = pos_subjects[pos_split*-1:]
+        for sub in neg_subjects[neg_split*-1:]:
+            test_subjects.append(sub)
 
         train_dataset = np.expand_dims(np.stack(
             [ContigObj.data
@@ -909,35 +933,77 @@ class Classifier:
                 if (ContigObj.source, ContigObj.subject) in test_subjects])
 
         print("Number of samples in train:", train_dataset.shape[0])
-
         print("Number of samples in test:", test_dataset.shape[0])
+
+        num_pos_train_samps = 0
+        for label in train_labels:
+            if label==1:
+                num_pos_train_samps += 1
+
+        num_pos_test_samps = 0
+        for label in test_labels:
+            if label==1:
+                num_pos_test_samps += 1
+
+        print("% Positive samples in train:", num_pos_train_samps / len(train_labels))
+        print("% Positive samples in test:", num_pos_test_samps / len(test_labels))
 
         # introduce equential set
         model = tf.keras.models.Sequential()
 
-        # temporal convolution
-        model.add(Conv2D(10, kernel_size=(50, 1), strides=1, padding='same', activation='relu', data_format='channels_last', kernel_initializer='glorot_uniform'))
+        # 1
+        model.add(BatchNormalization())
 
-        model.add(Conv2D(10, kernel_size=(25, 1), strides=1, padding='same', activation='relu', data_format='channels_last', kernel_initializer='glorot_uniform'))
+        # model.add(Conv2D(5, kernel_size=(3, 3), strides=1, padding='same', activation='relu', data_format='channels_last'))
 
-        # spatial filter
-        model.add(Conv2D(5, kernel_size=(3, 3), strides=1, padding='same', activation='relu', data_format='channels_last', kernel_initializer='glorot_uniform'))
+        model.add(Conv2D(5, kernel_size=(3, 3), strides=1, padding='same', activation='relu', data_format='channels_last'))
 
-        # pooling and dropout
-        model.add(MaxPooling2D(pool_size=(3, 3), strides=3, padding='same', data_format='channels_last'))
+        model.add(MaxPooling2D(pool_size=(3, 3), strides=1, padding='valid', data_format='channels_last'))
 
-        model.add(Dropout(0.5))
+        # 2
+        model.add(BatchNormalization())
+
+        # model.add(Conv2D(5, kernel_size=(3, 3), strides=1, padding='same', activation='relu', data_format='channels_last'))
+
+        model.add(Conv2D(5, kernel_size=(3, 3), strides=1, padding='same', activation='relu', data_format='channels_last'))
+
+        model.add(MaxPooling2D(pool_size=(3, 3), strides=1, padding='valid', data_format='channels_last'))
+
+        # 3
+        model.add(BatchNormalization())
+
+        # model.add(Conv2D(5, kernel_size=(3, 3), strides=1, padding='same', activation='relu', data_format='channels_last'))
+
+        model.add(Conv2D(5, kernel_size=(3, 3), strides=1, padding='same', activation='relu', data_format='channels_last'))
+
+        model.add(MaxPooling2D(pool_size=(5, 5), strides=1, padding='valid', data_format='channels_last'))
+
+        # 4
+        model.add(BatchNormalization())
+
+        # model.add(Conv2D(5, kernel_size=(3, 3), strides=1, padding='same', activation='relu', data_format='channels_last'))
+
+        model.add(Conv2D(5, kernel_size=(3, 3), strides=1, padding='same', activation='relu', data_format='channels_last'))
+
+        model.add(MaxPooling2D(pool_size=(5, 5), strides=1, padding='valid', data_format='channels_last'))
+
+        # 5
+        model.add(BatchNormalization())
+
+        # model.add(Conv2D(5, kernel_size=(3, 3), strides=1, padding='same', activation='relu', data_format='channels_last'))
+
+        model.add(Conv2D(5, kernel_size=(3, 3), strides=1, padding='same', activation='relu', data_format='channels_last'))
+
+        model.add(MaxPooling2D(pool_size=(5, 5), strides=1, padding='valid', data_format='channels_last'))
+
+        # dropout
+        # model.add(Dropout(0.2))
 
         # flatten
         model.add(Flatten(data_format='channels_last'))
 
-        # batch normalize
-        # model.add(BatchNormalization())
-
-        # dense layers
-        # model.add(Dense(25, activation='sigmoid', kernel_initializer='glorot_uniform', kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4)))
-
-        model.add(Dense(2, activation='softmax', kernel_initializer='glorot_uniform', kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4)))
+        model.add(Dense(10, activation='softmax'))
+        model.add(Dense(2, activation='softmax'))
 
         # build model
         model.build(train_dataset.shape)
@@ -955,10 +1021,13 @@ class Classifier:
 
         # model compilation
         model.compile(
-            optimizer=tf.keras.optimizers.Adam(
+            # optimizer=tf.keras.optimizers.Adam(
+            #     learning_rate=learning_rate),
+            optimizer=tf.keras.optimizers.Adagrad(
                 learning_rate=learning_rate,
-                beta_1=beta1,
-                beta_2=beta2),
+                initial_accumulator_value=0.1,
+                epsilon=1e-07,
+                name='Adagrad'),
             loss='sparse_categorical_crossentropy',
             metrics=['accuracy'])
 
@@ -974,5 +1043,23 @@ class Classifier:
             batch_size=32,
             callbacks=[tensorboard_callback]
         )
+
+        if plot_ROC == True:
+            from sklearn.metrics import roc_curve
+            y_pred_keras = model.predict(test_dataset)[:,0]
+            fpr_keras, tpr_keras, thresholds_keras = roc_curve(test_labels, y_pred_keras)
+
+            from sklearn.metrics import auc
+            auc_keras = auc(fpr_keras, tpr_keras)
+
+            fig1 = plt.figure(1)
+            plt.plot([0, 1], [0, 1], 'k--')
+            plt.plot(fpr_keras, tpr_keras, label='(area = {:.3f})'.format(auc_keras))
+            plt.xlabel('False positive rate')
+            plt.ylabel('True positive rate')
+            plt.title('ROC curve')
+            plt.legend(loc='best')
+            plt.show()
+            fig1.savefig('ROC')
 
         return(history, model)

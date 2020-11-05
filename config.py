@@ -28,8 +28,15 @@ participantNumLen = 4  # default length
 # set the parent directory where you will keep them all
 myStudies = "/wavi/EEGstudies"
 
-# specify study, for functions that only deal with 1 at a time
-studyDirectory = myStudies+"/eyes closed"
+refGroupFolders = [
+            "ref 24-30",
+            "ref 31-40",
+            "ref 41-50",
+            "ref 51-60",
+            # "ref 61-70",
+            # "ref 71-80",
+            # "ref 81+"
+            ]
 
 # dictionary where key==task names, = 'unclean' task names
 # so that filenames can be cleaned automatically
@@ -40,7 +47,8 @@ tasks = {
             "P300-Sync_Blink",
             "P300_Eye_Closed",
             "P300s",
-            "P300-2"],
+            "P300-2",
+            "P300_EC_4_Min"],
     "FLNK": [
             "Flanker",
             "flanker"],

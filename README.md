@@ -76,8 +76,8 @@ If you're exporting your data using the WAVi Desktop software, do so using the '
 
 Regardless of whether your data is already anonymized, we will hash it again and store the original filenames in a new text file and store it again. You should back up this translator file as soon as possible.
 
-```
 Your 'study folder' should be organized as follows:
+```
 +-- /path/on/my/computer
 |   +-- /myStudy
 |   |   +-- /raw
@@ -90,15 +90,15 @@ Your 'study folder' should be organized as follows:
 |   |   |   +-- ...
 ```
 
-Next, we will use the [Prep](../blob/master/Prep.py) module to anonymize and standardize our data.
+Next, we will use the [Clean](../blob/master/Clean.py) module to anonymize and standardize our data.
 
 See the [cleaning](../blob/master/Ex_cleaning.ipynb) jupyter notebook file for example code.
 
 1. Instantiate a 'StudyFolder' object
 
-`myStudy = Prep.StudyFolder('/path/on/my/computer/myStudy')`
+`myStudy = Clean.StudyFolder('/path/on/my/computer/myStudy')`
 
-###### class Prep.StudyFolder(path)
+###### class Clean.StudyFolder(path)
 Parameters:
    * path: path to task folder
 
@@ -106,7 +106,7 @@ Parameters:
 
 `myStudy.autoclean()`
 
-###### method Prep.StudyFolder.autoclean()
+###### method Clean.StudyFolder.autoclean()
 For each task defined in config.tasks, performs StudyFolder.standardize and StudyFolder.anon, standardizing task names / file structure and anonymizing subject headers, leaving original filenames in translator stored in /myStudy/<task>_translator.txt
 
 Note: you may need to manually update your subject numbers. The first number of a subject code indicates the subject's group number, moving forward.
@@ -132,13 +132,13 @@ Contigs are generated datasets of equal-length snippets from the raw data. We ca
    * strict (artDegree=0): require all .art datapoints to be 0 within the timeframe
    * medium (artDegree=1): require all .art datapoints to be 0 or 1 within the timeframe
    * loose (artDegree=2): allow any datapoint to pass
-   * ERP (Evoked Response Potential): use only datapoints following a stimulus, in which case a .stim attribute is attached to the Prep.Contig object
+   * ERP (Evoked Response Potential): use only datapoints following a stimulus, in which case a .event attribute is attached to the Prep.Contig object
 
 1. Generate contigs (these are going to be stored in RAM temporarily as 'Contig' objects, or if you prefer to command-line analyze)
 
 `myTask.gen_contigs(contigLength)`
 
-###### Prep.TaskData.gen_contigs(contigLength)
+###### method Prep.TaskData.gen_contigs(contigLength)
 Generates Contig objects for every file possible in TaskData.path, appending each to TaskData.contigs
 
 Parameters:
@@ -154,7 +154,7 @@ Parameters:
 
 `myTask.write_contigs()`
 
-###### Prep.TaskData.write_contigs()
+###### method Prep.TaskData.write_contigs()
 Writes TaskData.contigs objects to file, under TaskData.path / contigs
 
 
