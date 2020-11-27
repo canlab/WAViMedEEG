@@ -5,14 +5,13 @@ from tqdm import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
 import mne
-import scipy
 from scipy import signal, stats
 
 
 def BinarizeChannels(network_channels=config.network_channels):
     """
-    Utility function to convert list of string channel names to a \
-    binary string corresponding to whether or not each default channel \
+    Utility function to convert list of string channel names to a
+    binary string corresponding to whether or not each default channel
     in config.channel_names is found in the input list
 
     Parameters:
@@ -40,13 +39,13 @@ def BinarizeChannels(network_channels=config.network_channels):
 # just keeps subset of 19 channels as defined in network_channels
 def FilterChannels(array, keep_channels, axisNum=1):
     """
-    Returns a new array of input data containing only the channels \
-    provided in keep_channels; axisNum corresponds to the axis across \
+    Returns a new array of input data containing only the channels
+    provided in keep_channels; axisNum corresponds to the axis across
     which different channels are iterated
 
     Parameters:
         - array: (numpy.ndarray) input array
-        - keep_channels: list of channel names to keep, should be a subset \
+        - keep_channels: list of channel names to keep, should be a subset
           of config.channel_names
         - axisNum: (int) default 1
 
@@ -72,7 +71,7 @@ def FilterChannels(array, keep_channels, axisNum=1):
 # takes one positional argument, path of TaskData folder
 class TaskData:
     """
-    Object used once data are cleaned and organized, in order to \
+    Object used once data are cleaned and organized, in order to
     generate subsequent datatypes, such as Contigs or Spectra
 
     Parameters:
@@ -123,18 +122,18 @@ class TaskData:
         erpDegree=1):
 
         """
-        Generates Contig objects for every file possible in TaskData.path,\
+        Generates Contig objects for every file possible in TaskData.path,
         appending each to TaskData.contigs
 
         Parameters:
             - contigLength: length in samples (@ 250 Hz or config.sampleRate)
             - network_channels: default config.network_channels
-            - artDegree: (int) default 0, minimum value accepted to pass as a \
+            - artDegree: (int) default 0, minimum value accepted to pass as a
               "clean" contig, when reading mask from .art file
-            - erp: (bool) default False, if True then only contigs falling immediately \
-              after a "1" or a "2" in the corresponding .evt file will be accepted, \
-              i.e. only evoked responses
-            - erpDegree: (int) default 1, lowest number in .evt which will be \
+            - erp: (bool) default False, if True then only contigs falling
+              immediately after a "1" or a "2" in the corresponding .evt file
+              will be accepted, i.e. only evoked responses
+            - erpDegree: (int) default 1, lowest number in .evt which will be
               accepted as an erp event
         """
 
@@ -344,7 +343,9 @@ class TaskData:
         self,
         contigLength,
         network_channels=config.network_channels,
-        artDegree=0):
+        artDegree=0,
+        erp=False,
+        erpDegree=1):
 
         """
         Generates Spectra objects for every file possible in TaskData.contigs,\
@@ -363,36 +364,17 @@ class TaskData:
 
             self.spectra = []
 
-        self.contigsFolder = self.studyFolder\
-                            + "/contigs/"\
-                            + self.task\
-                            + "_"\
-                            + str(contigLength)\
-                            + "_"\
-                            + BinarizeChannels(
-                                network_channels=self.network_channels)\
-                            + "_"\
-                            + str(artDegree)
-
-        self.spectraFolder = self.studyFolder\
-                            + "/spectra/"\
-                            + self.task\
-                            + "_"\
-                            + str(contigLength)\
-                            + "_"\
-                            + BinarizeChannels(
-                                network_channels=self.network_channels)\
-                            + "_"\
-                            + str(artDegree)
-
-        # make parent spectra folder
-        if not os.path.isdir(self.studyFolder + "/spectra"):
-
-            os.mkdir(self.studyFolder + "/spectra")
-
-        # make a child subdirectory called\
-        # <task>_<contig_length>_<binary_channels_code>
-        try:
+        if erp == False:
+            self.contigsFolder = self.studyFolder\
+                                + "/contigs/"\
+                                + self.task\
+                                + "_"\
+                                + str(contigLength)\
+                                + "_"\
+                                + BinarizeChannels(
+                                    network_channels=self.network_channels)\
+                                + "_"\
+                                + str(artDegree)
 
             self.spectraFolder = self.studyFolder\
                                 + "/spectra/"\
@@ -405,6 +387,41 @@ class TaskData:
                                 + "_"\
                                 + str(artDegree)
 
+        elif erp == True:
+            self.contigsFolder = self.studyFolder\
+                                + "/erps/"\
+                                + self.task\
+                                + "_"\
+                                + str(contigLength)\
+                                + "_"\
+                                + BinarizeChannels(
+                                    network_channels=self.network_channels)\
+                                + "_"\
+                                + str(artDegree)\
+                                + "_"\
+                                + str(erpDegree)
+
+            self.spectraFolder = self.studyFolder\
+                                + "/spectra/"\
+                                + self.task\
+                                + "_"\
+                                + str(contigLength)\
+                                + "_"\
+                                + BinarizeChannels(
+                                    network_channels=self.network_channels)\
+                                + "_"\
+                                + str(artDegree)\
+                                + "_"\
+                                + str(erpDegree)
+
+        # make parent spectra folder
+        if not os.path.isdir(self.studyFolder + "/spectra"):
+
+            os.mkdir(self.studyFolder + "/spectra")
+
+        # make a child subdirectory called\
+        # <task>_<contig_length>_<binary_channels_code>
+        try:
             os.mkdir(self.spectraFolder)
         except:
             print("Couldn't create the specified spectra folder.\n")
@@ -413,14 +430,15 @@ class TaskData:
 
         for contig in tqdm(os.listdir(self.contigsFolder)):
 
-            self.spectra.append(
-                Contig(
-                    np.genfromtxt(
-                        self.contigsFolder + "/" + contig,
-                        delimiter=","),
-                    contig.split('_')[2][:-4],
-                    contig[:config.participantNumLen],
-                    contig.split('_')[1]).fft())
+            temp = Contig(
+                np.genfromtxt(
+                    self.contigsFolder + "/" + contig,
+                    delimiter=","),
+                contig.split('_')[2][:-4],
+                contig[:config.participantNumLen],
+                contig.split('_')[1]).fft()
+            if temp is not None:
+                self.spectra.append(temp)
 
     def write_spectra(self):
         """
@@ -509,11 +527,15 @@ class Contig:
             electrode = config.network_channels[channel_number]
 
             # perform pwelch routine to extract PSD estimates by channel
-
-            f, Pxx_den = scipy.signal.periodogram(
-                sig,
-                fs=float(config.sampleRate),
-                window='hann')
+            try:
+                f, Pxx_den = signal.periodogram(
+                    sig,
+                    fs=float(config.sampleRate),
+                    window='hann')
+            except:
+                print("Something went wrong processing the following contig:")
+                print(self.subject, self.startindex, self.source)
+                return None
 
             if channel_number == 0:
 
