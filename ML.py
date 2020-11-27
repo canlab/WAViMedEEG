@@ -1,7 +1,6 @@
 import os
 import numpy as np
 import config
-# import scipy
 import random
 import math
 from tqdm import tqdm
@@ -65,9 +64,9 @@ class Classifier:
         Loads one data at a time, appending it to the Classifier.data attribute
 
         Parameters:
-            - path (required positional): path of file (spectra or contig) \
-              to be loaded and stacked on the parent object's 'data' attribute \
-              note: objects will be loaded in as Contig or Spectra objects (see below)
+            - path (required positional): path of file (spectra or contig)
+              to be loaded and stacked on the parent object's 'data' attribute
+              note: objects will be loaded in as Contig or Spectra objects
         """
         fname = os.path.basename(path)
 
@@ -94,6 +93,17 @@ class Classifier:
                     fname.split('_')[1],
                     source=os.path.basename(os.path.dirname(path))))
 
+        if \
+        (self.data[-1].data.shape != self.data[0].data.shape):
+            print("Warning:",
+                self.type,
+                "at \n",
+                self.data[-1].subject,
+                self.data[-1].startindex,
+                "shaped inconsistently with dataset.")
+            print("Removing it from dataset.")
+            self.data.pop(-1)
+
     def Balance(self, parentPath):
         """
         Knowing that reference groups are named as follows:
@@ -102,12 +112,12 @@ class Classifier:
             - ref 81+
             - ...
 
-        Balances the classes of a dataset such that Classifier.data \
-        contains an equal number of control and condition-positive \
+        Balances the classes of a dataset such that Classifier.data
+        contains an equal number of control and condition-positive
         Spectra or Contig objects. New data are added with Classifier.LoadData
 
         Parameters:
-            - parentPath (required positional): parent path of reference \
+            - parentPath (required positional): parent path of reference
               folders listed above
         """
         folders = config.refGroupFolders
@@ -140,7 +150,8 @@ class Classifier:
 
             fnames = os.listdir(parentPath+"/"+folder+"/"+dataFolder)
 
-            subjects = list(set([fname[:config.participantNumLen] for fname in fnames]))
+            subjects = list(set(
+                [fname[:config.participantNumLen] for fname in fnames]))
 
             random.shuffle(subjects)
 
@@ -148,7 +159,8 @@ class Classifier:
             while (subjects[h], folder) in filled_subs:
                 h += 1
 
-            sub_fnames = [fname for fname in fnames if subjects[h] in fname[:config.participantNumLen]]
+            sub_fnames = [fname for fname in fnames \
+                if subjects[h] in fname[:config.participantNumLen]]
 
             for sub_fname in sub_fnames:
                 self.LoadData(
@@ -213,19 +225,19 @@ class Classifier:
         print("Number of positive outcomes:", totalpos)
 
         # make list of subjects in this dataset
-        subjects = list(set(
+        self.subjects = list(set(
             [(item.source, item.subject) for item in self.data]))
 
         # shuffle subject list randomly and then
         # split data into train and test spectra (no overlapping subjects)
         # "subject-stratified" train-test split
-        random.shuffle(subjects)
+        random.shuffle(self.subjects)
 
-        split = math.floor(len(subjects)*tt_split)
+        split = math.floor(len(self.subjects)*tt_split)
 
-        train_subjects = subjects[:split*-1]
+        train_subjects = self.subjects[:split*-1]
 
-        test_subjects = subjects[split*-1:]
+        test_subjects = self.subjects[split*-1:]
 
         if normalize == 'standard':
 
@@ -557,20 +569,20 @@ class Classifier:
         print("Number of positive outcomes:", totalpos)
 
         # make list of subjects in this dataset
-        subjects = list(set([
+        self.subjects = list(set([
             (item.source, item.subject)
             for item in self.data]))
 
         # shuffle subject list randomly and then
         # split data into train and test spectra (no overlapping subjects)
         # "subject-stratified" train-test split
-        random.shuffle(subjects)
+        random.shuffle(self.subjects)
 
-        split = math.floor(len(subjects)*tt_split)
+        split = math.floor(len(self.subjects)*tt_split)
 
-        train_subjects = subjects[:split*-1]
+        train_subjects = self.subjects[:split*-1]
 
-        test_subjects = subjects[split*-1:]
+        test_subjects = self.subjects[split*-1:]
 
         if normalize == 'standard':
 
@@ -842,26 +854,48 @@ class Classifier:
         beta2=0.999,
         epochs=100,
         plot_ROC=False,
-        tt_split=0.33):
+        tt_split=0.33,
+        k_fold=None):
 
         """
         Convolutional Neural Network classifier, using Tensorflow base
 
         Parameters:
             - normalize: 'standard', 'minmax', or None
+                method with which contig data will be normalized
+                note: within itself, not relative to baseline or other
             - learning_rate: (float) 0.01
+                how quickly the weights adapt at each iteration
             - lr_decay: (bool) default True
+                whether the learning rate should decay at a rate of 0.96
             - beta1: (float) default 0.9
+                beta1 value for Adam optimizer
             - beta2: (float) default 0.999
+                beta2 value for Adam optimizer
             - epochs: (int) default 100
+                number of training iterations
             - plot_ROC: (bool) default False
-            - tt_split: (float) default 0.33 *** which split
+                evaluates model on validation data and plots ROC curve
+            - tt_split: (float) default 0.33
+                ratio of subjects (from each group, control or positive)
+                which is to be reserved from training for validation data
+            - k_fold: (tuple ints) default None
+                cross-validation fold i and total folds k
+                ex: (2, 5) fold 2 of 5
         """
 
         import tensorflow as tf
         from tensorflow.keras import Model
         from tensorflow.keras import regularizers
-        from tensorflow.keras.layers import Dense, Flatten, Conv2D, Conv2DTranspose, LeakyReLU, UpSampling2D, MaxPooling2D, Dropout, BatchNormalization
+        from tensorflow.keras.layers import Dense
+        from tensorflow.keras.layers import Flatten
+        from tensorflow.keras.layers import Conv2D
+        from tensorflow.keras.layers import Conv2DTranspose
+        from tensorflow.keras.layers import LeakyReLU
+        from tensorflow.keras.layers import UpSampling2D
+        from tensorflow.keras.layers import MaxPooling2D
+        from tensorflow.keras.layers import Dropout
+        from tensorflow.keras.layers import BatchNormalization
         import datetime
 
         # shuffle dataset
@@ -875,47 +909,98 @@ class Classifier:
                 totalneg += 1
             elif item.group == 2:
                 totalpos += 1
-        print("Number of negative outcomes:", totalneg)
-        print("Number of positive outcomes:", totalpos)
+
+        if k_fold is None:
+            print("Number of negative outcomes:", totalneg)
+            print("Number of positive outcomes:", totalpos)
 
         # make list of subjects in this dataset
-        subjects = list(set([
+        self.subjects = list(set([
             (item.source, item.subject)
             for item in self.data]))
-        print("Total number of subjects:", len(subjects))
+
+        if k_fold is None:
+            print("Total number of subjects:", len(self.subjects))
 
         j = 0
-        for sub in subjects:
+        for sub in self.subjects:
             if sub[1][0] == "2":
                 j +=1
-        print("% Positive in all subjects:", j / len(subjects))
-        print("% Negative in all subjects:", (len(subjects) - j) / len(subjects))
+
+        if k_fold is None:
+            print("% Positive in all subjects:",
+                j / len(self.subjects))
+            print("% Negative in all subjects:",
+                (len(self.subjects) - j) / len(self.subjects))
 
         # shuffle subject list randomly and then
         # split data into train and test spectra (no overlapping subjects)
         # "subject-stratified" train-test split
-        random.shuffle(subjects)
+        if k_fold is None:
+            random.shuffle(self.subjects)
 
-        split = math.floor(len(subjects)*tt_split)
+            split = math.floor(len(self.subjects)*tt_split)
 
-        pos_subjects = [sub for sub in subjects if sub[1][0] == "2"]
-        pos_split = math.floor(len(pos_subjects)*tt_split)
+            pos_subjects = [sub for sub in self.subjects if sub[1][0] == "2"]
+            pos_split = math.floor(len(pos_subjects)*tt_split)
 
-        neg_subjects = [sub for sub in subjects if sub[1][0] == "1"]
-        neg_split = math.floor(len(neg_subjects)*tt_split)
+            neg_subjects = [sub for sub in self.subjects if sub[1][0] == "1"]
+            neg_split = math.floor(len(neg_subjects)*tt_split)
 
-        train_subjects = pos_subjects[:pos_split*-1]
-        for sub in neg_subjects[:neg_split*-1]:
-            train_subjects.append(sub)
+            train_subjects = pos_subjects[:pos_split*-1]
+            for sub in neg_subjects[:neg_split*-1]:
+                self.train_subjects.append(sub)
 
-        test_subjects = pos_subjects[pos_split*-1:]
-        for sub in neg_subjects[neg_split*-1:]:
-            test_subjects.append(sub)
+            test_subjects = pos_subjects[pos_split*-1:]
+            for sub in neg_subjects[neg_split*-1:]:
+                self.test_subjects.append(sub)
+
+        else:
+            from sklearn.model_selection import KFold
+
+            self.subjects.sort()
+
+            # the first n_samples % n_splits folds have size:
+            # n_samples // n_splits + 1, other folds have size:
+            # n_samples // n_splits
+            kf = KFold(n_splits=k_fold[1])
+
+            train_subjects = []
+            test_subjects = []
+
+            # first look at only subjects with subject code "2" (condition-pos)
+            pos_subjects = [sub for sub in self.subjects if sub[1][0] == "2"]
+            train_indexes, test_indexes = list(kf.split(pos_subjects))[k_fold[0]]
+
+            for i, sub in enumerate(pos_subjects):
+                if i in train_indexes:
+                    train_subjects.append(sub)
+                elif i in test_indexes:
+                    test_subjects.append(sub)
+                else:
+                    print("There was an error in the k-fold algorithm.")
+                    print("Exiting.")
+                    sys.exit(1)
+
+            # then look at subjects with subject code "1" (condition-neg)
+            neg_subjects = [sub for sub in self.subjects if sub[1][0] == "1"]
+            train_indexes, test_indexes = list(kf.split(neg_subjects))[k_fold[0]]
+
+            for i, sub in enumerate(neg_subjects):
+                if i in train_indexes:
+                    train_subjects.append(sub)
+                elif i in test_indexes:
+                    test_subjects.append(sub)
+                else:
+                    print("There was an error in the k-fold algorithm.")
+                    print("Exiting.")
+                    sys.exit(1)
 
         train_dataset = np.expand_dims(np.stack(
             [ContigObj.data
                 for ContigObj in self.data
-                if (ContigObj.source, ContigObj.subject) in train_subjects]), -1)
+                if (ContigObj.source, ContigObj.subject) in train_subjects]),
+            -1)
 
         train_labels = np.array(
             [int(1) if (ContigObj.group == 2) else int(0)
@@ -925,15 +1010,17 @@ class Classifier:
         test_dataset = np.expand_dims(np.stack(
             [ContigObj.data
                 for ContigObj in self.data
-                if (ContigObj.source, ContigObj.subject) in test_subjects]), -1)
+                if (ContigObj.source, ContigObj.subject) in test_subjects]),
+            -1)
 
         test_labels = np.array(
             [int(1) if (ContigObj.group == 2) else int(0)
                 for ContigObj in self.data
                 if (ContigObj.source, ContigObj.subject) in test_subjects])
 
-        print("Number of samples in train:", train_dataset.shape[0])
-        print("Number of samples in test:", test_dataset.shape[0])
+        if k_fold is None:
+            print("Number of samples in train:", train_dataset.shape[0])
+            print("Number of samples in test:", test_dataset.shape[0])
 
         num_pos_train_samps = 0
         for label in train_labels:
@@ -945,8 +1032,11 @@ class Classifier:
             if label==1:
                 num_pos_test_samps += 1
 
-        print("% Positive samples in train:", num_pos_train_samps / len(train_labels))
-        print("% Positive samples in test:", num_pos_test_samps / len(test_labels))
+        if k_fold is None:
+            print("% Positive samples in train:",
+                num_pos_train_samps / len(train_labels))
+            print("% Positive samples in test:",
+                num_pos_test_samps / len(test_labels))
 
         # introduce equential set
         model = tf.keras.models.Sequential()
@@ -954,47 +1044,97 @@ class Classifier:
         # 1
         model.add(BatchNormalization())
 
-        # model.add(Conv2D(5, kernel_size=(3, 3), strides=1, padding='same', activation='relu', data_format='channels_last'))
+        model.add(Conv2D(
+            5,
+            kernel_size=(3, 3),
+            strides=1,
+            padding='same',
+            activation='relu',
+            data_format='channels_last'))
 
-        model.add(Conv2D(5, kernel_size=(3, 3), strides=1, padding='same', activation='relu', data_format='channels_last'))
+        # model.add(LeakyReLU(alpha=0.1))
 
-        model.add(MaxPooling2D(pool_size=(3, 3), strides=1, padding='valid', data_format='channels_last'))
+        model.add(MaxPooling2D(
+            pool_size=(3, 3),
+            strides=1,
+            padding='valid',
+            data_format='channels_last'))
 
         # 2
         model.add(BatchNormalization())
 
-        # model.add(Conv2D(5, kernel_size=(3, 3), strides=1, padding='same', activation='relu', data_format='channels_last'))
+        model.add(Conv2D(
+            5,
+            kernel_size=(3, 3),
+            strides=1,
+            padding='same',
+            activation='relu',
+            data_format='channels_last'))
 
-        model.add(Conv2D(5, kernel_size=(3, 3), strides=1, padding='same', activation='relu', data_format='channels_last'))
+        # model.add(LeakyReLU(alpha=0.1))
 
-        model.add(MaxPooling2D(pool_size=(3, 3), strides=1, padding='valid', data_format='channels_last'))
+        model.add(MaxPooling2D(
+            pool_size=(3, 3),
+            strides=1,
+            padding='valid',
+            data_format='channels_last'))
 
         # 3
         model.add(BatchNormalization())
 
-        # model.add(Conv2D(5, kernel_size=(3, 3), strides=1, padding='same', activation='relu', data_format='channels_last'))
+        model.add(Conv2D(
+            5,
+            kernel_size=(3, 3),
+            strides=1,
+            padding='same',
+            activation='relu',
+            data_format='channels_last'))
 
-        model.add(Conv2D(5, kernel_size=(3, 3), strides=1, padding='same', activation='relu', data_format='channels_last'))
+        # model.add(LeakyReLU(alpha=0.1))
 
-        model.add(MaxPooling2D(pool_size=(5, 5), strides=1, padding='valid', data_format='channels_last'))
+        model.add(MaxPooling2D(
+            pool_size=(5, 5),
+            strides=1,
+            padding='valid',
+            data_format='channels_last'))
 
         # 4
         model.add(BatchNormalization())
 
-        # model.add(Conv2D(5, kernel_size=(3, 3), strides=1, padding='same', activation='relu', data_format='channels_last'))
+        model.add(Conv2D(
+            5,
+            kernel_size=(3, 3),
+            strides=1,
+            padding='same',
+            activation='relu',
+            data_format='channels_last'))
 
-        model.add(Conv2D(5, kernel_size=(3, 3), strides=1, padding='same', activation='relu', data_format='channels_last'))
+        # model.add(LeakyReLU(alpha=0.1))
 
-        model.add(MaxPooling2D(pool_size=(5, 5), strides=1, padding='valid', data_format='channels_last'))
+        model.add(MaxPooling2D(
+            pool_size=(5, 5),
+            strides=1,
+            padding='valid',
+            data_format='channels_last'))
 
         # 5
         model.add(BatchNormalization())
 
-        # model.add(Conv2D(5, kernel_size=(3, 3), strides=1, padding='same', activation='relu', data_format='channels_last'))
+        model.add(Conv2D(
+            5,
+            kernel_size=(3, 3),
+            strides=1,
+            padding='same',
+            activation='relu',
+            data_format='channels_last'))
 
-        model.add(Conv2D(5, kernel_size=(3, 3), strides=1, padding='same', activation='relu', data_format='channels_last'))
+        # model.add(LeakyReLU(alpha=0.1))
 
-        model.add(MaxPooling2D(pool_size=(5, 5), strides=1, padding='valid', data_format='channels_last'))
+        model.add(MaxPooling2D(
+            pool_size=(5, 5),
+            strides=1,
+            padding='valid',
+            data_format='channels_last'))
 
         # dropout
         # model.add(Dropout(0.2))
@@ -1009,8 +1149,10 @@ class Classifier:
         model.build(train_dataset.shape)
 
         # print model summary at buildtime
-        model.summary()
-        print("Input shape:", train_dataset.shape)
+        if k_fold is None:
+            model.summary()
+
+            print("Input shape:", train_dataset.shape)
 
         # adaptive learning rate
         if lr_decay==True:
@@ -1033,7 +1175,9 @@ class Classifier:
 
         # tensorboard setup
         log_dir = 'logs/fit/' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-        tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+        tensorboard_callback = tf.keras.callbacks.TensorBoard(
+            log_dir=log_dir,
+            histogram_freq=1)
 
         history = model.fit(
             train_dataset,
@@ -1041,25 +1185,70 @@ class Classifier:
             epochs=epochs,
             validation_data=(test_dataset, test_labels),
             batch_size=32,
-            callbacks=[tensorboard_callback]
+            callbacks=[tensorboard_callback],
+            # verbose=0 if k_fold is not None else 1
         )
 
+        y_pred_keras = model.predict(test_dataset)[:,0]
+
         if plot_ROC == True:
-            from sklearn.metrics import roc_curve
-            y_pred_keras = model.predict(test_dataset)[:,0]
-            fpr_keras, tpr_keras, thresholds_keras = roc_curve(test_labels, y_pred_keras)
+            from Plots import roc
+            roc(y_pred_keras, test_labels, fname=log_dir+"/ROC")
 
-            from sklearn.metrics import auc
-            auc_keras = auc(fpr_keras, tpr_keras)
+        return(history, model, y_pred_keras, test_labels)
 
-            fig1 = plt.figure(1)
-            plt.plot([0, 1], [0, 1], 'k--')
-            plt.plot(fpr_keras, tpr_keras, label='(area = {:.3f})'.format(auc_keras))
-            plt.xlabel('False positive rate')
-            plt.ylabel('True positive rate')
-            plt.title('ROC curve')
-            plt.legend(loc='best')
-            plt.show()
-            fig1.savefig('ROC')
+    def KfoldCrossVal(self, path, ref_path, k=5, pos_only=True):
+        """
+        Resampling procedure used to evaluate ML models on a limited data sample
 
-        return(history, model)
+        Parameters:
+            - path (required positional): str
+                path of file (spectra or contig)
+                to be loaded and stacked on the parent object's 'data' attribute
+                note: objects will be loaded in as Contig or Spectra objects
+            - ref_path (required positional): str
+                parent path of reference folders listed above
+            - k (default 5): int
+                number of groups that a given data sample will b e split into
+            - pos_only (default True): bool
+                if True, will only load condition positive (sub code >1) data
+                and controls will only be loaded from reference dataset
+        """
+        for fname in os.listdir(path):
+            if int(fname[0]) > 1:
+                self.LoadData(path+"/"+fname)
+
+        self.Balance(ref_path)
+
+        all_y_preds = []
+        all_y_labels = []
+        all_aucs = []
+
+        from Plots import roc
+
+        f = open(self.type+"_"+os.path.basename(path)+".txt", 'w')
+
+        for i in tqdm(range(k)):
+            hist, model, y_pred, y_labels = self.CNN(k_fold=(i, k), plot_ROC=True)
+
+            for pred, label in zip(y_pred, y_labels):
+                all_y_preds.append(pred)
+                all_y_labels.append(label)
+
+            auc = roc(y_pred, y_labels, plot=False)
+            if auc < 0.5:
+                auc = 1 - auc
+
+            all_aucs.append(auc)
+            f.write(str(auc))
+            f.write('\n')
+
+            i += 1
+
+        f.close()
+
+        auc = roc(all_y_preds, all_y_labels, fname=os.path.basename(
+            os.path.dirname(path))+"_"+os.path.basename(path))
+        print(all_aucs)
+
+        return roc
