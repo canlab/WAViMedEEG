@@ -35,3 +35,9 @@ def roc(y_preds, y_labels, fname="ROC", plot=True):
         fig1.savefig(fname)
 
     return auc_keras
+
+def plot_signal(t, sig):
+    plt.figure(1)
+    plt.plot(t, sig)
+    plt.ylim(np.min(sig) - 1, np.max(sig) + 1)
+    plt.show()

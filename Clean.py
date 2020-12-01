@@ -152,3 +152,16 @@ class StudyFolder:
                 self.path + "/" + task + "/" + fname[:-4] + "_nofilter" + fname[-4:])
 
         self.task_fnames = self.get_task_fnames(task)
+
+    def reverse_no_filter_others(self, task):
+        """
+        Reverses no_filter_rename on .evt and .art files
+        """
+
+        for fname in self.get_task_fnames(task):
+
+            if fname[-4:] in [".evt", ".art"]:
+                shutil.move(
+                    self.path + "/" + task + "/" + fname,
+                    self.path + "/" + task + "/" + fname.replace("_nofilter", "")
+                )

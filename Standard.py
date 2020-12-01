@@ -3,7 +3,11 @@ import os
 import config
 import numpy as np
 import matplotlib.pyplot as plt
-
+import scipy
+import sys
+from tqdm import tqdm
+import scipy.signal
+from scipy.signal import butter, lfilter
 
 # takes one positional argument, object from ML.Classifier
 class SpectralAverage:
@@ -80,3 +84,47 @@ class SpectralAverage:
             i += 1
 
         plt.show()
+
+
+class BandFilter:
+    # removes a given frequency band's power from task data trials
+
+    def __init__(self, study_folder, task, type="bandstop"):
+
+        self.study_folder = study_folder
+        self.task = task
+        self.type = type
+        self.new_data = []
+
+    def gen_taskdata(self, filter_band):
+
+        range = config.frequency_bands[filter_band]
+
+        fnames = [fname for fname in os.listdir(self.study_folder+"/"+self.task) if "_nofilter" in fname]
+
+        for fname in tqdm(fnames):
+            try:
+                arr = np.genfromtxt(self.study_folder+"/"+self.task+"/"+fname, delimiter=",")
+                j = 0
+                post = np.ndarray(shape=(len(arr), len(config.channel_names))).T
+                for sig in arr.T:
+                    sos = scipy.signal.butter(4, [range[0], range[1]], btype=self.type, fs=config.sampleRate, output='sos')
+                    filtered = scipy.signal.sosfilt(sos, sig)
+                    post[j] = filtered
+                    j+=1
+
+                if self.type == "bandstop":
+                    new_fname = fname.replace("nofilter", "no"+filter_band)
+                elif self.type == "bandpass":
+                    new_fname = fname.replace("nofilter", filter_band)
+
+                self.new_data.append(new_fname, post.T)
+
+            except:
+                print("Failed:", fname)
+
+    def write_taskdata(self):
+
+        for file in self.new_data:
+
+            np.savetxt(self.study_folder+"/"+task+"/"+fname[0], file[1], delimiter=",", fmt="%2.1f")

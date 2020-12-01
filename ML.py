@@ -104,7 +104,7 @@ class Classifier:
             print("Removing it from dataset.")
             self.data.pop(-1)
 
-    def Balance(self, parentPath):
+    def Balance(self, parentPath, filter_band="nofilter"):
         """
         Knowing that reference groups are named as follows:
             - ref 24-30
@@ -163,14 +163,16 @@ class Classifier:
                 if subjects[h] in fname[:config.participantNumLen]]
 
             for sub_fname in sub_fnames:
-                self.LoadData(
-                    parentPath
-                    + "/"
-                    + folder
-                    + "/"
-                    + dataFolder
-                    + "/"
-                    + sub_fname)
+                reqs = [filter_band, ".evt", ".art"]
+                if any(ext in sub_fname for ext in reqs):
+                    self.LoadData(
+                        parentPath\
+                        + "/"\
+                        + folder\
+                        + "/"\
+                        + dataFolder\
+                        + "/"\
+                        + sub_fname)
 
                 i += 1
 
@@ -1197,7 +1199,7 @@ class Classifier:
 
         return(history, model, y_pred_keras, test_labels)
 
-    def KfoldCrossVal(self, path, ref_path, k=5, pos_only=True):
+    def KfoldCrossVal(self, path, ref_path, k=5, pos_only=True, filter_band="nofilter"):
         """
         Resampling procedure used to evaluate ML models on a limited data sample
 
@@ -1215,8 +1217,10 @@ class Classifier:
                 and controls will only be loaded from reference dataset
         """
         for fname in os.listdir(path):
-            if int(fname[0]) > 1:
-                self.LoadData(path+"/"+fname)
+            reqs = [filter_band, ".evt", ".art"]
+            if any(ext in fname for ext in reqs):
+                if int(fname[0]) > 1:
+                    self.LoadData(path+"/"+fname)
 
         self.Balance(ref_path)
 
