@@ -8,8 +8,8 @@ def main():
 
     parser = argparse.ArgumentParser(description = 'Options for CNN (convoluional neural network) method of ML.Classifier')
 
-    parser.add_argument('data_type',
-                        dest = 'data_type',
+    parser.add_argument('--data_type',
+                        dest = 'data',
                         type = str,
                         help = 'Input data type: contigs, erps, or spectra')
 
@@ -42,7 +42,45 @@ def main():
                         type = str,
                         default = '1111111111111111111',
                         help = 'Binary string specifying which of the following EEG channels will be included in analysis: ' + str(config.channel_names))
+    
+    # ============== CNN args ==============
 
+    parser.add_argument('--epochs',
+                        dest = 'num_epochs',
+                        type = int,
+                        default = 100,
+                        help = 'Number of training iterations to be run')
+    
+    parser.add_argument('--normalize',
+                        dest = 'norm_type',
+                        type = str,
+                        default = None,
+                        help = 'Parameters to normalize input data (features)')
+    
+    parser.add_argument('--plot_ROC',
+                        dest = 'plot',
+                        type = bool,
+                        default = False,
+                        help = 'Plot sensitivity-specificity curve on validation dataset')
+    
+    parser.add_argument('--tt_split',
+                        dest = 'tt_ratio',
+                        type = float,
+                        default = 0.33,
+                        help = 'Ratio of test samples to train samples')
+    
+    parser.add_argument('--learning_rate',
+                        dest = 'l_rate',
+                        type = float,
+                        default = 0.01,
+                        help = 'CNN step size')
+    
+    parser.add_argument('--lr_decay',
+                        dest = 'decay',
+                        type = bool,
+                        default = False,
+                        help = 'Whether learning rate should decay adhering to a 0.96 decay rate schedule')
+    
     # save the variables in 'args'
     args = parser.parse_args()
 
@@ -85,15 +123,7 @@ def main():
     # ============== Run 'CNN' method of 'Classifier' ==============
     # This method will structure the input classes (in this case, 'Spectra' objects)
 
-    # ?should all these parameters be also in the argparse? or something like a config file?
-    # epochs: (int) default 100, number of training iterations to be run
-    # normalize: (None, 'standard', 'minmax') default None, z-score normalize input data (features)
-    # plot_ROC: (bool) default 'False', plot sensitivity-specificity curve on validation dataset
-    # tt_split: (float) default 0.33, ratio of test samples to train samples
-    # learning_rate: (float) default 0.01
-    # lr_decay: (bool) default False, whether or not the learning rate should decay adhering to a 0.96 decay rate schedule
-
-    myclf.CNN(learning_rate=0.01, plot_ROC=True)
+    myclf.CNN(args.num_epochs, args.norm_type, args.plot, args.tt_ratio, args.l_rate, args.decay)
 
 if __name__ == '__main__':
     main()
