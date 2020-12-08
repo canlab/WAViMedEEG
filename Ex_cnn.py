@@ -7,8 +7,8 @@ def main():
 
     parser = argparse.ArgumentParser(description = 'Options for CNN (convoluional neural network) method of ML.Classifier')
 
-    parser.add_argument('data_type',
-                        dest = 'data_type',
+    parser.add_argument('--data_type',
+                        dest = 'data',
                         type = str,
                         help = 'Input data type: contigs, erps, or spectra')
 
