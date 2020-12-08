@@ -5,6 +5,7 @@ import argparse
 
 def main():
 
+
     parser = argparse.ArgumentParser(description = 'Options for CNN (convoluional neural network) method of ML.Classifier')
 
     parser.add_argument('data_type',
