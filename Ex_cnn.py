@@ -30,66 +30,60 @@ def main():
                         'condition-positive dataset')
 
     parser.add_argument('--task',
-                        dest='task',
-                        type=str,
-                        default='P300',
-                        help='Four-character task name. Options:'
-                        + str([key for key, val in config.tasks]))
+                        dest = 'task',
+                        type = str,
+                        default = 'P300',
+                        help = 'Four-character task name. Options: ' + str([key for key in config.tasks]))
 
-    parser.add_argument('--duration',
-                        dest='contig_length',
-                        type=str,
-                        default='250',
-                        help='Duration of input data, in number of samples @'
-                        + config.sampleRate + ' Hz')
+    parser.add_argument('--length',
+                        dest = 'length',
+                        type = str,
+                        default = '250',
+                        help = 'Duration of input data, in number of samples @ ' + str(config.sampleRate) + ' Hz')
 
     parser.add_argument('--channels',
-                        dest='channels',
-                        type=str,
-                        default='1111111111111111111',
-                        help='Binary string specifying which of the'
-                        'following EEG channels will be included in analysis:'
-                        + config.channel_names)
+                        dest = 'channels',
+                        type = str,
+                        default = '1111111111111111111',
+                        help = 'Binary string specifying which of the following EEG channels will be included in analysis: ' + str(config.channel_names))
 
     # ============== CNN args ==============
 
     parser.add_argument('--epochs',
-                        dest='num_epochs',
-                        type=int,
-                        default=100,
-                        help='Number of training iterations to be run')
+                        dest = 'num_epochs',
+                        type = int,
+                        default = 100,
+                        help = 'Number of training iterations to be run')
 
     parser.add_argument('--normalize',
-                        dest='norm_type',
-                        type=str,
-                        default=None,
-                        help='parameters to normalize input data (features)')
+                        dest = 'norm_type',
+                        type = str,
+                        default = None,
+                        help = 'Parameters to normalize input data (features)')
 
     parser.add_argument('--plot_ROC',
-                        dest='plot',
-                        type=bool,
-                        default=False,
-                        help='plot sensitivity-specificity'
-                        'curve on validation dataset')
+                        dest = 'plot',
+                        type = bool,
+                        default = False,
+                        help = 'Plot sensitivity-specificity curve on validation dataset')
 
     parser.add_argument('--tt_split',
-                        dest='tt_ratio',
-                        type=float,
-                        default=0.33,
-                        help='ratio of test samples to train samples')
+                        dest = 'tt_ratio',
+                        type = float,
+                        default = 0.33,
+                        help = 'Ratio of test samples to train samples')
 
     parser.add_argument('--learning_rate',
-                        dest='l_rate',
-                        type=float,
-                        default=0.01,
-                        help='CNN step size')
+                        dest = 'l_rate',
+                        type = float,
+                        default = 0.01,
+                        help = 'CNN step size')
 
     parser.add_argument('--lr_decay',
-                        dest='decay',
-                        type=bool,
-                        default=False,
-                        help='whether learning rate should decay'
-                        'adhering to a 0.96 decay rate schedule')
+                        dest = 'decay',
+                        type = bool,
+                        default = False,
+                        help = 'Whether learning rate should decay adhering to a 0.96 decay rate schedule')
 
     # save the variables in 'args'
     args = parser.parse_args()

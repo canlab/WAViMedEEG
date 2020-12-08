@@ -1,5 +1,5 @@
 *.json
 config.py
-*__pychache__/
+__pychache__/
 .archive/
 logs/
