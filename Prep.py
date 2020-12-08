@@ -194,10 +194,10 @@ class TaskData:
 
         for sub in tqdm(self.subjects):
 
-            artfile = sub + "_" + self.task + "_nofilter.art"
+            artfile = sub + "_" + self.task + ".art"
 
             if erp == True:
-                evtfile = sub + "_" + self.task + "_nofilter.evt"
+                evtfile = sub + "_" + self.task + ".evt"
 
             # load in artifact file as np array
             # print("Artifact:"+self.path+"/"+artfile)
