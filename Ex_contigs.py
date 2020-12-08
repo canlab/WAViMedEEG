@@ -48,7 +48,7 @@ def main():
 
     parser.add_argument('length',
                         type = int,
-                        help = 'Path to parent folder containing study folders')
+                        help = 'Duration of input data, in number of samples @ ' + config.sampleRate + ' Hz')
 
     parser.add_argument('--artifact',
                         dest = 'artifact',

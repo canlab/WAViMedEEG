@@ -31,8 +31,8 @@ def main():
                         default = 'P300',
                         help = 'Four-character task name. Options: ' + [key for key, val in config.tasks])
 
-    parser.add_argument('--duration',
-                        dest = 'contig_length',
+    parser.add_argument('--length',
+                        dest = 'length',
                         type = str,
                         default = '250',
                         help = 'Duration of input data, in number of samples @ ' + config.sampleRate + ' Hz')
@@ -50,7 +50,7 @@ def main():
     studies_folder = args.studies_folder
     study_name = args.study_name
     task = args.task
-    duration = args.duration
+    length = args.length
     channels = args.channels
 
 
@@ -64,7 +64,7 @@ def main():
         + '/'\
         + task\
         + '_'\
-        + contig_length\
+        + length\
         + '_'\
         + channels
 
