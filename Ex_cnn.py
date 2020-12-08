@@ -34,7 +34,7 @@ def main():
                         type=str,
                         default='P300',
                         help='Four-character task name. Options:'
-                        + [key for key, val in config.tasks])
+                        + str([key for key, val in config.tasks]))
 
     parser.add_argument('--duration',
                         dest='contig_length',
