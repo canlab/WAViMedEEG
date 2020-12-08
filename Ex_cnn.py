@@ -29,7 +29,7 @@ def main():
                         dest = 'task',
                         type = str,
                         default = 'P300',
-                        help = 'Four-character task name. Options: ' + str([key for key, val in config.tasks]))
+                        help = 'Four-character task name. Options: ' + str([key for key in config.tasks]))
 
     parser.add_argument('--length',
                         dest = 'length',
@@ -42,7 +42,7 @@ def main():
                         type = str,
                         default = '1111111111111111111',
                         help = 'Binary string specifying which of the following EEG channels will be included in analysis: ' + str(config.channel_names))
-    
+
     # ============== CNN args ==============
 
     parser.add_argument('--epochs',
@@ -50,37 +50,37 @@ def main():
                         type = int,
                         default = 100,
                         help = 'Number of training iterations to be run')
-    
+
     parser.add_argument('--normalize',
                         dest = 'norm_type',
                         type = str,
                         default = None,
                         help = 'Parameters to normalize input data (features)')
-    
+
     parser.add_argument('--plot_ROC',
                         dest = 'plot',
                         type = bool,
                         default = False,
                         help = 'Plot sensitivity-specificity curve on validation dataset')
-    
+
     parser.add_argument('--tt_split',
                         dest = 'tt_ratio',
                         type = float,
                         default = 0.33,
                         help = 'Ratio of test samples to train samples')
-    
+
     parser.add_argument('--learning_rate',
                         dest = 'l_rate',
                         type = float,
                         default = 0.01,
                         help = 'CNN step size')
-    
+
     parser.add_argument('--lr_decay',
                         dest = 'decay',
                         type = bool,
                         default = False,
                         help = 'Whether learning rate should decay adhering to a 0.96 decay rate schedule')
-    
+
     # save the variables in 'args'
     args = parser.parse_args()
 
