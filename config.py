@@ -27,6 +27,7 @@ participantNumLen = 4  # default length
 # if you are working with multiple studies at once,
 # set the parent directory where you will keep them all
 myStudies = "/wavi/EEGstudies"
+studyDirectory = "CANlab"
 
 group_names = {
     1: "Control",
