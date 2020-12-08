@@ -119,7 +119,8 @@ class TaskData:
         network_channels=config.network_channels,
         artDegree=0,
         erp=False,
-        erpDegree=1):
+        erpDegree=1,
+        filter_band="nofilter"):
 
         """
         Generates Contig objects for every file possible in TaskData.path,
@@ -194,10 +195,10 @@ class TaskData:
 
         for sub in tqdm(self.subjects):
 
-            artfile = sub + "_" + self.task + "_nofilter.art"
+            artfile = sub + "_" + self.task + ".art"
 
             if erp == True:
-                evtfile = sub + "_" + self.task + "_nofilter.evt"
+                evtfile = sub + "_" + self.task + ".evt"
 
             # load in artifact file as np array
             # print("Artifact:"+self.path+"/"+artfile)
@@ -273,7 +274,7 @@ class TaskData:
                 subfiles = [
                 fname for fname in self.task_fnames
                 if (sub == fname[:config.participantNumLen]
-                and "eeg" in fname)]
+                and "eeg" in fname and "_"+filter_band in fname)]
 
                 # subfiles = [fname for fname in subfiles if "eeg" in fname]
 
@@ -345,7 +346,8 @@ class TaskData:
         network_channels=config.network_channels,
         artDegree=0,
         erp=False,
-        erpDegree=1):
+        erpDegree=1,
+        filter_band="nofilter"):
 
         """
         Generates Spectra objects for every file possible in TaskData.contigs,\
@@ -428,17 +430,21 @@ class TaskData:
 
         print("Fourier Transforming Data:\n====================")
 
-        for contig in tqdm(os.listdir(self.contigsFolder)):
+        contigs = [fname for fname in os.listdir(self.contigsFolder)
+            if "_" + filter_band in fname]
+        for contig in tqdm(contigs):
 
-            temp = Contig(
-                np.genfromtxt(
-                    self.contigsFolder + "/" + contig,
-                    delimiter=","),
-                contig.split('_')[2][:-4],
-                contig[:config.participantNumLen],
-                contig.split('_')[1]).fft()
-            if temp is not None:
-                self.spectra.append(temp)
+            if "_" + filter_band in contig:
+
+                temp = Contig(
+                    np.genfromtxt(
+                        self.contigsFolder + "/" + contig,
+                        delimiter=","),
+                    contig.split('_')[2][:-4],
+                    contig[:config.participantNumLen],
+                    contig.split('_')[1]).fft()
+                if temp is not None:
+                    self.spectra.append(temp)
 
     def write_spectra(self):
         """

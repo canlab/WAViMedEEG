@@ -5,7 +5,8 @@ import argparse
 
 def main():
 
-    parser = argparse.ArgumentParser(description = 'Runs CNN (convoluional neural network) method of ML.Classifier')
+
+    parser = argparse.ArgumentParser(description = 'Options for CNN (convoluional neural network) method of ML.Classifier')
 
     parser.add_argument('data_type',
                         dest = 'data_type',
@@ -15,49 +16,57 @@ def main():
     parser.add_argument('--studies_folder',
                         dest = 'studies_folder',
                         type = str,
-                        help = 'Path to parent folder containing study folders',
-                        default = config.myStudies)
+                        default = config.myStudies,
+                        help = 'Path to parent folder containing study folders')
 
     parser.add_argument('--study_name',
                         dest = 'study_name',
                         type = str,
-                        help = 'Study folder containing condition-positive dataset',
-                        default = config.studyDirectory)
+                        default = config.studyDirectory,
+                        help = 'Study folder containing condition-positive dataset')
 
     parser.add_argument('--task',
                         dest = 'task',
                         type = str,
-                        help = 'Four-character task name. Options: ' + [key for key, val in config.tasks],
-                        default = 'P300')
+                        default = 'P300',
+                        help = 'Four-character task name. Options: ' + [key for key, val in config.tasks])
 
     parser.add_argument('--duration',
                         dest = 'contig_length',
                         type = str,
-                        help = 'Duration of input data, in number of samples @ ' + config.sampleRate + ' Hz',
-                        default = '250')
+                        default = '250',
+                        help = 'Duration of input data, in number of samples @ ' + config.sampleRate + ' Hz')
 
     parser.add_argument('--channels',
-                        dest = 'channel_config',
+                        dest = 'channels',
                         type = str,
-                        help = 'Binary string specifying which of the following EEG channels will be included in analysis: ' + config.channel_names,
-                        default = '1111111111111111111')
+                        default = '1111111111111111111',
+                        help = 'Binary string specifying which of the following EEG channels will be included in analysis: ' + config.channel_names)
 
+    # save the variables in 'args'
     args = parser.parse_args()
+
+    data_type = args.data_type
+    studies_folder = args.studies_folder
+    study_name = args.study_name
+    task = args.task
+    duration = args.duration
+    channels = args.channels
 
 
     # patient_path points to our 'condition-positive' dataset
     # ex. patient_path = "/wavi/EEGstudies/CANlab/spectra/P300_250_1111111111111111111_0_1"
-    patient_path = args.studies_folder\
+    patient_path = studies_folder\
         + '/'\
-        + args.study_name\
+        + study_name\
         + '/'\
-        + args.data_type\
+        + data_type\
         + '/'\
-        + args.task\
+        + task\
         + '_'\
-        + args.contig_length\
+        + contig_length\
         + '_'\
-        + args.channel_config
+        + channels
 
     # Instantiate a 'Classifier' Object
     myclf = ML.Classifier(args.data_type)
@@ -71,7 +80,7 @@ def main():
     # ============== Load Control (Condition-Negative) Data ==============
     # the dataset will automatically add healthy control data found in the reference folders
 
-    myclf.Balance(args.studies_folder)
+    myclf.Balance(studies_folder)
 
     # ============== Run 'CNN' method of 'Classifier' ==============
     # This method will structure the input classes (in this case, 'Spectra' objects)
