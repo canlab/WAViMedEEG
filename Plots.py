@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import config
 
 def roc(y_preds, y_labels, fname="ROC", plot=True):
     """
@@ -40,4 +41,72 @@ def plot_signal(t, sig):
     plt.figure(1)
     plt.plot(t, sig)
     plt.ylim(np.min(sig) - 1, np.max(sig) + 1)
+    plt.show()
+
+def plot_svm_features(
+    Features,
+    svm_weights,
+    scores=None,
+    network_channels=config.network_channels):
+
+    # set up figure and axes (rows)
+    fig, axs = plt.subplots(
+        nrows=len(network_channels),
+        figsize=(20, 40))
+
+    plt.rcParams['figure.dpi'] = 200
+
+    # plt.clf()
+
+    # X_indices = np.arange(train_dataset.shape[-1])
+    X_indices = Features
+
+    i = 0
+
+    j = 0
+
+    for channel in network_channels:
+
+        axs[j].set_title(channel)
+
+        axs[j].bar(
+                X_indices - .25,
+                svm_weights[i:i + len(X_indices)],
+                width=.1, label='SVM weight')
+
+        if scores is None:
+
+            axs[j].legend()
+
+        i += len(X_indices)
+
+        j += 1
+
+    if scores is not None:
+
+        i = 0
+
+        j = 0
+
+        for channel in network_channels:
+
+            axs[j].bar(
+                X_indices - .45,
+                scores[i:i+len(X_indices)],
+                width=.1,
+                label=r'Univariate score ($-Log(p_{value})$)')
+
+            axs[j].legend()
+
+            i += len(X_indices)
+
+            j += 1
+
+    axs[0].set_title("Comparing feature selection")
+
+    axs[-1].set_xlabel('Feature number (in Hz)')
+
+    # plt.yticks(())
+    fig.tight_layout()
+
     plt.show()

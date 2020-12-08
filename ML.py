@@ -49,7 +49,7 @@ class Classifier:
         - network_channels (default): list of channel names to be included
     """
 
-    def __init__(self, type, network_channels=config.network_channels):
+    def __init__(self, type, network_channels=config.network_channels, freq_snip=None):
 
         self.data = []
 
@@ -58,6 +58,8 @@ class Classifier:
         self.network_channels = config.network_channels
 
         self.trial_name = None
+
+        self.freq_snip = None
 
     def LoadData(self, path):
         """
@@ -188,8 +190,8 @@ class Classifier:
             self,
             normalize='standard',
             tt_split=0.33,
-            lowbound=3,
-            highbound=20,
+            lowbound=0,
+            highbound=25,
             plot_data=False):
         """
         Linear Discriminant Analysis
@@ -261,8 +263,8 @@ class Classifier:
             # -1 = negative condition
             train_dataset = np.stack(
                     [SpecObj.data[
-                        int(lowbound // SpecObj.freq_res) + 1:
-                        int(highbound // SpecObj.freq_res) + 2]
+                        int(lowbound // SpecObj.freq_res):
+                        int(highbound // SpecObj.freq_res) + 1]
                         for SpecObj in self.data
                         if (SpecObj.source, SpecObj.subject)
                         in train_subjects])
@@ -277,8 +279,8 @@ class Classifier:
 
             test_dataset = np.stack(
                     [SpecObj.data[
-                        int(lowbound // SpecObj.freq_res) + 1:
-                        int(highbound // SpecObj.freq_res) + 2]
+                        int(lowbound // SpecObj.freq_res):
+                        int(highbound // SpecObj.freq_res) + 1]
                         for SpecObj in self.data
                         if (SpecObj.source, SpecObj.subject)
                         in test_subjects])
@@ -507,6 +509,8 @@ class Classifier:
             plt.subplots_adjust(top=0.92)
             plt.show()
 
+        return clf, clf.predict(test_dataset), test_labels
+
     def SVM(
             self,
             C=1,
@@ -517,8 +521,8 @@ class Classifier:
             plot_Features=False,
             feat_select=False,
             num_feats=10,
-            lowbound=3,
-            highbound=20,
+            lowbound=0,
+            highbound=25,
             tt_split=0.33):
 
         """
@@ -547,8 +551,8 @@ class Classifier:
         random.shuffle(self.data)
 
         Features = np.array(self.data[0].freq[
-            int(lowbound // self.data[0].freq_res) + 1:
-            int(highbound // self.data[0].freq_res) + 2])
+            int(lowbound // self.data[0].freq_res):
+            int(highbound // self.data[0].freq_res) + 1])
 
         # total num for each class
 
@@ -605,8 +609,8 @@ class Classifier:
             # -1 = negative condition
             train_dataset = np.stack(
                 [SpecObj.data[
-                    int(lowbound // SpecObj.freq_res) + 1:
-                    int(highbound // SpecObj.freq_res) + 2]
+                    int(lowbound // SpecObj.freq_res):
+                    int(highbound // SpecObj.freq_res) + 1]
                     for SpecObj in self.data
                     if (SpecObj.source, SpecObj.subject) in train_subjects])
 
@@ -617,8 +621,8 @@ class Classifier:
 
             test_dataset = np.stack(
                 [SpecObj.data[
-                    int(lowbound // SpecObj.freq_res) + 1:
-                    int(highbound // SpecObj.freq_res) + 2]
+                    int(lowbound // SpecObj.freq_res):
+                    int(highbound // SpecObj.freq_res) + 1]
                     for SpecObj in self.data
                     if (SpecObj.source, SpecObj.subject) in test_subjects])
 
@@ -784,68 +788,24 @@ class Classifier:
 
         if plot_Features is True:
 
+            import Plots
+
             if kernel == 'linear':
-                # set up figure and axes (rows)
-                fig, axs = plt.subplots(
-                    nrows=len(self.network_channels),
-                    figsize=(20, 40))
 
-                plt.rcParams['figure.dpi'] = 200
+                if feat_select is False:
+                    Plots.plot_svm_features(
+                        Features,
+                        svm_weights,
+                        network_channels=self.network_channels)
 
-                # plt.clf()
+                elif feat_select is True:
+                    Plots.plot_svm_features(
+                        Features,
+                        svm_weights_selected,
+                        scores=scores,
+                        network_channels=self.network_channels)
 
-                # X_indices = np.arange(train_dataset.shape[-1])
-                X_indices = Features
-
-                i = 0
-
-                j = 0
-
-                for channel in self.network_channels:
-
-                    axs[j].set_title(channel)
-
-                    axs[j].bar(
-                            X_indices - .25,
-                            svm_weights[i:i + len(X_indices)],
-                            width=.1, label='SVM weight')
-
-                    if feat_select is not True:
-
-                        axs[j].legend()
-
-                    i += len(X_indices)
-
-                    j += 1
-
-                if feat_select is True:
-
-                    i = 0
-
-                    j = 0
-
-                    for channel in self.network_channels:
-
-                        axs[j].bar(
-                            X_indices - .45,
-                            scores[i:i+len(X_indices)],
-                            width=.1,
-                            label=r'Univariate score ($-Log(p_{value})$)')
-
-                        axs[j].legend()
-
-                        i += len(X_indices)
-
-                        j += 1
-
-                axs[0].set_title("Comparing feature selection")
-
-                axs[-1].set_xlabel('Feature number (in Hz)')
-
-                # plt.yticks(())
-                fig.tight_layout()
-
-                plt.show()
+        return clf, clf.predict(test_dataset), test_labels
 
     def CNN(
         self,
@@ -1199,7 +1159,7 @@ class Classifier:
 
         return(history, model, y_pred_keras, test_labels)
 
-    def KfoldCrossVal(self, path, ref_path, k=5, pos_only=True, filter_band="nofilter"):
+    def KfoldCrossVal(self, path, ref_path, k=5, pos_only=True, filter_band="nofilter", model_type='CNN'):
         """
         Resampling procedure used to evaluate ML models on a limited data sample
 
@@ -1233,7 +1193,27 @@ class Classifier:
         f = open(self.type+"_"+os.path.basename(path)+".txt", 'w')
 
         for i in tqdm(range(k)):
-            hist, model, y_pred, y_labels = self.CNN(k_fold=(i, k), plot_ROC=True)
+            if model_type == 'CNN':
+                hist, model, y_pred, y_labels = self.CNN(
+                    k_fold=(i, k),
+                    plot_ROC=True)
+
+            elif model_type == 'SVM':
+                model, y_pred, y_labels = self.SVM(
+                    kernel='linear',
+                    iterations=1000,
+                    normalize=None,
+                    num_feats=30,
+                    feat_select=False,
+                    plot_Features=True,
+                    lowbound=0,
+                    highbound=25)
+
+            elif model_type == 'LDA':
+                model, y_pred, y_labels = self.LDA(
+                    normalize=None,
+                    lowbound=0,
+                    highbound=25)
 
             for pred, label in zip(y_pred, y_labels):
                 all_y_preds.append(pred)
