@@ -35,6 +35,26 @@ def BinarizeChannels(network_channels=config.network_channels):
 
     return(bin_str)
 
+def StringarizeChannels(bin_str):
+    """
+    Utility function to convert binary string channel names to a list of
+    strings corresponding to whether or not each default channel
+    in config.channel_names is found in the input list
+
+    Parameters:
+        - string of 0s and 1s
+
+    Returns:
+        - network_channels: default config.network_channels
+    """
+
+    channels = []
+    for bin, chan in zip(bin_str, config.channel_names):
+        if bin == "1":
+            channels.append(chan)
+
+    return channels
+
 
 # just keeps subset of 19 channels as defined in network_channels
 def FilterChannels(array, keep_channels, axisNum=1):
@@ -100,8 +120,6 @@ class TaskData:
 
         self.task_fnames = os.listdir(self.path)
 
-        self.network_channels = config.network_channels
-
     def get_task_fnames(self, task):
 
         return(os.listdir(self.path))
@@ -116,10 +134,10 @@ class TaskData:
     def gen_contigs(
         self,
         contigLength,
-        network_channels=config.network_channels,
-        artDegree=0,
+        network_channels=BinarizeChannels(config.network_channels),
+        art_degree=0,
         erp=False,
-        erpDegree=1,
+        erp_degree=1,
         filter_band="nofilter"):
 
         """
@@ -129,12 +147,12 @@ class TaskData:
         Parameters:
             - contigLength: length in samples (@ 250 Hz or config.sampleRate)
             - network_channels: default config.network_channels
-            - artDegree: (int) default 0, minimum value accepted to pass as a
+            - art_degree: (int) default 0, minimum value accepted to pass as a
               "clean" contig, when reading mask from .art file
             - erp: (bool) default False, if True then only contigs falling
               immediately after a "1" or a "2" in the corresponding .evt file
               will be accepted, i.e. only evoked responses
-            - erpDegree: (int) default 1, lowest number in .evt which will be
+            - erp_degree: (int) default 1, lowest number in .evt which will be
               accepted as an erp event
         """
 
@@ -158,38 +176,32 @@ class TaskData:
                 os.mkdir(self.studyFolder + "/erps")
 
         # make a child subdirectory called contigs_<task>_<contig_length>
-        try:
-            if erp == False:
-                self.contigsFolder = self.studyFolder\
-                                    + "/contigs/"\
-                                    + self.task\
-                                    + "_"\
-                                    + str(contigLength)\
-                                    + "_"\
-                                    + BinarizeChannels(
-                                        network_channels=self.network_channels)\
-                                    + "_"\
-                                    + str(artDegree)
+        if erp == False:
+            self.contigsFolder = self.studyFolder\
+                                + "/contigs/"\
+                                + self.task\
+                                + "_"\
+                                + str(contigLength)\
+                                + "_"\
+                                + network_channels\
+                                + "_"\
+                                + str(art_degree)
 
-            elif erp == True:
-                self.contigsFolder = self.studyFolder\
-                                    + "/erps/"\
-                                    + self.task\
-                                    + "_"\
-                                    + str(contigLength)\
-                                    + "_"\
-                                    + BinarizeChannels(
-                                        network_channels=self.network_channels)\
-                                    + "_"\
-                                    + str(artDegree)\
-                                    + "_"\
-                                    + str(erpDegree)
+        elif erp == True:
+            self.contigsFolder = self.studyFolder\
+                                + "/erps/"\
+                                + self.task\
+                                + "_"\
+                                + str(contigLength)\
+                                + "_"\
+                                + network_channels\
+                                + "_"\
+                                + str(art_degree)\
+                                + "_"\
+                                + str(erp_degree)
 
-            os.mkdir(self.contigsFolder)
-
-        except:
-
-            print("Couldn't create the specified contigs folder.\n")
+        os.mkdir(self.contigsFolder)
+        ### TODO: warning for pre-existing folder
 
         print("Contigifying Data:\n====================")
 
@@ -212,24 +224,27 @@ class TaskData:
                     delimiter=" ")
 
                 if events.size == 0:
-                    print("Most likely an empty text file was \
-                        encountered. Skipping: " + evtfile)
+                    print("Most likely an empty text file was "\
+                        + "encountered. Skipping: " + evtfile)
 
                     continue
 
             if artifact.size == 0:
 
-                print("Most likely an empty text file was encountered.\
-                    Skipping: " + artfile)
+                print("Most likely an empty text file was "\
+                    + "encountered. Skipping: " + artfile)
 
                 continue
 
             else:
                 # get rid of channels we don't want the net to use
-                artifact = FilterChannels(artifact, network_channels, 1)
+                artifact = FilterChannels(
+                    artifact,
+                    StringarizeChannels(network_channels),
+                    1)
 
-                # mask artifact array where numbers exceed artDegree
-                mxi = np.ma.masked_where(artifact > artDegree, artifact)
+                # mask artifact array where numbers exceed art_degree
+                mxi = np.ma.masked_where(artifact > art_degree, artifact)
 
                 mxi = np.ma.filled(mxi.astype(float), np.nan)
 
@@ -261,7 +276,7 @@ class TaskData:
 
                 else:
                     # only take oddball erp?
-                    event_indeces = np.where(events >= erpDegree)[0]
+                    event_indeces = np.where(events >= erp_degree)[0]
 
                     for i in event_indeces:
 
@@ -286,8 +301,8 @@ class TaskData:
 
                     if data.size == 0:
 
-                        print("Most likely an empty text file was encountered.\
-                            Skipping: " + eegfile)
+                        print("Most likely an empty text file was "\
+                            + "encountered. Skipping: " + eegfile)
 
                     else:
 
@@ -343,10 +358,10 @@ class TaskData:
     def gen_spectra(
         self,
         contigLength,
-        network_channels=config.network_channels,
-        artDegree=0,
+        network_channels=BinarizeChannels(config.network_channels),
+        art_degree=0,
         erp=False,
-        erpDegree=1,
+        erp_degree=1,
         filter_band="nofilter"):
 
         """
@@ -358,7 +373,7 @@ class TaskData:
         Parameters:
             - contigLength: length in samples (@ 250 Hz or config.sampleRate)
             - network_channels: default config.network_channels
-            - artDegree: (int) default 0, minimum value accepted to pass as a \
+            - art_degree: (int) default 0, minimum value accepted to pass as a \
               "clean" contig, when reading mask from .art file
         """
 
@@ -373,10 +388,9 @@ class TaskData:
                                 + "_"\
                                 + str(contigLength)\
                                 + "_"\
-                                + BinarizeChannels(
-                                    network_channels=self.network_channels)\
+                                + network_channels\
                                 + "_"\
-                                + str(artDegree)
+                                + str(art_degree)
 
             self.spectraFolder = self.studyFolder\
                                 + "/spectra/"\
@@ -384,10 +398,9 @@ class TaskData:
                                 + "_"\
                                 + str(contigLength)\
                                 + "_"\
-                                + BinarizeChannels(
-                                    network_channels=self.network_channels)\
+                                + network_channels\
                                 + "_"\
-                                + str(artDegree)
+                                + str(art_degree)
 
         elif erp == True:
             self.contigsFolder = self.studyFolder\
@@ -396,12 +409,11 @@ class TaskData:
                                 + "_"\
                                 + str(contigLength)\
                                 + "_"\
-                                + BinarizeChannels(
-                                    network_channels=self.network_channels)\
+                                + network_channels\
                                 + "_"\
-                                + str(artDegree)\
+                                + str(art_degree)\
                                 + "_"\
-                                + str(erpDegree)
+                                + str(erp_degree)
 
             self.spectraFolder = self.studyFolder\
                                 + "/spectra/"\
@@ -409,12 +421,11 @@ class TaskData:
                                 + "_"\
                                 + str(contigLength)\
                                 + "_"\
-                                + BinarizeChannels(
-                                    network_channels=self.network_channels)\
+                                + network_channels\
                                 + "_"\
-                                + str(artDegree)\
+                                + str(art_degree)\
                                 + "_"\
-                                + str(erpDegree)
+                                + str(erp_degree)
 
         # make parent spectra folder
         if not os.path.isdir(self.studyFolder + "/spectra"):
@@ -423,10 +434,8 @@ class TaskData:
 
         # make a child subdirectory called\
         # <task>_<contig_length>_<binary_channels_code>
-        try:
-            os.mkdir(self.spectraFolder)
-        except:
-            print("Couldn't create the specified spectra folder.\n")
+        ### TODO: warning for pre-existing folder
+        os.mkdir(self.spectraFolder)
 
         print("Fourier Transforming Data:\n====================")
 
@@ -480,7 +489,7 @@ class TaskData:
 class Contig:
     """
     Object used to store and denote information about a continuous \
-    piece of EEG data. Often are generated using a strict (< 2) artDegree, \
+    piece of EEG data. Often are generated using a strict (< 2) art_degree, \
     and so will be cleaner than raw data.
 
     Parameters:

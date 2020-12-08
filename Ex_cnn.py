@@ -29,19 +29,19 @@ def main():
                         dest = 'task',
                         type = str,
                         default = 'P300',
-                        help = 'Four-character task name. Options: ' + [key for key, val in config.tasks])
+                        help = 'Four-character task name. Options: ' + str([key for key, val in config.tasks]))
 
     parser.add_argument('--length',
                         dest = 'length',
                         type = str,
                         default = '250',
-                        help = 'Duration of input data, in number of samples @ ' + config.sampleRate + ' Hz')
+                        help = 'Duration of input data, in number of samples @ ' + str(config.sampleRate) + ' Hz')
 
     parser.add_argument('--channels',
                         dest = 'channels',
                         type = str,
                         default = '1111111111111111111',
-                        help = 'Binary string specifying which of the following EEG channels will be included in analysis: ' + config.channel_names)
+                        help = 'Binary string specifying which of the following EEG channels will be included in analysis: ' + str(config.channel_names))
 
     # save the variables in 'args'
     args = parser.parse_args()
