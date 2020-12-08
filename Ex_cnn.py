@@ -5,6 +5,7 @@ import argparse
 
 def main():
 
+
     parser = argparse.ArgumentParser(description = 'Options for CNN (convoluional neural network) method of ML.Classifier')
 
     parser.add_argument('--data_type',
@@ -28,21 +29,20 @@ def main():
                         dest = 'task',
                         type = str,
                         default = 'P300',
-                        help = 'Four-character task name. Options: ' + [key for key, val in config.tasks])
+                        help = 'Four-character task name. Options: ' + str([key for key, val in config.tasks]))
 
-    parser.add_argument('--duration',
-                        dest = 'contig_length',
+    parser.add_argument('--length',
+                        dest = 'length',
                         type = str,
                         default = '250',
-                        help = 'Duration of input data, in number of samples @ ' + config.sampleRate + ' Hz')
+                        help = 'Duration of input data, in number of samples @ ' + str(config.sampleRate) + ' Hz')
 
     parser.add_argument('--channels',
                         dest = 'channels',
                         type = str,
                         default = '1111111111111111111',
-                        help = 'Binary string specifying which of the following EEG channels will be included in analysis: ' + config.channel_names)
+                        help = 'Binary string specifying which of the following EEG channels will be included in analysis: ' + str(config.channel_names))
     
-
     # ============== CNN args ==============
 
     parser.add_argument('--epochs',
@@ -55,19 +55,19 @@ def main():
                         dest = 'norm_type',
                         type = str,
                         default = None,
-                        help = 'parameters to normalize input data (features)')
+                        help = 'Parameters to normalize input data (features)')
     
     parser.add_argument('--plot_ROC',
                         dest = 'plot',
                         type = bool,
                         default = False,
-                        help = 'plot sensitivity-specificity curve on validation dataset')
+                        help = 'Plot sensitivity-specificity curve on validation dataset')
     
     parser.add_argument('--tt_split',
                         dest = 'tt_ratio',
                         type = float,
                         default = 0.33,
-                        help = 'ratio of test samples to train samples')
+                        help = 'Ratio of test samples to train samples')
     
     parser.add_argument('--learning_rate',
                         dest = 'l_rate',
@@ -79,9 +79,8 @@ def main():
                         dest = 'decay',
                         type = bool,
                         default = False,
-                        help = 'whether learning rate should decay adhering to a 0.96 decay rate schedule')
+                        help = 'Whether learning rate should decay adhering to a 0.96 decay rate schedule')
     
-
     # save the variables in 'args'
     args = parser.parse_args()
 
@@ -89,7 +88,7 @@ def main():
     studies_folder = args.studies_folder
     study_name = args.study_name
     task = args.task
-    duration = args.duration
+    length = args.length
     channels = args.channels
 
 
@@ -103,7 +102,7 @@ def main():
         + '/'\
         + task\
         + '_'\
-        + contig_length\
+        + length\
         + '_'\
         + channels
 

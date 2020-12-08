@@ -1,13 +1,5 @@
 """
-Adapted from Ex_contigs.ipynb
 Requires installation of "mne", "tqdm", and "argparse"
-
-Args:
---studies_folder: str, Directory where study folders are stored.
---study_name: str, Folder to store contigs.
---task: str, Task to use from contigs.py.
-
-LRK
 """
 
 # Example Contig Generation
@@ -35,7 +27,7 @@ def main():
         network_channels: (string)
             binary list of channels in order found in config.py,
             helper function Prep.BinarizeChannels() can provide string
-        artDegree: (int)
+        art_degree: (int)
             corresponds to degree of artifact applied,
             from that found in wavi-output .art files, default 2=none
 
@@ -48,7 +40,7 @@ def main():
 
     parser.add_argument('length',
                         type = int,
-                        help = 'Path to parent folder containing study folders')
+                        help = 'Duration of input data, in number of samples @ ' + str(config.sampleRate) + ' Hz')
 
     parser.add_argument('--artifact',
                         dest = 'artifact',
@@ -84,7 +76,25 @@ def main():
                         dest = 'channels',
                         type = str,
                         default = '1111111111111111111',
-                        help = 'Binary string specifying which of the following EEG channels will be included in analysis: ' + str([chan for chan in config.channel_names]))
+                        help = 'Binary string specifying which of the following EEG channels will be included in analysis: ' + str(config.channel_names))
+
+    parser.add_argument('--filter_band',
+                        dest = 'filter_band',
+                        type = str,
+                        default = 'nofilter',
+                        help = 'Bandfilter to be used in analysis steps, such as: "noalpha", "delta", or "nofilter"')
+
+    parser.add_argument('--erp',
+                        dest = 'erp',
+                        type = bool,
+                        default = False,
+                        help = 'If True then only contigs falling immediately after a "1" or a "2" in the corresponding .evt file will be accepted, i.e. only evoked responses')
+
+    parser.add_argument('--erp_degree',
+                        dest = 'erp_degree',
+                        type = int,
+                        default = 1,
+                        help = 'Lowest number in .evt files which will be accepted as an erp event')
 
     # Save the arguments in "args"
     args = parser.parse_args()
@@ -96,18 +106,43 @@ def main():
     task = args.task
     spectra = args.spectra
     channels = args.channels
+    filter_band = args.filter_band
+    erp=args.erp
+    erp_degree=args.erp_degree
 
     if study_name is None:
+
         study_names = [folder for folder in os.listdir(studies_folder)]
+
     else:
+
         study_names = [study_name]
 
     for study_name in study_names:
+
         myp300 = Prep.TaskData(studies_folder+"/"+study_name+"/"+task)
-        myp300.gen_contigs(length, artDegree=artifact, network_channels=channels)
+
+        print("Processing study:", study_name)
+
+        myp300.gen_contigs(
+            length,
+            art_degree=artifact,
+            network_channels=channels,
+            filter_band="nofilter",
+            erp=erp,
+            erp_degree=erp_degree)
+
         myp300.write_contigs()
+
         if spectra is True:
-            myp300.gen_spectra(length, artDegree=artifact, network_channels=channels)
+            myp300.gen_spectra(
+                length,
+                art_degree=artifact,
+                network_channels=channels,
+                filter_band="nofilter",
+                erp=erp,
+                erp_degree=erp_degree)
+
             myp300.write_spectra()
 
 
