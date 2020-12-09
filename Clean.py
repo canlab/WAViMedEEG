@@ -37,7 +37,7 @@ class StudyFolder:
 
         self.raw_fnames = os.listdir(self.path+"/raw")
 
-    def autoclean(self):
+    def autoclean(self, group_num=1):
         """
         For each task defined in config.tasks, performs StudyFolder.standardize \
         and StudyFolder.anon, standardizing task names / file structure and \
@@ -53,7 +53,7 @@ class StudyFolder:
 
             if os.path.isdir(self.path + "/" + task):
 
-                self.anon(task)
+                self.anon(task, group_num=group_num)
 
                 self.no_filter_rename(task)
 
@@ -97,7 +97,7 @@ class StudyFolder:
         if len(os.listdir(self.path + "/" + new)) == 0:
             os.rmdir(self.path + "/" + new)
 
-    def anon(self, task, groupNum=1):
+    def anon(self, task, group_num=1):
         """
         Anonymizes sets of standardized task data which can then be read \
         into a TaskData object.
@@ -113,7 +113,7 @@ class StudyFolder:
 
         for i, lead in enumerate(subject_leads):
 
-            translator[lead] = str(groupNum)\
+            translator[lead] = str(group_num)\
                                 + "0"\
                                 * (config.participantNumLen - len(str(i)) - 1)\
                                 + str(i)

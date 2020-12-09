@@ -136,7 +136,7 @@ class Classifier:
 
                 totalneg += 1
 
-            elif item.group == 2:
+            elif item.group > 1:
 
                 totalpos += 1
 
@@ -220,7 +220,7 @@ class Classifier:
 
                 totalneg += 1
 
-            elif item.group == 2:
+            elif item.group > 1:
 
                 totalpos += 1
 
@@ -845,7 +845,8 @@ class Classifier:
                 cross-validation fold i and total folds k
                 ex: (2, 5) fold 2 of 5
         """
-
+        # quiet some TF warnings
+        TF_CPP_MIN_LOG_LEVEL=2
         import tensorflow as tf
         from tensorflow.keras import Model
         from tensorflow.keras import regularizers
@@ -869,7 +870,7 @@ class Classifier:
         for item in self.data:
             if item.group == 1:
                 totalneg += 1
-            elif item.group == 2:
+            elif item.group > 1:
                 totalpos += 1
 
         if k_fold is None:
@@ -884,9 +885,10 @@ class Classifier:
         if k_fold is None:
             print("Total number of subjects:", len(self.subjects))
 
+        # get num condition positive
         j = 0
         for sub in self.subjects:
-            if sub[1][0] == "2":
+            if int(sub[1][0]) > 1:
                 j +=1
 
         if k_fold is None:
@@ -894,6 +896,10 @@ class Classifier:
                 j / len(self.subjects))
             print("% Negative in all subjects:",
                 (len(self.subjects) - j) / len(self.subjects))
+
+
+        train_subjects = []
+        test_subjects = []
 
         # shuffle subject list randomly and then
         # split data into train and test spectra (no overlapping subjects)
@@ -903,19 +909,19 @@ class Classifier:
 
             split = math.floor(len(self.subjects)*tt_split)
 
-            pos_subjects = [sub for sub in self.subjects if sub[1][0] == "2"]
+            pos_subjects = [sub for sub in self.subjects if int(sub[1][0]) > 1]
             pos_split = math.floor(len(pos_subjects)*tt_split)
 
-            neg_subjects = [sub for sub in self.subjects if sub[1][0] == "1"]
+            neg_subjects = [sub for sub in self.subjects if int(sub[1][0]) == 1]
             neg_split = math.floor(len(neg_subjects)*tt_split)
 
             train_subjects = pos_subjects[:pos_split*-1]
             for sub in neg_subjects[:neg_split*-1]:
-                self.train_subjects.append(sub)
+                train_subjects.append(sub)
 
             test_subjects = pos_subjects[pos_split*-1:]
             for sub in neg_subjects[neg_split*-1:]:
-                self.test_subjects.append(sub)
+                test_subjects.append(sub)
 
         else:
             from sklearn.model_selection import KFold
@@ -927,11 +933,8 @@ class Classifier:
             # n_samples // n_splits
             kf = KFold(n_splits=k_fold[1])
 
-            train_subjects = []
-            test_subjects = []
-
-            # first look at only subjects with subject code "2" (condition-pos)
-            pos_subjects = [sub for sub in self.subjects if sub[1][0] == "2"]
+            # first look at only subjects with subject code above 1 (cond-pos)
+            pos_subjects = [sub for sub in self.subjects if int(sub[1][0]) > 1]
             train_indexes, test_indexes = list(kf.split(pos_subjects))[k_fold[0]]
 
             for i, sub in enumerate(pos_subjects):
@@ -945,7 +948,7 @@ class Classifier:
                     sys.exit(1)
 
             # then look at subjects with subject code "1" (condition-neg)
-            neg_subjects = [sub for sub in self.subjects if sub[1][0] == "1"]
+            neg_subjects = [sub for sub in self.subjects if int(sub[1][0]) == 1]
             train_indexes, test_indexes = list(kf.split(neg_subjects))[k_fold[0]]
 
             for i, sub in enumerate(neg_subjects):
@@ -965,7 +968,7 @@ class Classifier:
             -1)
 
         train_labels = np.array(
-            [int(1) if (ContigObj.group == 2) else int(0)
+            [int(1) if (ContigObj.group > 1) else int(0)
                 for ContigObj in self.data
                 if (ContigObj.source, ContigObj.subject) in train_subjects])
 
@@ -976,7 +979,7 @@ class Classifier:
             -1)
 
         test_labels = np.array(
-            [int(1) if (ContigObj.group == 2) else int(0)
+            [int(1) if (ContigObj.group > 1) else int(0)
                 for ContigObj in self.data
                 if (ContigObj.source, ContigObj.subject) in test_subjects])
 

@@ -131,6 +131,7 @@ network_channels = [
     'Pz']
 
 frequency_bands = {
-    "delta": [0, 4],
+    "delta": [0, 2],
+    "theta": [2, 6],
     "alpha": [6, 13],
 }

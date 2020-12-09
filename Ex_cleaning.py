@@ -21,11 +21,18 @@ def main():
                         default = config.studyDirectory,
                         help = 'Study folder containing dataset')
 
+    parser.add_argument('--group_num',
+                        dest = 'group_num',
+                        type = int,
+                        default = 1,
+                        help = 'Group number to be assigned to dataset')
+
     # save the variables in 'args'
     args = parser.parse_args()
 
     studies_folder = args.studies_folder
     study_name = args.study_name
+    group_num = args.group_num
 
     # my_study points to our dataset
     # ex. my_study = "/wavi/EEGstudies/CANlab/"
@@ -37,7 +44,7 @@ def main():
     my_study_folder = Clean.StudyFolder(my_study)
 
     # attempt to autoclean
-    my_study_folder.autoclean()
+    my_study_folder.autoclean(group_num=group_num)
 
 if __name__ == '__main__':
     main()
