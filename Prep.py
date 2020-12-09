@@ -130,7 +130,7 @@ class TaskData:
             fname[:config.participantNumLen]
             for fname in self.get_task_fnames(self.task)])
 
-    # takes length (in samples @ 250 Hz / config.sampleRate) as positional argument
+    # takes length (in samples @ 250 Hz / config.sample_rate) as positional argument
     def gen_contigs(
         self,
         contigLength,
@@ -145,7 +145,7 @@ class TaskData:
         appending each to TaskData.contigs
 
         Parameters:
-            - contigLength: length in samples (@ 250 Hz or config.sampleRate)
+            - contigLength: length in samples (@ 250 Hz or config.sample_rate)
             - network_channels: default config.network_channels
             - art_degree: (int) default 0, minimum value accepted to pass as a
               "clean" contig, when reading mask from .art file
@@ -371,7 +371,7 @@ class TaskData:
         *** Note only reads contigs written to file currently
 
         Parameters:
-            - contigLength: length in samples (@ 250 Hz or config.sampleRate)
+            - contigLength: length in samples (@ 250 Hz or config.sample_rate)
             - network_channels: default config.network_channels
             - art_degree: (int) default 0, minimum value accepted to pass as a \
               "clean" contig, when reading mask from .art file
@@ -545,7 +545,7 @@ class Contig:
             try:
                 f, Pxx_den = signal.periodogram(
                     sig,
-                    fs=float(config.sampleRate),
+                    fs=float(config.sample_rate),
                     window='hann')
             except:
                 print("Something went wrong processing the following contig:")
@@ -585,7 +585,7 @@ class Contig:
 
             print(wavs)
 
-            t = np.arange(0, len(wavs)) / config.sampleRate
+            t = np.arange(0, len(wavs)) / config.sample_rate
 
             wavs = np.subtract(wavs, i * 25)
 
@@ -697,9 +697,9 @@ class Spectra:
 
         self.channels = channels
 
-        self.freq_res = (config.sampleRate / 2) / (len(self.freq) - 1)
+        self.freq_res = (config.sample_rate / 2) / (len(self.freq) - 1)
 
-        self.contig_length = config.sampleRate // self.freq_res
+        self.contig_length = config.sample_rate // self.freq_res
 
         self.source = source
 

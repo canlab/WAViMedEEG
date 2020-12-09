@@ -4,30 +4,27 @@ from tqdm import tqdm
 import config
 import argparse
 
-
 def main():
 
-    parser = argparse.ArgumentParser(description='Options for CNN'
-                                     '(convoluional neural network)'
-                                     'method of ML.Classifier')
+
+    parser = argparse.ArgumentParser(description = 'Options for CNN (convoluional neural network) method of ML.Classifier')
 
     parser.add_argument('--data_type',
-                        dest='data',
-                        type=str,
-                        help='Input data type: contigs, erps, or spectra')
+                        dest = 'data',
+                        type = str,
+                        help = 'Input data type: contigs, erps, or spectra')
 
     parser.add_argument('--studies_folder',
-                        dest='studies_folder',
-                        type=str,
-                        default=config.myStudies,
-                        help='Path to parent folder containing study folders')
+                        dest = 'studies_folder',
+                        type = str,
+                        default = config.myStudies,
+                        help = 'Path to parent folder containing study folders')
 
     parser.add_argument('--study_name',
-                        dest='study_name',
-                        type=str,
-                        default=config.studyDirectory,
-                        help='Study folder containing'
-                        'condition-positive dataset')
+                        dest = 'study_name',
+                        type = str,
+                        default = config.studyDirectory,
+                        help = 'Study folder containing condition-positive dataset')
 
     parser.add_argument('--task',
                         dest = 'task',
@@ -39,7 +36,7 @@ def main():
                         dest = 'length',
                         type = str,
                         default = '250',
-                        help = 'Duration of input data, in number of samples @ ' + str(config.sampleRate) + ' Hz')
+                        help = 'Duration of input data, in number of samples @ ' + str(config.sample_rate) + ' Hz')
 
     parser.add_argument('--channels',
                         dest = 'channels',
@@ -92,11 +89,12 @@ def main():
     studies_folder = args.studies_folder
     study_name = args.study_name
     task = args.task
-    duration = args.duration
+    length = args.length
     channels = args.channels
 
+
     # patient_path points to our 'condition-positive' dataset
-    # ex = "/wavi/EEGstudies/CANlab/spectra/P300_250_1111111111111111111_0_1"
+    # ex. patient_path = "/wavi/EEGstudies/CANlab/spectra/P300_250_1111111111111111111_0_1"
     patient_path = studies_folder\
         + '/'\
         + study_name\
@@ -105,12 +103,12 @@ def main():
         + '/'\
         + task\
         + '_'\
-        + contig_length\
+        + length\
         + '_'\
         + channels
 
     # Instantiate a 'Classifier' Object
-    myclf = ML.Classifier(args.data_type)
+    myclf = ML.Classifier(data_type)
 
     # ============== Load Patient (Condition-Positive) Data ==============
 
@@ -119,20 +117,14 @@ def main():
             myclf.LoadData(patient_path+"/"+fname)
 
     # ============== Load Control (Condition-Negative) Data ==============
-    # automatically adds healthy control data found in the reference folders
+    # the dataset will automatically add healthy control data found in the reference folders
 
     myclf.Balance(studies_folder)
 
     # ============== Run 'CNN' method of 'Classifier' ==============
-    # structures the input classes (in this case, 'Spectra' objects)
+    # This method will structure the input classes (in this case, 'Spectra' objects)
 
-    myclf.CNN(args.num_epochs,
-              args.norm_type,
-              args.plot,
-              args.tt_ratio,
-              args.l_rate,
-              args.decay)
-
+    myclf.CNN(num_epochs, norm_type, plot, tt_ratio, l_rate, decay)
 
 if __name__ == '__main__':
     main()

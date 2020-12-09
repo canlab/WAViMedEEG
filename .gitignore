@@ -3,3 +3,4 @@ config.py
 __pychache__/
 .archive/
 logs/
+december9th.sh

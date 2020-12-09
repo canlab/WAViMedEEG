@@ -146,10 +146,10 @@ class StudyFolder:
         """
 
         for fname in self.get_task_fnames(task):
-
-            shutil.move(
-                self.path + "/" + task + "/" + fname,
-                self.path + "/" + task + "/" + fname[:-4] + "_nofilter" + fname[-4:])
+            if fname[-4:] not in [".art", ".evt"]:
+                shutil.move(
+                    self.path + "/" + task + "/" + fname,
+                    self.path + "/" + task + "/" + fname[:-4] + "_nofilter" + fname[-4:])
 
         self.task_fnames = self.get_task_fnames(task)
 

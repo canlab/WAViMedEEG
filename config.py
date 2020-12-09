@@ -35,7 +35,8 @@ excludeSubs = [
 
 group_names = {
     1: "Control",
-    2: "Pain"
+    2: "Pain",
+    3: "Rehab"
 }
 
 refGroupFolders = [
@@ -77,7 +78,7 @@ tasks = {
         "SMS"]}
 
 
-sampleRate = 250  # in Hz
+sample_rate = 250  # in Hz
 
 # still accepted by the program, 0 (strict), 1 (loose), or 2 (none)
 

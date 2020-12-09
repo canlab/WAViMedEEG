@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import config
+import numpy as np
 
 def roc(y_preds, y_labels, fname="ROC", plot=True):
     """

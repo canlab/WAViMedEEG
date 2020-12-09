@@ -40,7 +40,7 @@ def main():
 
     parser.add_argument('length',
                         type = int,
-                        help = 'Duration of input data, in number of samples @ ' + str(config.sampleRate) + ' Hz')
+                        help = 'Duration of input data, in number of samples @ ' + str(config.sample_rate) + ' Hz')
 
     parser.add_argument('--artifact',
                         dest = 'artifact',
@@ -58,7 +58,7 @@ def main():
                         dest = 'study_name',
                         type = str,
                         default = None,
-                        help = 'Study folder containing condition-positive dataset')
+                        help = 'Study folder containing dataset')
 
     parser.add_argument('--task',
                         dest = 'task',

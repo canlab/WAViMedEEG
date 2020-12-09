@@ -77,7 +77,7 @@ tasks = {
         "SMS"]}
 
 
-sampleRate = 250  # in Hz
+sample_rate = 250  # in Hz
 
 # still accepted by the program, 0 (strict), 1 (loose), or 2 (none)
 

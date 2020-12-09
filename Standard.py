@@ -131,11 +131,11 @@ class BandFilter:
             post = np.ndarray(shape=(arr.shape[0], len(config.channel_names))).T
             for sig in arr.T:
                 if self.type == 'lowpass':
-                    sos = scipy.signal.butter(4, range[0], btype=self.type, fs=config.sampleRate, output='sos')
+                    sos = scipy.signal.butter(4, range[0], btype=self.type, fs=config.sample_rate, output='sos')
                 elif self.type == 'highpass':
-                    sos = scipy.signal.butter(4, range[1], btype=self.type, fs=config.sampleRate, output='sos')
+                    sos = scipy.signal.butter(4, range[1], btype=self.type, fs=config.sample_rate, output='sos')
                 else:
-                    sos = scipy.signal.butter(4, [range[0], range[1]], btype=self.type, fs=config.sampleRate, output='sos')
+                    sos = scipy.signal.butter(4, [range[0], range[1]], btype=self.type, fs=config.sample_rate, output='sos')
                 filtered = scipy.signal.sosfilt(sos, sig)
                 np.vstack((post, filtered))
                 j+=1
