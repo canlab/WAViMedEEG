@@ -1,7 +1,6 @@
 import Clean
 import sys
 import os
-import sys
 from tqdm import tqdm
 import config
 import argparse
