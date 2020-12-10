@@ -168,8 +168,8 @@ def main():
         raise ValueError
         sys.exit(3)
 
-    if spectra is not bool:
-        print("Spectra must be boolean, True or False.")
+    if spectra not in [True, False]:
+        print("spectra must be boolean, True or False.")
         raise ValueError
         sys.exit(3)
 
@@ -202,8 +202,8 @@ def main():
         raise ValueError
         sys.exit(3)
 
-    if erp is not bool:
-        print("Spectra must be boolean, True or False.")
+    if erp not in [True, False]:
+        print("erp must be boolean, True or False.")
         raise ValueError
         sys.exit(3)
 

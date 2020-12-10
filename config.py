@@ -41,9 +41,10 @@ group_names = {
 }
 
 refGroupFolders = [
-    "ref 24-30",
-    "ref 31-40",
-    "ref 41-50",
+    "CANlab",
+    # "ref 24-30",
+    # "ref 31-40",
+    # "ref 41-50",
     # "ref 51-60",
     # "ref 61-70",
     # "ref 71-80",

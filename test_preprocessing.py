@@ -11,15 +11,10 @@ import shutil
 
 class TestPreprocessing(unittest.TestCase):
 
-    def test_x(self):
-        pass
+    def test_taskdata_generation(self):
 
-    def test_raw_generation(self):
-        task = [
-            task for task in config.tasks][
-            random.randint(0, len(config.tasks)-1)]
         for sub in taskObj.subjects:
-            task_length = random.randint(1000, 10000)
+            task_length = random.randint(2000, 5000)
             eeg_file = []
             art_file = []
             evt_file = []
@@ -44,10 +39,10 @@ class TestPreprocessing(unittest.TestCase):
 
             np.savetxt(
                 taskObj.studyFolder\
-                +"/"\
-                +str(sub)\
+                +"/"+taskObj.task+"/"\
+                +sub\
                 +"_"\
-                +task\
+                +taskObj.task\
                 +"_nofilter.eeg",
                 eeg_file,
                 delimiter=" ",
@@ -55,10 +50,10 @@ class TestPreprocessing(unittest.TestCase):
 
             np.savetxt(
                 taskObj.studyFolder\
-                +"/"\
-                +str(sub)\
+                +"/"+taskObj.task+"/"\
+                +sub\
                 +"_"\
-                +task\
+                +taskObj.task\
                 +".art",
                 art_file,
                 delimiter=" ",
@@ -66,68 +61,90 @@ class TestPreprocessing(unittest.TestCase):
 
             np.savetxt(
                 taskObj.studyFolder\
-                +"/"\
-                +str(sub)\
+                +"/"+taskObj.task+"/"\
+                +sub\
                 +"_"\
-                +task\
+                +taskObj.task\
                 +".evt",
                 evt_file,
                 delimiter=" ",
                 fmt="%2.1f")
+
+            del eeg_file
+            del art_file
+            del evt_file
+
         self.assertEqual(
-            len(os.listdir(taskObj.studyFolder)),
+            len(os.listdir(taskObj.studyFolder+"/"+taskObj.task)),
             len(taskObj.subjects)*3)
 
-    def test_contig_generation(self):
-        length = random.randint(100, 20000)
-        art_degrees = np.linspace(0, 2, 1, endpoint=True)
-        erps = [True, False]
+    # def test_contig_generation(self):
+
+        taskObj.task_fnames = taskObj.get_task_fnames(taskObj.task)
+
+        length = random.randint(100, 2000)
+        # art_degrees = [0, 1, 2]
+        art_degrees = [1]
+        # erps = [True, False]
+        erps = [False]
+        channels = ""
+        for val in list(Signals.rand_bin_string(
+            19,
+            sample_rate=1)):
+            channels += str(val)
 
         for art_degree in art_degrees:
             for erp in erps:
                 taskObj.gen_contigs(
                     length,
-                    network_channels=Signals.rand_bin_string(
-                        19,
-                        sample_rate=1),
+                    network_channels=channels,
+                    art_degree=art_degree,
+                    erp=erp)
+                taskObj.write_contigs()
+                taskObj.gen_spectra(
+                    length,
+                    network_channels=channels,
                     art_degree=art_degree,
                     erp=erp)
 
-        assertEqual(
+        self.assertEqual(
             len(os.listdir(taskObj.studyFolder+"/contigs")),
             len(art_degrees))
 
-        assertEqual(
-            len(os.listdir(taskObj.studyFolder+"/erps")),
-            len(art_degrees))
+        # self.assertEqual(
+        #     len(os.listdir(taskObj.studyFolder+"/erps")),
+        #     len(art_degrees))
 
-        assertEqual(
+        self.assertEqual(
             len(os.listdir(taskObj.studyFolder+"/spectra")),
             len(art_degrees)*len(erps))
-            
+
 
 if __name__ == '__main__':
     # unittest.TestCase.__init__(self,x)
-    taskObj = Prep.TaskData('.')
-    taskObj.studyFolder = 'testdata/raw'
-    taskObj.task = None
-    taskObj.task_fnames = None
-
-    if not os.path.isdir(taskObj.studyFolder):
+    if not os.path.isdir('testdata/P300'):
         try:
             os.mkdir('testdata')
+            os.mkdir('testdata/P300')
         except FileExistsError:
             try:
-                os.mkdir('testdata/raw')
+                os.mkdir('testdata/P300')
             except FileExistsError:
                 print(
                     "Something went wrong creating test folders.",
-                    "Try manually deleting ''/testdata/raw'")
+                    "Try manually deleting ''/testdata/'")
                 sys.exit(1)
-    else:
-        shutil.rmtree('testdata/raw')
-        os.mkdir('testdata/raw')
 
+    taskObj = Prep.TaskData(
+        'testdata/'
+        # +  str([
+        #     task for task in config.tasks][
+        #     random.randint(0, len(config.tasks)-1)]))
+        + "P300")
+    taskObj.task_fnames = None
+    # else:
+    #     shutil.rmtree('testdata/')
+    #     os.mkdir('testdata/'+taskObj.task)
 
     # make random list of fake subjects
     # adhering to subj-number lengths defined in config.py
@@ -142,5 +159,5 @@ if __name__ == '__main__':
         while num in taskObj.subjects:
             num = random.randint(1000, 3999)
 
-        taskObj.subjects.append(num)
+        taskObj.subjects.append(str(num))
     unittest.main()
