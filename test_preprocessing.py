@@ -14,7 +14,7 @@ class TestPreprocessing(unittest.TestCase):
     def test_taskdata_generation(self):
 
         for sub in taskObj.subjects:
-            task_length = random.randint(1000, 10000)
+            task_length = random.randint(2000, 5000)
             eeg_file = []
             art_file = []
             evt_file = []
@@ -82,9 +82,11 @@ class TestPreprocessing(unittest.TestCase):
 
         taskObj.task_fnames = taskObj.get_task_fnames(taskObj.task)
 
-        length = random.randint(100, 20000)
-        art_degrees = [0, 1, 2]
-        erps = [True, False]
+        length = random.randint(100, 2000)
+        # art_degrees = [0, 1, 2]
+        art_degrees = [1]
+        # erps = [True, False]
+        erps = [False]
         channels = ""
         for val in list(Signals.rand_bin_string(
             19,
@@ -98,22 +100,41 @@ class TestPreprocessing(unittest.TestCase):
                     network_channels=channels,
                     art_degree=art_degree,
                     erp=erp)
+                taskObj.write_contigs()
+                taskObj.gen_spectra(
+                    length,
+                    network_channels=channels,
+                    art_degree=art_degree,
+                    erp=erp)
 
         self.assertEqual(
-            len(os.listdir(os.path.dirname(taskObj.studyFolder)+"/contigs")),
+            len(os.listdir(taskObj.studyFolder+"/contigs")),
             len(art_degrees))
 
-        self.assertEqual(
-            len(os.listdir(os.path.dirname(taskObj.studyFolder)+"/erps")),
-            len(art_degrees))
+        # self.assertEqual(
+        #     len(os.listdir(taskObj.studyFolder+"/erps")),
+        #     len(art_degrees))
 
         self.assertEqual(
-            len(os.listdir(os.path.dirname(taskObj.studyFolder)+"/spectra")),
+            len(os.listdir(taskObj.studyFolder+"/spectra")),
             len(art_degrees)*len(erps))
 
 
 if __name__ == '__main__':
     # unittest.TestCase.__init__(self,x)
+    if not os.path.isdir('testdata/P300'):
+        try:
+            os.mkdir('testdata')
+            os.mkdir('testdata/P300')
+        except FileExistsError:
+            try:
+                os.mkdir('testdata/P300')
+            except FileExistsError:
+                print(
+                    "Something went wrong creating test folders.",
+                    "Try manually deleting ''/testdata/'")
+                sys.exit(1)
+
     taskObj = Prep.TaskData(
         'testdata/'
         # +  str([
@@ -121,22 +142,9 @@ if __name__ == '__main__':
         #     random.randint(0, len(config.tasks)-1)]))
         + "P300")
     taskObj.task_fnames = None
-
-    if not os.path.isdir(taskObj.studyFolder):
-        try:
-            os.mkdir('testdata')
-        except FileExistsError:
-            try:
-                os.mkdir('testdata/'+taskObj.task)
-            except FileExistsError:
-                print(
-                    "Something went wrong creating test folders.",
-                    "Try manually deleting ''/testdata/'")
-                sys.exit(1)
-    else:
-        shutil.rmtree('testdata/')
-        os.mkdir('testdata')
-        os.mkdir('testdata/'+taskObj.task)
+    # else:
+    #     shutil.rmtree('testdata/')
+    #     os.mkdir('testdata/'+taskObj.task)
 
     # make random list of fake subjects
     # adhering to subj-number lengths defined in config.py
