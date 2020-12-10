@@ -12,6 +12,7 @@ import Prep
 import os
 import argparse
 import config
+import sys
 from tqdm import tqdm
 
 
@@ -99,7 +100,7 @@ def main():
                         type=bool,
                         default=False,
                         help="If True then only contigs falling immediately "
-                        + "after a "1" or a "2" in the corresponding "
+                        + "after a '1' or a '2' in the corresponding "
                         + ".evt file will be accepted, i.e. only evoked "
                         + "responses")
 
@@ -124,6 +125,93 @@ def main():
     erp = args.erp
     erp_degree = args.erp_degree
 
+    # ERROR HANDLING
+    if type(length) is int is False:
+        print("Length must be an integer (in Hz).")
+        raise ValueError
+        sys.exit(3)
+
+    try:
+        if (length <= 0) or (length > 10000):
+            print("Invalid entry for length, must be between 0 and 10000.")
+            raise ValueError
+            sys.exit(3)
+    except TypeError:
+        print(
+            "Invalid entry for length, "
+            + "must be integer value between 0 and 10000.")
+        raise ValueError
+        sys.exit(3)
+
+    if artifact not in [0, 1, 2]:
+        print("Artifact must be 0, 1, 2 as an integer.")
+        sys.exit(3)
+
+    if not os.path.isdir(studies_folder):
+        print(
+            "Invalid entry for studies_folder, "
+            + "path does not exist as directory.")
+        raise FileNotFoundError
+        sys.exit(3)
+
+    if not os.path.isdir(os.path.join(studies_folder, study_name)):
+        print(
+            "Invalid entry for study_name, "
+            + "path does not exist as directory.")
+        raise FileNotFoundError
+        sys.exit(3)
+
+    if task not in config.tasks:
+        print(
+            "Invalid entry for task, "
+            + "not accepted as regular task name in config.")
+        raise ValueError
+        sys.exit(3)
+
+    if spectra is not bool:
+        print("Spectra must be boolean, True or False.")
+        raise ValueError
+        sys.exit(3)
+
+    try:
+        str(channels)
+    except ValueError:
+        print(
+            "Invalid entry for channels. Must be 19-char long string of "
+            + "1s and 0s")
+        raise ValueError
+        sys.exit(3)
+
+    if len(channels) != 19:
+        print(
+            "Invalid entry for channels. Must be 19-char long string of "
+            + "1s and 0s")
+        raise ValueError
+        sys.exit(3)
+
+    filterband_options = ['alpha', 'beta', 'theta', 'delta',
+                          'nofilter', 'noalpha', 'nodelta', 'loalpha',
+                          'nobeta', 'notheta', 'lobeta', 'lotheta',
+                          'hialpha', 'hitheta', 'hidelta']
+
+    if filter_band not in filterband_options:
+        print("That is not a valid filterband option. "
+              + "Please an option listed here:")
+        for item in filterband_options:
+            print(item)
+        raise ValueError
+        sys.exit(3)
+
+    if erp is not bool:
+        print("Spectra must be boolean, True or False.")
+        raise ValueError
+        sys.exit(3)
+
+    if erp_degree not in [1, 2, None]:
+        print("Invalid entry for erp_degree. Must be int between 1 and 2.")
+        raise ValueError
+        sys.exit(3)
+
     if study_name is None:
 
         study_names = [folder for folder in os.listdir(studies_folder)]
@@ -142,7 +230,7 @@ def main():
             length,
             art_degree=artifact,
             network_channels=channels,
-            filter_band="nofilter",
+            filter_band=filter_band,
             erp=erp,
             erp_degree=erp_degree)
 
@@ -153,7 +241,7 @@ def main():
                 length,
                 art_degree=artifact,
                 network_channels=channels,
-                filter_band="nofilter",
+                filter_band=filter_band,
                 erp=erp,
                 erp_degree=erp_degree)
 

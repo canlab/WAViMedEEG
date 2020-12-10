@@ -1,5 +1,7 @@
 import Clean
+import sys
 import os
+import sys
 from tqdm import tqdm
 import config
 import argparse
@@ -34,6 +36,26 @@ def main():
     studies_folder = args.studies_folder
     study_name = args.study_name
     group_num = args.group_num
+
+    # ERROR HANDLING
+    if not os.path.isdir(studies_folder):
+        print(
+            "Invalid entry for studies_folder, "
+            + "path does not exist as directory.")
+        raise FileNotFoundError
+        sys.exit(3)
+
+    if not os.path.isdir(os.path.join(studies_folder, study_name)):
+        print(
+            "Invalid entry for study_name, "
+            + "path does not exist as directory.")
+        raise FileNotFoundError
+        sys.exit(3)
+
+    if group_num is not range(0, 9):
+        print("group_num must be an int, between 0 and 9.")
+        raise ValueError
+        sys.exit(3)
 
     # my_study points to our dataset
     # ex. my_study = "/wavi/EEGstudies/CANlab/"
