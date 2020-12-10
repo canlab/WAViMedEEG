@@ -35,6 +35,30 @@ def main():
     study_name = args.study_name
     group_num = args.group_num
 
+    if not os.path.isdir(studies_folder):
+        print(
+            "Invalid entry for studies_folder, "
+            + "path does not exist as directory.")
+        raise FileNotFoundError
+        sys.exit(1)
+
+    if not os.path.isdir(os.path.join(studies_folder, study_name)):
+        print(
+            "Invalid entry for study_name, "
+            + "path does not exist as directory.")
+        raise FileNotFoundError
+        sys.exit(1)
+        
+    if group_num > 10 or group_num < 0:
+        print("group_num value is out of bounds")
+        raise ValueError
+        sys.exit(1)
+        
+    if group_num is not int(group_num):
+        print("group_num must be an integer")
+        raise ValueError
+        sys.exit(1)
+        
     # my_study points to our dataset
     # ex. my_study = "/wavi/EEGstudies/CANlab/"
     my_study = studies_folder\
