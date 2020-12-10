@@ -159,7 +159,7 @@ def main():
         raise ValueError
         sys.exit(1)
 
-    if type(length) is int == False:
+    if type(length) is int is False:
         print("Length must be an integer (in Hz).")
         raise ValueError
         sys.exit(1)
