@@ -158,7 +158,8 @@ class Classifier:
             fnames = os.listdir(parentPath+"/"+folder+"/"+dataFolder)
 
             subjects = list(set(
-                [fname[:config.participantNumLen] for fname in fnames]))
+                [fname[:config.participantNumLen] for fname in fnames if
+                fname[0] == "1"]))
 
             random.shuffle(subjects)
 
