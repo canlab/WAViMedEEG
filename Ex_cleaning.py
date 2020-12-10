@@ -51,7 +51,7 @@ def main():
         raise FileNotFoundError
         sys.exit(1)
 
-    if group_num is not range(0,9):
+    if group_num is not range(0, 9):
         print("group_num must be an int, between 0 and 9.")
         raise ValueError
         sys.exit(1)
