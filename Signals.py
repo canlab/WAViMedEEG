@@ -1,6 +1,7 @@
 from scipy import signal
 import numpy as np
 import config
+import random
 
 
 def sin_wave(
@@ -60,3 +61,27 @@ def square_wave(
         plot_signal(t, pwm)
 
     return np.array(pwm)
+
+
+def rand_bin_string(
+    time,
+    sample_rate=config.sample_rate,
+    weighted=False,
+        hi_bound=1):
+
+    t = np.linspace(
+        0,
+        time // sample_rate,
+        time * sample_rate,
+        endpoint=False)
+
+    if weighted is False:
+        sig = [random.randint(0, hi_bound) for rand in t]
+    elif weighted is True:
+        weights = [0.9]
+        pop = np.linspace(0, hi_bound, 1, endpoint=True)
+        for samp in pop[1:]:
+            weights.append(0.1)
+        sig = random.choices(pop, cum_weights=weights, k=len(t))
+
+    return np.array(sig)

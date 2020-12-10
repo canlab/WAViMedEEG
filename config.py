@@ -34,6 +34,7 @@ excludeSubs = [
     '1020']
 
 group_names = {
+    0: "Pilot",
     1: "Control",
     2: "Pain",
     3: "Rehab"
