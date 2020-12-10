@@ -4,3 +4,4 @@ __pychache__/
 .archive/
 logs/
 december9th.sh
+/notebook_examples/.ipynb_checkpoints/
