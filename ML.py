@@ -159,7 +159,7 @@ class Classifier:
 
             subjects = list(set(
                 [fname[:config.participantNumLen] for fname in fnames if
-                fname[0] == "1"]))
+                    fname[0] == "1"]))
 
             random.shuffle(subjects)
 
