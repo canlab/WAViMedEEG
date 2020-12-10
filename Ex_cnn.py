@@ -1,4 +1,5 @@
 import ML
+import sys
 import os
 from tqdm import tqdm
 import config
@@ -129,6 +130,7 @@ def main():
     learning_rate = args.learning_rate
     lr_decay = args.lr_decay
 
+    # ERROR HANDLING
     if data_type not in ["erps", "spectra", "contigs"]:
         print(
             "Invalid entry for data_type. "
@@ -157,6 +159,11 @@ def main():
         raise ValueError
         sys.exit(1)
 
+    if type(length) is int == False:
+        print("Length must be an integer (in Hz).")
+        raise ValueError
+        sys.exit(1)
+
     try:
         if (length <= 0) or (length > 10000):
             print("Invalid entry for length, must be between 0 and 10000.")
@@ -170,7 +177,7 @@ def main():
         sys.exit(1)
 
     try:
-        int(channels)
+        str(channels)
     except ValueError:
         print(
             "Invalid entry for channels. Must be 19-char long string of "
