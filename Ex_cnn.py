@@ -136,45 +136,45 @@ def main():
             "Invalid entry for data_type. "
             + "Must be one of ['erps', 'contigs', 'spectra']")
         raise ValueError
-        sys.exit(1)
+        sys.exit(3)
 
     if not os.path.isdir(studies_folder):
         print(
             "Invalid entry for studies_folder, "
             + "path does not exist as directory.")
         raise FileNotFoundError
-        sys.exit(1)
+        sys.exit(3)
 
     if not os.path.isdir(os.path.join(studies_folder, study_name)):
         print(
             "Invalid entry for study_name, "
             + "path does not exist as directory.")
         raise FileNotFoundError
-        sys.exit(1)
+        sys.exit(3)
 
     if task not in config.tasks:
         print(
             "Invalid entry for task, "
             + "not accepted as regular task name in config.")
         raise ValueError
-        sys.exit(1)
+        sys.exit(3)
 
     if type(length) is int is False:
         print("Length must be an integer (in Hz).")
         raise ValueError
-        sys.exit(1)
+        sys.exit(3)
 
     try:
         if (length <= 0) or (length > 10000):
             print("Invalid entry for length, must be between 0 and 10000.")
             raise ValueError
-            sys.exit(1)
+            sys.exit(3)
     except TypeError:
         print(
             "Invalid entry for length, "
             + "must be integer value between 0 and 10000.")
         raise ValueError
-        sys.exit(1)
+        sys.exit(3)
 
     try:
         str(channels)
@@ -183,14 +183,14 @@ def main():
             "Invalid entry for channels. Must be 19-char long string of "
             + "1s and 0s")
         raise ValueError
-        sys.exit(1)
+        sys.exit(3)
 
     if len(channels) != 19:
         print(
             "Invalid entry for channels. Must be 19-char long string of "
             + "1s and 0s")
         raise ValueError
-        sys.exit(1)
+        sys.exit(3)
 
     for char in channels:
         if char != '0' and char != '1':
@@ -198,51 +198,51 @@ def main():
                 "Invalid entry for channels. Must be 19-char long string of "
                 + "1s and 0s")
             raise ValueError
-            sys.exit(1)
+            sys.exit(3)
 
     try:
         if (epochs <= 0) or (epochs > 10000):
             print("Invalid entry for epochs, must be between 0 and 10000.")
-            sys.exit(1)
+            sys.exit(3)
             raise ValueError
-            sys.exit(1)
+            sys.exit(3)
     except TypeError:
         print(
             "Invalid entry for epochs, "
             + "must be integer value between 0 and 10000.")
         raise ValueError
-        sys.exit(1)
+        sys.exit(3)
 
     if normalize not in ["standard", "minmax", None]:
         print(
             "Invalid entry for normalize. "
             + "Must be one of ['standard', 'minmax', 'None'].")
         raise ValueError
-        sys.exit(1)
+        sys.exit(3)
 
     if tt_split < 0.1 or tt_split > 0.9:
         print(
             "Invalid entry for tt_split. Must be float between "
             + "0.1 and 0.9.")
         raise ValueError
-        sys.exit(1)
+        sys.exit(3)
 
     if learning_rate < 0.00001 or learning_rate > 0.99999:
         print(
             "Invalid entry for learning_rate. Must be float between "
             + "0.00001 and 0.99999.")
         raise ValueError
-        sy.exit(1)
+        sy.exit(3)
 
     if art_degree not in [0, 1, 2]:
         print("Invalid entry for artifact. Must be int between 0 and 2.")
         raise ValueError
-        sys.exit(1)
+        sys.exit(3)
 
     if erp_degree not in [1, 2, None]:
         print("Invalid entry for erp_degree. Must be int between 1 and 2.")
         raise ValueError
-        sys.exit(1)
+        sys.exit(3)
 
     # patient_path points to our 'condition-positive' dataset
     # ex. patient_path =
