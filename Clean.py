@@ -7,10 +7,10 @@ from tqdm import tqdm
 # takes one positional argument, path of study folder
 class StudyFolder:
     """
-    The StudyFolder object can be used for initializing a dataset newly \
+    The StudyFolder object can be used for initializing a dataset newly
     exported from the WAVi Desktop software, or similar.
 
-    Designed to make organization, cleaning, and preprocessing of mass \
+    Designed to make organization, cleaning, and preprocessing of mass
     datasets dead simple.
 
     Parameters:
@@ -39,9 +39,9 @@ class StudyFolder:
 
     def autoclean(self, group_num=1):
         """
-        For each task defined in config.tasks, performs StudyFolder.standardize \
-        and StudyFolder.anon, standardizing task names / file structure and \
-        anonymizing subject headers, leaving original fnames in translator \
+        For each task defined in config.tasks, performs StudyFolder.standardize
+        and StudyFolder.anon, standardizing task names / file structure and
+        anonymizing subject headers, leaving original fnames in translator
         stored in StudyFolder/<task>_translator.txt
         """
 
@@ -61,8 +61,9 @@ class StudyFolder:
 
         if len(self.raw_fnames) > 0:
 
-            print("Some raw files couldn't be automatically standardized. "\
-                + "You should review them in /raw before "\
+            print(
+                "Some raw files couldn't be automatically standardized. "
+                + "You should review them in /raw before "
                 + "moving forward with analysis.")
 
     def set_raw_fnames(self):
@@ -75,8 +76,8 @@ class StudyFolder:
 
     def standardize(self, old, new):
         """
-        Standardizes every filename possible, using alternative (unclean) \
-        fnames from the WAVi desktop which are written in the tasks dict \
+        Standardizes every filename possible, using alternative (unclean)
+        fnames from the WAVi desktop which are written in the tasks dict
         in config.py
         """
 
@@ -99,7 +100,7 @@ class StudyFolder:
 
     def anon(self, task, group_num=1):
         """
-        Anonymizes sets of standardized task data which can then be read \
+        Anonymizes sets of standardized task data which can then be read
         into a TaskData object.
         """
 
@@ -114,9 +115,9 @@ class StudyFolder:
         for i, lead in enumerate(subject_leads):
 
             translator[lead] = str(group_num)\
-                                + "0"\
-                                * (config.participantNumLen - len(str(i)) - 1)\
-                                + str(i)
+                + "0"\
+                * (config.participantNumLen - len(str(i)) - 1)\
+                + str(i)
 
             f.write(lead)
 
@@ -126,7 +127,9 @@ class StudyFolder:
 
             f.write("\n")
 
-            files = [fname for fname in self.get_task_fnames(task) if lead in fname]
+            files = [
+                fname for fname in self.get_task_fnames(task)
+                if lead in fname]
 
             for file in files:
 
@@ -140,8 +143,8 @@ class StudyFolder:
 
     def no_filter_rename(self, task):
         """
-        Since alt files can be generated with different bandpass filters, \
-        this function exists to rename original files with '_nofilter' \
+        Since alt files can be generated with different bandpass filters,
+        this function exists to rename original files with '_nofilter'
         appended.
         """
 
@@ -149,7 +152,8 @@ class StudyFolder:
             if fname[-4:] not in [".art", ".evt"]:
                 shutil.move(
                     self.path + "/" + task + "/" + fname,
-                    self.path + "/" + task + "/" + fname[:-4] + "_nofilter" + fname[-4:])
+                    self.path + "/" + task + "/"
+                    + fname[:-4] + "_nofilter" + fname[-4:])
 
         self.task_fnames = self.get_task_fnames(task)
 
@@ -163,5 +167,6 @@ class StudyFolder:
             if fname[-4:] in [".evt", ".art"]:
                 shutil.move(
                     self.path + "/" + task + "/" + fname,
-                    self.path + "/" + task + "/" + fname.replace("_nofilter", "")
+                    self.path + "/" + task + "/"
+                    + fname.replace("_nofilter", "")
                 )

@@ -49,7 +49,11 @@ class Classifier:
         - network_channels (default): list of channel names to be included
     """
 
-    def __init__(self, type, network_channels=config.network_channels, freq_snip=None):
+    def __init__(
+        self,
+        type,
+        network_channels=config.network_channels,
+            freq_snip=None):
 
         self.data = []
 
@@ -95,9 +99,10 @@ class Classifier:
                     fname.split('_')[1],
                     source=os.path.basename(os.path.dirname(path))))
 
-        if \
-        (self.data[-1].data.shape != self.data[0].data.shape):
-            print("Warning:",
+        if (self.data[-1].data.shape != self.data[0].data.shape):
+
+            print(
+                "Warning:",
                 self.type,
                 "at \n",
                 self.data[-1].subject,
@@ -161,19 +166,20 @@ class Classifier:
             while (subjects[h], folder) in filled_subs:
                 h += 1
 
-            sub_fnames = [fname for fname in fnames \
-                if subjects[h] in fname[:config.participantNumLen]]
+            sub_fnames = [
+                fname for fname in fnames if
+                subjects[h] in fname[:config.participantNumLen]]
 
             for sub_fname in sub_fnames:
                 reqs = [filter_band, ".evt", ".art"]
                 if any(ext in sub_fname for ext in reqs):
                     self.LoadData(
-                        parentPath\
-                        + "/"\
-                        + folder\
-                        + "/"\
-                        + dataFolder\
-                        + "/"\
+                        parentPath
+                        + "/"
+                        + folder
+                        + "/"
+                        + dataFolder
+                        + "/"
                         + sub_fname)
 
                 i += 1
@@ -546,7 +552,6 @@ class Classifier:
         from sklearn.svm import SVC
         from sklearn import svm, metrics
 
-
         # shuffle dataset
         random.shuffle(self.data)
 
@@ -817,7 +822,7 @@ class Classifier:
         epochs=100,
         plot_ROC=False,
         tt_split=0.33,
-        k_fold=None):
+            k_fold=None):
 
         """
         Convolutional Neural Network classifier, using Tensorflow base
@@ -846,7 +851,7 @@ class Classifier:
                 ex: (2, 5) fold 2 of 5
         """
         # quiet some TF warnings
-        TF_CPP_MIN_LOG_LEVEL=2
+        TF_CPP_MIN_LOG_LEVEL = 2
         import tensorflow as tf
         from tensorflow.keras import Model
         from tensorflow.keras import regularizers
@@ -889,14 +894,15 @@ class Classifier:
         j = 0
         for sub in self.subjects:
             if int(sub[1][0]) > 1:
-                j +=1
+                j += 1
 
         if k_fold is None:
-            print("% Positive in all subjects:",
+            print(
+                "% Positive in all subjects:",
                 j / len(self.subjects))
-            print("% Negative in all subjects:",
+            print(
+                "% Negative in all subjects:",
                 (len(self.subjects) - j) / len(self.subjects))
-
 
         train_subjects = []
         test_subjects = []
@@ -909,10 +915,12 @@ class Classifier:
 
             split = math.floor(len(self.subjects)*tt_split)
 
-            pos_subjects = [sub for sub in self.subjects if int(sub[1][0]) > 1]
+            pos_subjects = [
+                sub for sub in self.subjects if int(sub[1][0]) > 1]
             pos_split = math.floor(len(pos_subjects)*tt_split)
 
-            neg_subjects = [sub for sub in self.subjects if int(sub[1][0]) == 1]
+            neg_subjects = [
+                sub for sub in self.subjects if int(sub[1][0]) == 1]
             neg_split = math.floor(len(neg_subjects)*tt_split)
 
             train_subjects = pos_subjects[:pos_split*-1]
@@ -935,7 +943,8 @@ class Classifier:
 
             # first look at only subjects with subject code above 1 (cond-pos)
             pos_subjects = [sub for sub in self.subjects if int(sub[1][0]) > 1]
-            train_indexes, test_indexes = list(kf.split(pos_subjects))[k_fold[0]]
+            train_indexes, test_indexes = list(
+                kf.split(pos_subjects))[k_fold[0]]
 
             for i, sub in enumerate(pos_subjects):
                 if i in train_indexes:
@@ -948,8 +957,10 @@ class Classifier:
                     sys.exit(1)
 
             # then look at subjects with subject code "1" (condition-neg)
-            neg_subjects = [sub for sub in self.subjects if int(sub[1][0]) == 1]
-            train_indexes, test_indexes = list(kf.split(neg_subjects))[k_fold[0]]
+            neg_subjects = [
+                sub for sub in self.subjects if int(sub[1][0]) == 1]
+            train_indexes, test_indexes = list(
+                kf.split(neg_subjects))[k_fold[0]]
 
             for i, sub in enumerate(neg_subjects):
                 if i in train_indexes:
@@ -989,18 +1000,20 @@ class Classifier:
 
         num_pos_train_samps = 0
         for label in train_labels:
-            if label==1:
+            if label == 1:
                 num_pos_train_samps += 1
 
         num_pos_test_samps = 0
         for label in test_labels:
-            if label==1:
+            if label == 1:
                 num_pos_test_samps += 1
 
         if k_fold is None:
-            print("% Positive samples in train:",
+            print(
+                "% Positive samples in train:",
                 num_pos_train_samps / len(train_labels))
-            print("% Positive samples in test:",
+            print(
+                "% Positive samples in test:",
                 num_pos_test_samps / len(test_labels))
 
         # introduce equential set
@@ -1120,7 +1133,7 @@ class Classifier:
             print("Input shape:", train_dataset.shape)
 
         # adaptive learning rate
-        if lr_decay==True:
+        if lr_decay is True:
             learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(
                 initial_learning_rate=learning_rate,
                 decay_steps=100,
@@ -1139,7 +1152,8 @@ class Classifier:
             metrics=['accuracy'])
 
         # tensorboard setup
-        log_dir = 'logs/fit/' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+        log_dir = 'logs/fit/'\
+            + datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
         tensorboard_callback = tf.keras.callbacks.TensorBoard(
             log_dir=log_dir,
             histogram_freq=1)
@@ -1154,22 +1168,31 @@ class Classifier:
             # verbose=0 if k_fold is not None else 1
         )
 
-        y_pred_keras = model.predict(test_dataset)[:,0]
+        y_pred_keras = model.predict(test_dataset)[:, 0]
 
-        if plot_ROC == True:
+        if plot_ROC is True:
             from Plots import roc
             roc(y_pred_keras, test_labels, fname=log_dir+"/ROC")
 
         return(history, model, y_pred_keras, test_labels)
 
-    def KfoldCrossVal(self, path, ref_path, k=5, pos_only=True, filter_band="nofilter", model_type='CNN'):
+    def KfoldCrossVal(
+        self,
+        path,
+        ref_path,
+        k=5,
+        pos_only=True,
+        filter_band="nofilter",
+            model_type='CNN'):
         """
-        Resampling procedure used to evaluate ML models on a limited data sample
+        Resampling procedure used to evaluate ML models
+        on a limited data sample
 
         Parameters:
             - path (required positional): str
                 path of file (spectra or contig)
-                to be loaded and stacked on the parent object's 'data' attribute
+                to be loaded and stacked on the parent
+                object's 'data' attribute
                 note: objects will be loaded in as Contig or Spectra objects
             - ref_path (required positional): str
                 parent path of reference folders listed above

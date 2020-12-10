@@ -9,13 +9,14 @@ from tqdm import tqdm
 import scipy.signal
 from scipy.signal import butter, lfilter
 
+
 # takes one positional argument, object from ML.Classifier
 class SpectralAverage:
     def __new__(
         self,
         inputClf,
         lowbound=0,
-        highbound=25):
+            highbound=25):
 
         if inputClf.type == "spectra":
 
@@ -32,13 +33,13 @@ class SpectralAverage:
         self,
         inputClf,
         lowbound=0,
-        highbound=25):
+            highbound=25):
 
         self.Clf = inputClf
 
-        self.lowbound=lowbound
+        self.lowbound = lowbound
 
-        self.highbound=highbound
+        self.highbound = highbound
 
         self.f = np.array(self.Clf.data[0].freq[
             int(self.lowbound // self.Clf.data[0].freq_res):
@@ -98,7 +99,12 @@ class SpectralAverage:
 
             axs[i].legend()
 
-            axs[i].set_xticks(np.linspace(self.f[0], self.f[-1], len(self.f), endpoint=True))
+            axs[i].set_xticks(
+                np.linspace(
+                    self.f[0],
+                    self.f[-1],
+                    len(self.f),
+                    endpoint=True))
 
             i += 1
 
@@ -122,23 +128,43 @@ class BandFilter:
 
         range = config.frequency_bands[filter_band]
 
-        fnames = [fname for fname in os.listdir(self.study_folder+"/"+self.task) if "nofilter" in fname]
+        fnames = [
+            fname for fname in os.listdir(self.study_folder+"/"+self.task)
+            if "nofilter" in fname]
 
         for fname in tqdm(fnames):
 
-            arr = np.genfromtxt(self.study_folder+"/"+self.task+"/"+fname, delimiter=" ")
+            arr = np.genfromtxt(
+                self.study_folder+"/"+self.task+"/"+fname,
+                delimiter=" ")
             j = 0
-            post = np.ndarray(shape=(arr.shape[0], len(config.channel_names))).T
+            post = np.ndarray(
+                shape=(arr.shape[0], len(config.channel_names))).T
             for sig in arr.T:
                 if self.type == 'lowpass':
-                    sos = scipy.signal.butter(4, range[0], btype=self.type, fs=config.sample_rate, output='sos')
+                    sos = scipy.signal.butter(
+                        4,
+                        range[0],
+                        btype=self.type,
+                        fs=config.sample_rate,
+                        output='sos')
                 elif self.type == 'highpass':
-                    sos = scipy.signal.butter(4, range[1], btype=self.type, fs=config.sample_rate, output='sos')
+                    sos = scipy.signal.butter(
+                        4,
+                        range[1],
+                        btype=self.type,
+                        fs=config.sample_rate,
+                        output='sos')
                 else:
-                    sos = scipy.signal.butter(4, [range[0], range[1]], btype=self.type, fs=config.sample_rate, output='sos')
+                    sos = scipy.signal.butter(
+                        4,
+                        [range[0], range[1]],
+                        btype=self.type,
+                        fs=config.sample_rate,
+                        output='sos')
                 filtered = scipy.signal.sosfilt(sos, sig)
                 np.vstack((post, filtered))
-                j+=1
+                j += 1
 
             if self.type == "bandstop":
                 new_fname = fname.replace("nofilter", "no"+filter_band)
@@ -153,4 +179,6 @@ class BandFilter:
 
         for file in tqdm(self.new_data):
 
-            np.savetxt(self.study_folder+"/"+self.task+"/"+file[0], file[1], delimiter=" ", fmt="%2.1f")
+            np.savetxt(
+                self.study_folder+"/"+self.task+"/"+file[0], file[1],
+                delimiter=" ", fmt="%2.1f")

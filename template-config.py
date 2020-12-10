@@ -35,7 +35,8 @@ excludeSubs = [
 
 group_names = {
     1: "Control",
-    2: "Pain"
+    2: "Pain",
+    3: "Rehab"
 }
 
 refGroupFolders = [
@@ -130,6 +131,7 @@ network_channels = [
     'Pz']
 
 frequency_bands = {
-    "delta": [0, 4],
+    "delta": [0, 2],
+    "theta": [2, 6],
     "alpha": [6, 13],
 }

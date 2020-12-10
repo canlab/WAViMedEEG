@@ -4,110 +4,112 @@ from tqdm import tqdm
 import config
 import argparse
 
+
 def main():
 
-    parser = argparse.ArgumentParser(description = "Options for CNN "\
+    parser = argparse.ArgumentParser(
+        description="Options for CNN "
         + "(convoluional neural network) method of ML.Classifier")
 
     parser.add_argument('data_type',
-                        type = str,
-                        help = "Input data type: contigs, erps, or spectra")
+                        type=str,
+                        help="Input data type: contigs, erps, or spectra")
 
     parser.add_argument('--studies_folder',
-                        dest = 'studies_folder',
-                        type = str,
-                        default = config.myStudies,
-                        help = "(Default: " + config.myStudies + ") Path to"\
-                            + "parent folder containing study folders")
+                        dest='studies_folder',
+                        type=str,
+                        default=config.myStudies,
+                        help="(Default: " + config.myStudies + ") Path to "
+                        + "parent folder containing study folders")
 
     parser.add_argument('--study_name',
-                        dest = 'study_name',
-                        type = str,
-                        default = config.studyDirectory,
-                        help = "(Default: " + config.studyDirectory + ") "\
-                            + "Study folder containing dataset")
+                        dest='study_name',
+                        type=str,
+                        default=config.studyDirectory,
+                        help="(Default: " + config.studyDirectory + ") "
+                        + "Study folder containing dataset")
 
     parser.add_argument('--task',
-                        dest = 'task',
-                        type = str,
-                        default = 'P300',
-                        help = "(Default: P300) Four-character task name. "\
-                            + "Options: " + str([key for key in config.tasks]))
+                        dest='task',
+                        type=str,
+                        default='P300',
+                        help="(Default: P300) Four-character task name. "
+                        + "Options: " + str([key for key in config.tasks]))
 
     parser.add_argument('--length',
-                        dest = 'length',
-                        type = int,
-                        default = 250,
-                        help = "(Default: 250) Duration of input data, in"\
-                            + "number of samples @ "\
-                            + str(config.sample_rate) + " Hz")
+                        dest='length',
+                        type=int,
+                        default=250,
+                        help="(Default: 250) Duration of input data, in "
+                        + "number of samples @ "
+                        + str(config.sample_rate) + " Hz")
 
     parser.add_argument('--channels',
-                        dest = 'channels',
-                        type = str,
-                        default = '1111111111111111111',
-                        help = "(Default: 1111111111111111111) Binary string "\
-                            + "specifying which of the "\
-                            + "following EEG channels will be included "\
-                            + "in analysis: " + str(config.channel_names))
+                        dest='channels',
+                        type=str,
+                        default='1111111111111111111',
+                        help="(Default: 1111111111111111111) Binary string "
+                        + "specifying which of the "
+                        + "following EEG channels will be included "
+                        + "in analysis: " + str(config.channel_names))
 
     parser.add_argument('--artifact',
-                        dest = 'artifact',
-                        type = int,
-                        default = 0,
-                        help = "(Default: 0) Strictness of artifacting "\
-                            + "algorithm to be used: 0=strict, 1=some, 2=raw")
+                        dest='artifact',
+                        type=int,
+                        default=0,
+                        help="(Default: 0) Strictness of artifacting "
+                        + "algorithm to be used: 0=strict, 1=some, 2=raw")
 
     parser.add_argument('--erp_degree',
-                        dest = 'erp_degree',
-                        type = int,
-                        default = None,
-                        help = "Lowest number in .evt files which will "\
-                            + "be accepted as an erp event")
+                        dest='erp_degree',
+                        type=int,
+                        default=None,
+                        help="Lowest number in .evt files which will "
+                        + "be accepted as an erp event")
 
     # ============== CNN args ==============
 
     parser.add_argument('--epochs',
-                        dest = 'epochs',
-                        type = int,
-                        default = 100,
-                        help = "(Default: 100) Number of training "\
-                            + " iterations to be run")
+                        dest='epochs',
+                        type=int,
+                        default=100,
+                        help="(Default: 100) Number of training "
+                        + " iterations to be run")
 
     parser.add_argument('--normalize',
-                        dest = 'normalize',
-                        type = str,
-                        default = None,
-                        help = "(Default: None) Which normalization technique "\
-                            + "to use. One of "\
-                            + "the following: standard, minmax, None")
+                        dest='normalize',
+                        type=str,
+                        default=None,
+                        help="(Default: None) Which normalization technique "
+                        + "to use. One of "
+                        + "the following: standard, minmax, None")
 
     parser.add_argument('--plot_ROC',
-                        dest = 'plot_ROC',
-                        type = bool,
-                        default = False,
-                        help = "(Default: False) Plot sensitivity-specificity "\
-                            + "curve on validation dataset")
+                        dest='plot_ROC',
+                        type=bool,
+                        default=False,
+                        help="(Default: False) Plot sensitivity-specificity "
+                        + "curve on validation dataset")
 
     parser.add_argument('--tt_split',
-                        dest = 'tt_split',
-                        type = float,
-                        default = 0.33,
-                        help = "(Default: 0.33) Ratio of test samples "\
-                            + "to train samples")
+                        dest='tt_split',
+                        type=float,
+                        default=0.33,
+                        help="(Default: 0.33) Ratio of test samples "
+                        + "to train samples")
 
     parser.add_argument('--learning_rate',
-                        dest = 'learning_rate',
-                        type = float,
-                        default = 0.01,
-                        help = "(Default: 0.01) CNN step size")
+                        dest='learning_rate',
+                        type=float,
+                        default=0.01,
+                        help="(Default: 0.01) CNN step size")
 
     parser.add_argument('--lr_decay',
-                        dest = 'lr_decay',
-                        type = bool,
-                        default = False,
-                        help = "(Default: False) Whether learning rate should "\
-                            + "decay adhering to a 0.96 decay rate schedule")
+                        dest='lr_decay',
+                        type=bool,
+                        default=False,
+                        help="(Default: False) Whether learning rate should "
+                        + "decay adhering to a 0.96 decay rate schedule")
 
     # save the variables in 'args'
     args = parser.parse_args()
@@ -128,87 +130,99 @@ def main():
     lr_decay = args.lr_decay
 
     if data_type not in ["erps", "spectra", "contigs"]:
-        print("Invalid entry for data_type. "\
+        print(
+            "Invalid entry for data_type. "
             + "Must be one of ['erps', 'contigs', 'spectra']")
         raise ValueError
         sys.exit(1)
 
     if not os.path.isdir(studies_folder):
-        print("Invalid entry for studies_folder, "\
+        print(
+            "Invalid entry for studies_folder, "
             + "path does not exist as directory.")
         raise FileNotFoundError
         sys.exit(1)
 
     if not os.path.isdir(os.path.join(studies_folder, study_name)):
-        print("Invalid entry for study_name, "\
+        print(
+            "Invalid entry for study_name, "
             + "path does not exist as directory.")
         raise FileNotFoundError
         sys.exit(1)
 
     if task not in config.tasks:
-        print("Invalid entry for task, "\
+        print(
+            "Invalid entry for task, "
             + "not accepted as regular task name in config.")
         raise ValueError
         sys.exit(1)
 
     try:
-        if length <=0 or length > 10000:
+        if (length <= 0) or (length > 10000):
             print("Invalid entry for length, must be between 0 and 10000.")
             raise ValueError
             sys.exit(1)
-    except:
-        print("Invalid entry for length, "\
+    except TypeError:
+        print(
+            "Invalid entry for length, "
             + "must be integer value between 0 and 10000.")
         raise ValueError
         sys.exit(1)
 
     try:
         int(channels)
-    except:
-        print("Invalid entry for channels. Must be 19-char long string of"\
+    except ValueError:
+        print(
+            "Invalid entry for channels. Must be 19-char long string of "
             + "1s and 0s")
         raise ValueError
         sys.exit(1)
 
     if len(channels) != 19:
-        print("Invalid entry for channels. Must be 19-char long string of"\
+        print(
+            "Invalid entry for channels. Must be 19-char long string of "
             + "1s and 0s")
         raise ValueError
         sys.exit(1)
 
     for char in channels:
         if char != '0' and char != '1':
-            print("Invalid entry for channels. Must be 19-char long string of"\
+            print(
+                "Invalid entry for channels. Must be 19-char long string of "
                 + "1s and 0s")
             raise ValueError
             sys.exit(1)
 
     try:
-        if epochs <=0 or epochs > 10000:
+        if (epochs <= 0) or (epochs > 10000):
             print("Invalid entry for epochs, must be between 0 and 10000.")
             sys.exit(1)
             raise ValueError
             sys.exit(1)
-    except:
-        print("Invalid entry for epochs, "\
+    except TypeError:
+        print(
+            "Invalid entry for epochs, "
             + "must be integer value between 0 and 10000.")
         raise ValueError
         sys.exit(1)
 
     if normalize not in ["standard", "minmax", None]:
-        print("Invalid entry for normalize. "\
+        print(
+            "Invalid entry for normalize. "
             + "Must be one of ['standard', 'minmax', 'None'].")
         raise ValueError
         sys.exit(1)
 
     if tt_split < 0.1 or tt_split > 0.9:
-        print("Invalid entry for tt_split. Must be float between "\
+        print(
+            "Invalid entry for tt_split. Must be float between "
             + "0.1 and 0.9.")
         raise ValueError
         sys.exit(1)
 
     if learning_rate < 0.00001 or learning_rate > 0.99999:
-        print("Invalid entry for learning_rate. Must be float between "\
+        print(
+            "Invalid entry for learning_rate. Must be float between "
             + "0.00001 and 0.99999.")
         raise ValueError
         sy.exit(1)
@@ -259,7 +273,8 @@ def main():
             myclf.LoadData(patient_path+"/"+fname)
 
     # ============== Load Control (Condition-Negative) Data ==============
-    # the dataset will automatically add healthy control data found in the reference folders
+    # the dataset will automatically add healthy control data
+    # found in the reference folders
 
     myclf.Balance(studies_folder)
 
@@ -270,6 +285,7 @@ def main():
         epochs=epochs,
         plot_ROC=plot_ROC,
         tt_split=tt_split)
+
 
 if __name__ == '__main__':
     main()

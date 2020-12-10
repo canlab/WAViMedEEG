@@ -14,6 +14,7 @@ import argparse
 import config
 from tqdm import tqdm
 
+
 def main():
     """
     Instantiate a 'Trials' Object
@@ -22,7 +23,8 @@ def main():
     to be loaded in and processed.
     We'll instantiate this object for each of our study folders
     that contains this task, and operate on it to create contigs, and spectra.
-    gen_contigs() =  takes one positional argument: the length of the contig in samples
+    gen_contigs() =  takes one positional argument:
+    the length of the contig in samples
     @ 250 Hz and has the following optional arguments:
         network_channels: (string)
             binary list of channels in order found in config.py,
@@ -32,69 +34,81 @@ def main():
             from that found in wavi-output .art files, default 2=none
 
     write_contigs() = writes contigs to files
-    gen_spectra() = takes the same positional argument, and same optional arguments
+    gen_spectra() = takes the same positional argument,
+    and same optional arguments
     write_spectra() = writes spectra to files
     """
     # Create a argparse args
-    parser = argparse.ArgumentParser(description="Conditions for creating contigs.")
+    parser = argparse.ArgumentParser(
+        description="Conditions for creating contigs.")
 
     parser.add_argument('length',
-                        type = int,
-                        help = 'Duration of input data, in number of samples @ ' + str(config.sample_rate) + ' Hz')
+                        type=int,
+                        help='Duration of input data, in number of samples @ '
+                        + str(config.sample_rate) + ' Hz')
 
     parser.add_argument('--artifact',
-                        dest = 'artifact',
-                        type = int,
-                        default = 0,
-                        help = 'Strictness of artifacting algorithm to be used: 0 - strict, 1 - some, 2 - raw')
+                        dest='artifact',
+                        type=int,
+                        default=0,
+                        help="Strictness of artifacting algorithm to be used: "
+                        + "0 - strict, 1 - some, 2 - raw")
 
     parser.add_argument('--studies_folder',
-                        dest = 'studies_folder',
-                        type = str,
-                        default = config.myStudies,
-                        help = 'Path to parent folder containing study folders')
+                        dest='studies_folder',
+                        type=str,
+                        default=config.myStudies,
+                        help='Path to parent folder containing study folders')
 
     parser.add_argument('--study_name',
-                        dest = 'study_name',
-                        type = str,
-                        default = None,
-                        help = 'Study folder containing dataset')
+                        dest='study_name',
+                        type=str,
+                        default=None,
+                        help='Study folder containing dataset')
 
     parser.add_argument('--task',
-                        dest = 'task',
-                        type = str,
-                        default = "P300",
-                        help = 'Task to use from config.py')
+                        dest='task',
+                        type=str,
+                        default="P300",
+                        help='Task to use from config.py')
 
     parser.add_argument('--spectra',
-                        dest = 'spectra',
-                        type = bool,
-                        default = True,
-                        help = 'Whether spectra should automatically be generated and written to file after making contigs')
+                        dest='spectra',
+                        type=bool,
+                        default=True,
+                        help="Whether spectra should automatically be "
+                        + "generated and written to file after making contigs")
 
     parser.add_argument('--channels',
-                        dest = 'channels',
-                        type = str,
-                        default = '1111111111111111111',
-                        help = 'Binary string specifying which of the following EEG channels will be included in analysis: ' + str(config.channel_names))
+                        dest='channels',
+                        type=str,
+                        default='1111111111111111111',
+                        help="Binary string specifying which of the following "
+                        + "EEG channels will be included in analysis: "
+                        + str(config.channel_names))
 
     parser.add_argument('--filter_band',
-                        dest = 'filter_band',
-                        type = str,
-                        default = 'nofilter',
-                        help = 'Bandfilter to be used in analysis steps, such as: "noalpha", "delta", or "nofilter"')
+                        dest='filter_band',
+                        type=str,
+                        default='nofilter',
+                        help="Bandfilter to be used in analysis steps, such "
+                        + "as: 'noalpha', 'delta', or 'nofilter'")
 
     parser.add_argument('--erp',
-                        dest = 'erp',
-                        type = bool,
-                        default = False,
-                        help = 'If True then only contigs falling immediately after a "1" or a "2" in the corresponding .evt file will be accepted, i.e. only evoked responses')
+                        dest='erp',
+                        type=bool,
+                        default=False,
+                        help="If True then only contigs falling immediately "
+                        + "after a "1" or a "2" in the corresponding "
+                        + ".evt file will be accepted, i.e. only evoked "
+                        + "responses")
 
     parser.add_argument('--erp_degree',
-                        dest = 'erp_degree',
-                        type = int,
-                        default = 1,
-                        help = 'Lowest number in .evt files which will be accepted as an erp event')
+                        dest='erp_degree',
+                        type=int,
+                        default=1,
+                        help="Lowest number in .evt files which will be "
+                        + "accepted as an erp event")
 
     # Save the arguments in "args"
     args = parser.parse_args()
@@ -107,8 +121,8 @@ def main():
     spectra = args.spectra
     channels = args.channels
     filter_band = args.filter_band
-    erp=args.erp
-    erp_degree=args.erp_degree
+    erp = args.erp
+    erp_degree = args.erp_degree
 
     if study_name is None:
 

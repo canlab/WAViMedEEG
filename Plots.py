@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import config
 import numpy as np
 
+
 def roc(y_preds, y_labels, fname="ROC", plot=True):
     """
     ROC curve plotting function
@@ -23,10 +24,11 @@ def roc(y_preds, y_labels, fname="ROC", plot=True):
     from sklearn.metrics import auc
     auc_keras = auc(fpr, tpr)
 
-    if plot==True:
+    if plot is True:
         fig1 = plt.figure(1)
         plt.plot([0, 1], [0, 1], 'k--')
-        plt.plot(fpr,
+        plt.plot(
+            fpr,
             tpr,
             label='(area = {:.3f})'.format(auc_keras))
         plt.xlabel('False positive rate')
@@ -38,17 +40,19 @@ def roc(y_preds, y_labels, fname="ROC", plot=True):
 
     return auc_keras
 
+
 def plot_signal(t, sig):
     plt.figure(1)
     plt.plot(t, sig)
     plt.ylim(np.min(sig) - 1, np.max(sig) + 1)
     plt.show()
 
+
 def plot_svm_features(
     Features,
     svm_weights,
     scores=None,
-    network_channels=config.network_channels):
+        network_channels=config.network_channels):
 
     # set up figure and axes (rows)
     fig, axs = plt.subplots(

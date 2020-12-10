@@ -35,6 +35,7 @@ def BinarizeChannels(network_channels=config.network_channels):
 
     return(bin_str)
 
+
 def StringarizeChannels(bin_str):
     """
     Utility function to convert binary string channel names to a list of
@@ -130,7 +131,8 @@ class TaskData:
             fname[:config.participantNumLen]
             for fname in self.get_task_fnames(self.task)])
 
-    # takes length (in samples @ 250 Hz / config.sample_rate) as positional argument
+    # takes length (in samples @ 250 Hz / config.sample_rate)
+    # as positional argument
     def gen_contigs(
         self,
         contigLength,
@@ -138,7 +140,7 @@ class TaskData:
         art_degree=0,
         erp=False,
         erp_degree=1,
-        filter_band="nofilter"):
+            filter_band="nofilter"):
 
         """
         Generates Contig objects for every file possible in TaskData.path,
@@ -165,18 +167,18 @@ class TaskData:
             self.contigs = []
 
         # make parent contigs folder
-        if erp == False:
+        if erp is False:
             if not os.path.isdir(self.studyFolder + "/contigs"):
 
                 os.mkdir(self.studyFolder + "/contigs")
 
-        elif erp == True:
+        elif erp is True:
             if not os.path.isdir(self.studyFolder + "/erps"):
 
                 os.mkdir(self.studyFolder + "/erps")
 
         # make a child subdirectory called contigs_<task>_<contig_length>
-        if erp == False:
+        if erp is False:
             self.contigsFolder = self.studyFolder\
                                 + "/contigs/"\
                                 + self.task\
@@ -187,7 +189,7 @@ class TaskData:
                                 + "_"\
                                 + str(art_degree)
 
-        elif erp == True:
+        elif erp is True:
             self.contigsFolder = self.studyFolder\
                                 + "/erps/"\
                                 + self.task\
@@ -201,7 +203,7 @@ class TaskData:
                                 + str(erp_degree)
 
         os.mkdir(self.contigsFolder)
-        ### TODO: warning for pre-existing folder
+        # TODO: warning for pre-existing folder
 
         print("Contigifying Data:\n====================")
 
@@ -209,29 +211,29 @@ class TaskData:
 
             artfile = sub + "_" + self.task + ".art"
 
-            if erp == True:
-                evtfile = sub + "_" + self.task + ".evt"
-
             # load in artifact file as np array
             # print("Artifact:"+self.path+"/"+artfile)
             artifact = np.genfromtxt(
                 self.path + "/" + artfile,
                 delimiter=" ")
 
-            if erp == True:
+            if erp is True:
+                evtfile = sub + "_" + self.task + ".evt"
                 events = np.genfromtxt(
                     self.path + "/" + evtfile,
                     delimiter=" ")
 
                 if events.size == 0:
-                    print("Most likely an empty text file was "\
+                    print(
+                        "Most likely an empty text file was "
                         + "encountered. Skipping: " + evtfile)
 
                     continue
 
             if artifact.size == 0:
 
-                print("Most likely an empty text file was "\
+                print(
+                    "Most likely an empty text file was "
                     + "encountered. Skipping: " + artfile)
 
                 continue
@@ -252,10 +254,9 @@ class TaskData:
 
                 indeces = []
 
-                if erp == False:
+                if erp is False:
                     # write list of start indexes for windows which meet
                     # contig requirements
-
 
                     i = 0
 
@@ -270,8 +271,9 @@ class TaskData:
                             i += contigLength
 
                         else:
-                            # ***
-                            # contig alg can be sped up here to jump to last instance of NaN
+                            # TODO
+                            # contig alg can be sped up here to jump to
+                            # last instance of NaN
                             i += 1
 
                 else:
@@ -287,9 +289,9 @@ class TaskData:
                             indeces.append(i)
 
                 subfiles = [
-                fname for fname in self.task_fnames
-                if (sub == fname[:config.participantNumLen]
-                and "eeg" in fname and "_"+filter_band in fname)]
+                    fname for fname in self.task_fnames
+                    if (sub == fname[:config.participantNumLen])
+                    and ("eeg" in fname and "_" + filter_band in fname)]
 
                 # subfiles = [fname for fname in subfiles if "eeg" in fname]
 
@@ -301,7 +303,8 @@ class TaskData:
 
                     if data.size == 0:
 
-                        print("Most likely an empty text file was "\
+                        print(
+                            "Most likely an empty text file was "
                             + "encountered. Skipping: " + eegfile)
 
                     else:
@@ -310,7 +313,7 @@ class TaskData:
 
                         for i in indeces:
 
-                            if erp == True:
+                            if erp is True:
                                 self.contigs.append(
                                     Contig(
                                         data[i:(i + contigLength), :],
@@ -345,13 +348,13 @@ class TaskData:
 
             for contig in tqdm(self.contigs):
                 contig.write(
-                    self.contigsFolder\
-                    + "/"\
-                    + contig.subject\
-                    + "_"\
-                    + contig.band\
-                    + "_"\
-                    + str(contig.startindex)\
+                    self.contigsFolder
+                    + "/"
+                    + contig.subject
+                    + "_"
+                    + contig.band
+                    + "_"
+                    + str(contig.startindex)
                     + ".csv")
 
     # takes length (in samples @ 250 Hz) as positional argument
@@ -362,10 +365,10 @@ class TaskData:
         art_degree=0,
         erp=False,
         erp_degree=1,
-        filter_band="nofilter"):
+            filter_band="nofilter"):
 
         """
-        Generates Spectra objects for every file possible in TaskData.contigs,\
+        Generates Spectra objects for every file possible in TaskData.contigs,
         appending each to TaskData.spectra
 
         *** Note only reads contigs written to file currently
@@ -373,7 +376,7 @@ class TaskData:
         Parameters:
             - contigLength: length in samples (@ 250 Hz or config.sample_rate)
             - network_channels: default config.network_channels
-            - art_degree: (int) default 0, minimum value accepted to pass as a \
+            - art_degree: (int) default 0, minimum value accepted to pass as a
               "clean" contig, when reading mask from .art file
         """
 
@@ -381,51 +384,51 @@ class TaskData:
 
             self.spectra = []
 
-        if erp == False:
+        if erp is False:
             self.contigsFolder = self.studyFolder\
-                                + "/contigs/"\
-                                + self.task\
-                                + "_"\
-                                + str(contigLength)\
-                                + "_"\
-                                + network_channels\
-                                + "_"\
-                                + str(art_degree)
+                + "/contigs/"\
+                + self.task\
+                + "_"\
+                + str(contigLength)\
+                + "_"\
+                + network_channels\
+                + "_"\
+                + str(art_degree)
 
             self.spectraFolder = self.studyFolder\
-                                + "/spectra/"\
-                                + self.task\
-                                + "_"\
-                                + str(contigLength)\
-                                + "_"\
-                                + network_channels\
-                                + "_"\
-                                + str(art_degree)
+                + "/spectra/"\
+                + self.task\
+                + "_"\
+                + str(contigLength)\
+                + "_"\
+                + network_channels\
+                + "_"\
+                + str(art_degree)
 
-        elif erp == True:
+        elif erp is True:
             self.contigsFolder = self.studyFolder\
-                                + "/erps/"\
-                                + self.task\
-                                + "_"\
-                                + str(contigLength)\
-                                + "_"\
-                                + network_channels\
-                                + "_"\
-                                + str(art_degree)\
-                                + "_"\
-                                + str(erp_degree)
+                + "/erps/"\
+                + self.task\
+                + "_"\
+                + str(contigLength)\
+                + "_"\
+                + network_channels\
+                + "_"\
+                + str(art_degree)\
+                + "_"\
+                + str(erp_degree)
 
             self.spectraFolder = self.studyFolder\
-                                + "/spectra/"\
-                                + self.task\
-                                + "_"\
-                                + str(contigLength)\
-                                + "_"\
-                                + network_channels\
-                                + "_"\
-                                + str(art_degree)\
-                                + "_"\
-                                + str(erp_degree)
+                + "/spectra/"\
+                + self.task\
+                + "_"\
+                + str(contigLength)\
+                + "_"\
+                + network_channels\
+                + "_"\
+                + str(art_degree)\
+                + "_"\
+                + str(erp_degree)
 
         # make parent spectra folder
         if not os.path.isdir(self.studyFolder + "/spectra"):
@@ -434,12 +437,13 @@ class TaskData:
 
         # make a child subdirectory called\
         # <task>_<contig_length>_<binary_channels_code>
-        ### TODO: warning for pre-existing folder
+        # TODO: warning for pre-existing folder
         os.mkdir(self.spectraFolder)
 
         print("Fourier Transforming Data:\n====================")
 
-        contigs = [fname for fname in os.listdir(self.contigsFolder)
+        contigs = [
+            fname for fname in os.listdir(self.contigsFolder)
             if "_" + filter_band in fname]
         for contig in tqdm(contigs):
 
@@ -462,7 +466,9 @@ class TaskData:
 
         if not hasattr(self, 'spectra'):
 
-            print("This instance of the class 'TaskData' has no 'spectra' attribute.")
+            print(
+                "This instance of the class 'TaskData' has "
+                + "no 'spectra' attribute.")
 
             raise ValueError
 
@@ -473,13 +479,13 @@ class TaskData:
             for spectrum in tqdm(self.spectra):
 
                 spectrum.write(
-                    self.spectraFolder\
-                    + "/"\
-                    + spectrum.subject\
-                    + "_"\
-                    + spectrum.band\
-                    + "_"\
-                    + str(spectrum.startindex)\
+                    self.spectraFolder
+                    + "/"
+                    + spectrum.subject
+                    + "_"
+                    + spectrum.band
+                    + "_"
+                    + str(spectrum.startindex)
                     + ".csv")
 
 
@@ -500,7 +506,14 @@ class Contig:
         - source: path of original .eeg datafile
     """
 
-    def __init__(self, data, startindex, subject, band, source=None, event=None):
+    def __init__(
+        self,
+        data,
+        startindex,
+        subject,
+        band,
+        source=None,
+            event=None):
 
         self.data = data
 
@@ -536,7 +549,6 @@ class Contig:
 
         channel_number = 0
 
-        # spectral = np.ndarray(shape=(len(self.data), len(config.channel_names))).T
         for sig in self.data.T:
 
             electrode = config.network_channels[channel_number]
@@ -547,7 +559,7 @@ class Contig:
                     sig,
                     fs=float(config.sample_rate),
                     window='hann')
-            except:
+            except ValueError:
                 print("Something went wrong processing the following contig:")
                 print(self.subject, self.startindex, self.source)
                 return None
@@ -560,7 +572,13 @@ class Contig:
 
             channel_number += 1
 
-        return(Spectra(spectral, spectral.T[0], self.startindex, self.subject, self.band))
+        return(
+            Spectra(
+                spectral,
+                spectral.T[0],
+                self.startindex,
+                self.subject,
+                self.band))
 
     def plot(self):
         """
@@ -626,7 +644,8 @@ class Contig:
             origline = lined[legline]
             vis = not origline.get_visible()
             origline.set_visible(vis)
-            # Change the alpha on the line in the legend so we can see what lines
+            # Change the alpha on the line in the legend so
+            # we can see what lines
             # have been toggled
             if vis:
                 legline.set_alpha(1.0)
@@ -643,7 +662,8 @@ class Contig:
             movorigline = movlined[movlegline]
             vis = not movorigline.get_visible()
             movorigline.set_visible(vis)
-            # Change the alpha on the line in the legend so we can see what lines
+            # Change the alpha on the line in the legend so
+            # we can see what lines
             # have been toggled
             if vis:
                 movlegline.set_alpha(1.0)
@@ -681,7 +701,7 @@ class Spectra:
         subject,
         band="nofilter",
         channels=config.network_channels,
-        source=None):
+            source=None):
 
         self.data = data
 

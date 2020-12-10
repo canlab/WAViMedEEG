@@ -4,28 +4,29 @@ from tqdm import tqdm
 import config
 import argparse
 
+
 def main():
 
-
-    parser = argparse.ArgumentParser(description = 'Options for Clean.StudyFolder.autoclean() method')
+    parser = argparse.ArgumentParser(
+        description='Options for Clean.StudyFolder.autoclean() method')
 
     parser.add_argument('--studies_folder',
-                        dest = 'studies_folder',
-                        type = str,
-                        default = config.myStudies,
-                        help = 'Path to parent folder containing study folders')
+                        dest='studies_folder',
+                        type=str,
+                        default=config.myStudies,
+                        help='Path to parent folder containing study folders')
 
     parser.add_argument('--study_name',
-                        dest = 'study_name',
-                        type = str,
-                        default = config.studyDirectory,
-                        help = 'Study folder containing dataset')
+                        dest='study_name',
+                        type=str,
+                        default=config.studyDirectory,
+                        help='Study folder containing dataset')
 
     parser.add_argument('--group_num',
-                        dest = 'group_num',
-                        type = int,
-                        default = 1,
-                        help = 'Group number to be assigned to dataset')
+                        dest='group_num',
+                        type=int,
+                        default=1,
+                        help='Group number to be assigned to dataset')
 
     # save the variables in 'args'
     args = parser.parse_args()
@@ -45,6 +46,7 @@ def main():
 
     # attempt to autoclean
     my_study_folder.autoclean(group_num=group_num)
+
 
 if __name__ == '__main__':
     main()
