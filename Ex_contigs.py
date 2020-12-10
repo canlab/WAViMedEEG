@@ -129,49 +129,49 @@ def main():
     if type(length) is int is False:
         print("Length must be an integer (in Hz).")
         raise ValueError
-        sys.exit(1)
+        sys.exit(3)
 
     try:
         if (length <= 0) or (length > 10000):
             print("Invalid entry for length, must be between 0 and 10000.")
             raise ValueError
-            sys.exit(1)
+            sys.exit(3)
     except TypeError:
         print(
             "Invalid entry for length, "
             + "must be integer value between 0 and 10000.")
         raise ValueError
-        sys.exit(1)
+        sys.exit(3)
 
     if artifact not in [0, 1, 2]:
         print("Artifact must be 0, 1, 2 as an integer.")
-        sys.exit(1)
+        sys.exit(3)
 
     if not os.path.isdir(studies_folder):
         print(
             "Invalid entry for studies_folder, "
             + "path does not exist as directory.")
         raise FileNotFoundError
-        sys.exit(1)
+        sys.exit(3)
 
     if not os.path.isdir(os.path.join(studies_folder, study_name)):
         print(
             "Invalid entry for study_name, "
             + "path does not exist as directory.")
         raise FileNotFoundError
-        sys.exit(1)
+        sys.exit(3)
 
     if task not in config.tasks:
         print(
             "Invalid entry for task, "
             + "not accepted as regular task name in config.")
         raise ValueError
-        sys.exit(1)
+        sys.exit(3)
 
     if spectra is not bool:
         print("Spectra must be boolean, True or False.")
         raise ValueError
-        sys.exit(1)
+        sys.exit(3)
 
     try:
         str(channels)
@@ -180,14 +180,14 @@ def main():
             "Invalid entry for channels. Must be 19-char long string of "
             + "1s and 0s")
         raise ValueError
-        sys.exit(1)
+        sys.exit(3)
 
     if len(channels) != 19:
         print(
             "Invalid entry for channels. Must be 19-char long string of "
             + "1s and 0s")
         raise ValueError
-        sys.exit(1)
+        sys.exit(3)
 
     filterband_options = ['alpha', 'beta', 'theta', 'delta',
                           'nofilter', 'noalpha', 'nodelta', 'loalpha',
@@ -200,17 +200,17 @@ def main():
         for item in filterband_options:
             print(item)
         raise ValueError
-        sys.exit(1)
+        sys.exit(3)
 
     if erp is not bool:
         print("Spectra must be boolean, True or False.")
         raise ValueError
-        sys.exit(1)
+        sys.exit(3)
 
     if erp_degree not in [1, 2, None]:
         print("Invalid entry for erp_degree. Must be int between 1 and 2.")
         raise ValueError
-        sys.exit(1)
+        sys.exit(3)
 
     if study_name is None:
 
