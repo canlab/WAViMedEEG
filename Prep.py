@@ -36,6 +36,27 @@ def BinarizeChannels(network_channels=config.network_channels):
     return(bin_str)
 
 
+def StringarizeChannels(bin_str):
+    """
+    Utility function to convert binary string channel names to a list of
+    strings corresponding to whether or not each default channel
+    in config.channel_names is found in the input list
+
+    Parameters:
+        - string of 0s and 1s
+
+    Returns:
+        - network_channels: default config.network_channels
+    """
+
+    channels = []
+    for bin, chan in zip(bin_str, config.channel_names):
+        if bin == "1":
+            channels.append(chan)
+
+    return channels
+
+
 # just keeps subset of 19 channels as defined in network_channels
 def FilterChannels(array, keep_channels, axisNum=1):
     """
@@ -100,8 +121,6 @@ class TaskData:
 
         self.task_fnames = os.listdir(self.path)
 
-        self.network_channels = config.network_channels
-
     def get_task_fnames(self, task):
 
         return(os.listdir(self.path))
@@ -112,28 +131,30 @@ class TaskData:
             fname[:config.participantNumLen]
             for fname in self.get_task_fnames(self.task)])
 
-    # takes length (in samples @ 250 Hz / config.sampleRate) as positional argument
+    # takes length (in samples @ 250 Hz / config.sample_rate)
+    # as positional argument
     def gen_contigs(
         self,
         contigLength,
-        network_channels=config.network_channels,
-        artDegree=0,
+        network_channels=BinarizeChannels(config.network_channels),
+        art_degree=0,
         erp=False,
-        erpDegree=1):
+        erp_degree=1,
+            filter_band="nofilter"):
 
         """
         Generates Contig objects for every file possible in TaskData.path,
         appending each to TaskData.contigs
 
         Parameters:
-            - contigLength: length in samples (@ 250 Hz or config.sampleRate)
+            - contigLength: length in samples (@ 250 Hz or config.sample_rate)
             - network_channels: default config.network_channels
-            - artDegree: (int) default 0, minimum value accepted to pass as a
+            - art_degree: (int) default 0, minimum value accepted to pass as a
               "clean" contig, when reading mask from .art file
             - erp: (bool) default False, if True then only contigs falling
               immediately after a "1" or a "2" in the corresponding .evt file
               will be accepted, i.e. only evoked responses
-            - erpDegree: (int) default 1, lowest number in .evt which will be
+            - erp_degree: (int) default 1, lowest number in .evt which will be
               accepted as an erp event
         """
 
@@ -146,58 +167,49 @@ class TaskData:
             self.contigs = []
 
         # make parent contigs folder
-        if erp == False:
+        if erp is False:
             if not os.path.isdir(self.studyFolder + "/contigs"):
 
                 os.mkdir(self.studyFolder + "/contigs")
 
-        elif erp == True:
+        elif erp is True:
             if not os.path.isdir(self.studyFolder + "/erps"):
 
                 os.mkdir(self.studyFolder + "/erps")
 
         # make a child subdirectory called contigs_<task>_<contig_length>
-        try:
-            if erp == False:
-                self.contigsFolder = self.studyFolder\
-                                    + "/contigs/"\
-                                    + self.task\
-                                    + "_"\
-                                    + str(contigLength)\
-                                    + "_"\
-                                    + BinarizeChannels(
-                                        network_channels=self.network_channels)\
-                                    + "_"\
-                                    + str(artDegree)
+        if erp is False:
+            self.contigsFolder = self.studyFolder\
+                                + "/contigs/"\
+                                + self.task\
+                                + "_"\
+                                + str(contigLength)\
+                                + "_"\
+                                + network_channels\
+                                + "_"\
+                                + str(art_degree)
 
-            elif erp == True:
-                self.contigsFolder = self.studyFolder\
-                                    + "/erps/"\
-                                    + self.task\
-                                    + "_"\
-                                    + str(contigLength)\
-                                    + "_"\
-                                    + BinarizeChannels(
-                                        network_channels=self.network_channels)\
-                                    + "_"\
-                                    + str(artDegree)\
-                                    + "_"\
-                                    + str(erpDegree)
+        elif erp is True:
+            self.contigsFolder = self.studyFolder\
+                                + "/erps/"\
+                                + self.task\
+                                + "_"\
+                                + str(contigLength)\
+                                + "_"\
+                                + network_channels\
+                                + "_"\
+                                + str(art_degree)\
+                                + "_"\
+                                + str(erp_degree)
 
-            os.mkdir(self.contigsFolder)
-
-        except:
-
-            print("Couldn't create the specified contigs folder.\n")
+        os.mkdir(self.contigsFolder)
+        # TODO: warning for pre-existing folder
 
         print("Contigifying Data:\n====================")
 
         for sub in tqdm(self.subjects):
 
-            artfile = sub + "_" + self.task + "_nofilter.art"
-
-            if erp == True:
-                evtfile = sub + "_" + self.task + "_nofilter.evt"
+            artfile = sub + "_" + self.task + ".art"
 
             # load in artifact file as np array
             # print("Artifact:"+self.path+"/"+artfile)
@@ -205,30 +217,36 @@ class TaskData:
                 self.path + "/" + artfile,
                 delimiter=" ")
 
-            if erp == True:
+            if erp is True:
+                evtfile = sub + "_" + self.task + ".evt"
                 events = np.genfromtxt(
                     self.path + "/" + evtfile,
                     delimiter=" ")
 
                 if events.size == 0:
-                    print("Most likely an empty text file was \
-                        encountered. Skipping: " + evtfile)
+                    print(
+                        "Most likely an empty text file was "
+                        + "encountered. Skipping: " + evtfile)
 
                     continue
 
             if artifact.size == 0:
 
-                print("Most likely an empty text file was encountered.\
-                    Skipping: " + artfile)
+                print(
+                    "Most likely an empty text file was "
+                    + "encountered. Skipping: " + artfile)
 
                 continue
 
             else:
                 # get rid of channels we don't want the net to use
-                artifact = FilterChannels(artifact, network_channels, 1)
+                artifact = FilterChannels(
+                    artifact,
+                    StringarizeChannels(network_channels),
+                    1)
 
-                # mask artifact array where numbers exceed artDegree
-                mxi = np.ma.masked_where(artifact > artDegree, artifact)
+                # mask artifact array where numbers exceed art_degree
+                mxi = np.ma.masked_where(artifact > art_degree, artifact)
 
                 mxi = np.ma.filled(mxi.astype(float), np.nan)
 
@@ -236,10 +254,9 @@ class TaskData:
 
                 indeces = []
 
-                if erp == False:
+                if erp is False:
                     # write list of start indexes for windows which meet
                     # contig requirements
-
 
                     i = 0
 
@@ -254,13 +271,14 @@ class TaskData:
                             i += contigLength
 
                         else:
-                            # ***
-                            # contig alg can be sped up here to jump to last instance of NaN
+                            # TODO
+                            # contig alg can be sped up here to jump to
+                            # last instance of NaN
                             i += 1
 
                 else:
                     # only take oddball erp?
-                    event_indeces = np.where(events >= erpDegree)[0]
+                    event_indeces = np.where(events >= erp_degree)[0]
 
                     for i in event_indeces:
 
@@ -271,9 +289,9 @@ class TaskData:
                             indeces.append(i)
 
                 subfiles = [
-                fname for fname in self.task_fnames
-                if (sub == fname[:config.participantNumLen]
-                and "eeg" in fname)]
+                    fname for fname in self.task_fnames
+                    if (sub == fname[:config.participantNumLen])
+                    and ("eeg" in fname and "_" + filter_band in fname)]
 
                 # subfiles = [fname for fname in subfiles if "eeg" in fname]
 
@@ -285,8 +303,9 @@ class TaskData:
 
                     if data.size == 0:
 
-                        print("Most likely an empty text file was encountered.\
-                            Skipping: " + eegfile)
+                        print(
+                            "Most likely an empty text file was "
+                            + "encountered. Skipping: " + eegfile)
 
                     else:
 
@@ -294,7 +313,7 @@ class TaskData:
 
                         for i in indeces:
 
-                            if erp == True:
+                            if erp is True:
                                 self.contigs.append(
                                     Contig(
                                         data[i:(i + contigLength), :],
@@ -329,34 +348,35 @@ class TaskData:
 
             for contig in tqdm(self.contigs):
                 contig.write(
-                    self.contigsFolder\
-                    + "/"\
-                    + contig.subject\
-                    + "_"\
-                    + contig.band\
-                    + "_"\
-                    + str(contig.startindex)\
+                    self.contigsFolder
+                    + "/"
+                    + contig.subject
+                    + "_"
+                    + contig.band
+                    + "_"
+                    + str(contig.startindex)
                     + ".csv")
 
     # takes length (in samples @ 250 Hz) as positional argument
     def gen_spectra(
         self,
         contigLength,
-        network_channels=config.network_channels,
-        artDegree=0,
+        network_channels=BinarizeChannels(config.network_channels),
+        art_degree=0,
         erp=False,
-        erpDegree=1):
+        erp_degree=1,
+            filter_band="nofilter"):
 
         """
-        Generates Spectra objects for every file possible in TaskData.contigs,\
+        Generates Spectra objects for every file possible in TaskData.contigs,
         appending each to TaskData.spectra
 
         *** Note only reads contigs written to file currently
 
         Parameters:
-            - contigLength: length in samples (@ 250 Hz or config.sampleRate)
+            - contigLength: length in samples (@ 250 Hz or config.sample_rate)
             - network_channels: default config.network_channels
-            - artDegree: (int) default 0, minimum value accepted to pass as a \
+            - art_degree: (int) default 0, minimum value accepted to pass as a
               "clean" contig, when reading mask from .art file
         """
 
@@ -364,55 +384,51 @@ class TaskData:
 
             self.spectra = []
 
-        if erp == False:
+        if erp is False:
             self.contigsFolder = self.studyFolder\
-                                + "/contigs/"\
-                                + self.task\
-                                + "_"\
-                                + str(contigLength)\
-                                + "_"\
-                                + BinarizeChannels(
-                                    network_channels=self.network_channels)\
-                                + "_"\
-                                + str(artDegree)
+                + "/contigs/"\
+                + self.task\
+                + "_"\
+                + str(contigLength)\
+                + "_"\
+                + network_channels\
+                + "_"\
+                + str(art_degree)
 
             self.spectraFolder = self.studyFolder\
-                                + "/spectra/"\
-                                + self.task\
-                                + "_"\
-                                + str(contigLength)\
-                                + "_"\
-                                + BinarizeChannels(
-                                    network_channels=self.network_channels)\
-                                + "_"\
-                                + str(artDegree)
+                + "/spectra/"\
+                + self.task\
+                + "_"\
+                + str(contigLength)\
+                + "_"\
+                + network_channels\
+                + "_"\
+                + str(art_degree)
 
-        elif erp == True:
+        elif erp is True:
             self.contigsFolder = self.studyFolder\
-                                + "/erps/"\
-                                + self.task\
-                                + "_"\
-                                + str(contigLength)\
-                                + "_"\
-                                + BinarizeChannels(
-                                    network_channels=self.network_channels)\
-                                + "_"\
-                                + str(artDegree)\
-                                + "_"\
-                                + str(erpDegree)
+                + "/erps/"\
+                + self.task\
+                + "_"\
+                + str(contigLength)\
+                + "_"\
+                + network_channels\
+                + "_"\
+                + str(art_degree)\
+                + "_"\
+                + str(erp_degree)
 
             self.spectraFolder = self.studyFolder\
-                                + "/spectra/"\
-                                + self.task\
-                                + "_"\
-                                + str(contigLength)\
-                                + "_"\
-                                + BinarizeChannels(
-                                    network_channels=self.network_channels)\
-                                + "_"\
-                                + str(artDegree)\
-                                + "_"\
-                                + str(erpDegree)
+                + "/spectra/"\
+                + self.task\
+                + "_"\
+                + str(contigLength)\
+                + "_"\
+                + network_channels\
+                + "_"\
+                + str(art_degree)\
+                + "_"\
+                + str(erp_degree)
 
         # make parent spectra folder
         if not os.path.isdir(self.studyFolder + "/spectra"):
@@ -421,24 +437,27 @@ class TaskData:
 
         # make a child subdirectory called\
         # <task>_<contig_length>_<binary_channels_code>
-        try:
-            os.mkdir(self.spectraFolder)
-        except:
-            print("Couldn't create the specified spectra folder.\n")
+        # TODO: warning for pre-existing folder
+        os.mkdir(self.spectraFolder)
 
         print("Fourier Transforming Data:\n====================")
 
-        for contig in tqdm(os.listdir(self.contigsFolder)):
+        contigs = [
+            fname for fname in os.listdir(self.contigsFolder)
+            if "_" + filter_band in fname]
+        for contig in tqdm(contigs):
 
-            temp = Contig(
-                np.genfromtxt(
-                    self.contigsFolder + "/" + contig,
-                    delimiter=","),
-                contig.split('_')[2][:-4],
-                contig[:config.participantNumLen],
-                contig.split('_')[1]).fft()
-            if temp is not None:
-                self.spectra.append(temp)
+            if "_" + filter_band in contig:
+
+                temp = Contig(
+                    np.genfromtxt(
+                        self.contigsFolder + "/" + contig,
+                        delimiter=","),
+                    contig.split('_')[2][:-4],
+                    contig[:config.participantNumLen],
+                    contig.split('_')[1]).fft()
+                if temp is not None:
+                    self.spectra.append(temp)
 
     def write_spectra(self):
         """
@@ -447,7 +466,9 @@ class TaskData:
 
         if not hasattr(self, 'spectra'):
 
-            print("This instance of the class 'TaskData' has no 'spectra' attribute.")
+            print(
+                "This instance of the class 'TaskData' has "
+                + "no 'spectra' attribute.")
 
             raise ValueError
 
@@ -458,13 +479,13 @@ class TaskData:
             for spectrum in tqdm(self.spectra):
 
                 spectrum.write(
-                    self.spectraFolder\
-                    + "/"\
-                    + spectrum.subject\
-                    + "_"\
-                    + spectrum.band\
-                    + "_"\
-                    + str(spectrum.startindex)\
+                    self.spectraFolder
+                    + "/"
+                    + spectrum.subject
+                    + "_"
+                    + spectrum.band
+                    + "_"
+                    + str(spectrum.startindex)
                     + ".csv")
 
 
@@ -474,7 +495,7 @@ class TaskData:
 class Contig:
     """
     Object used to store and denote information about a continuous \
-    piece of EEG data. Often are generated using a strict (< 2) artDegree, \
+    piece of EEG data. Often are generated using a strict (< 2) art_degree, \
     and so will be cleaner than raw data.
 
     Parameters:
@@ -485,7 +506,14 @@ class Contig:
         - source: path of original .eeg datafile
     """
 
-    def __init__(self, data, startindex, subject, band, source=None, event=None):
+    def __init__(
+        self,
+        data,
+        startindex,
+        subject,
+        band,
+        source=None,
+            event=None):
 
         self.data = data
 
@@ -521,7 +549,6 @@ class Contig:
 
         channel_number = 0
 
-        # spectral = np.ndarray(shape=(len(self.data), len(config.channel_names))).T
         for sig in self.data.T:
 
             electrode = config.network_channels[channel_number]
@@ -530,9 +557,9 @@ class Contig:
             try:
                 f, Pxx_den = signal.periodogram(
                     sig,
-                    fs=float(config.sampleRate),
+                    fs=float(config.sample_rate),
                     window='hann')
-            except:
+            except ValueError:
                 print("Something went wrong processing the following contig:")
                 print(self.subject, self.startindex, self.source)
                 return None
@@ -545,7 +572,13 @@ class Contig:
 
             channel_number += 1
 
-        return(Spectra(spectral, spectral.T[0], self.startindex, self.subject, self.band))
+        return(
+            Spectra(
+                spectral,
+                spectral.T[0],
+                self.startindex,
+                self.subject,
+                self.band))
 
     def plot(self):
         """
@@ -570,7 +603,7 @@ class Contig:
 
             print(wavs)
 
-            t = np.arange(0, len(wavs)) / config.sampleRate
+            t = np.arange(0, len(wavs)) / config.sample_rate
 
             wavs = np.subtract(wavs, i * 25)
 
@@ -611,7 +644,8 @@ class Contig:
             origline = lined[legline]
             vis = not origline.get_visible()
             origline.set_visible(vis)
-            # Change the alpha on the line in the legend so we can see what lines
+            # Change the alpha on the line in the legend so
+            # we can see what lines
             # have been toggled
             if vis:
                 legline.set_alpha(1.0)
@@ -628,7 +662,8 @@ class Contig:
             movorigline = movlined[movlegline]
             vis = not movorigline.get_visible()
             movorigline.set_visible(vis)
-            # Change the alpha on the line in the legend so we can see what lines
+            # Change the alpha on the line in the legend so
+            # we can see what lines
             # have been toggled
             if vis:
                 movlegline.set_alpha(1.0)
@@ -666,7 +701,7 @@ class Spectra:
         subject,
         band="nofilter",
         channels=config.network_channels,
-        source=None):
+            source=None):
 
         self.data = data
 
@@ -682,9 +717,9 @@ class Spectra:
 
         self.channels = channels
 
-        self.freq_res = (config.sampleRate / 2) / (len(self.freq) - 1)
+        self.freq_res = (config.sample_rate / 2) / (len(self.freq) - 1)
 
-        self.contig_length = config.sampleRate // self.freq_res
+        self.contig_length = config.sample_rate // self.freq_res
 
         self.source = source
 

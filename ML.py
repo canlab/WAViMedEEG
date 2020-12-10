@@ -49,7 +49,11 @@ class Classifier:
         - network_channels (default): list of channel names to be included
     """
 
-    def __init__(self, type, network_channels=config.network_channels):
+    def __init__(
+        self,
+        type,
+        network_channels=config.network_channels,
+            freq_snip=None):
 
         self.data = []
 
@@ -58,6 +62,8 @@ class Classifier:
         self.network_channels = config.network_channels
 
         self.trial_name = None
+
+        self.freq_snip = None
 
     def LoadData(self, path):
         """
@@ -93,9 +99,10 @@ class Classifier:
                     fname.split('_')[1],
                     source=os.path.basename(os.path.dirname(path))))
 
-        if \
-        (self.data[-1].data.shape != self.data[0].data.shape):
-            print("Warning:",
+        if (self.data[-1].data.shape != self.data[0].data.shape):
+
+            print(
+                "Warning:",
                 self.type,
                 "at \n",
                 self.data[-1].subject,
@@ -104,7 +111,7 @@ class Classifier:
             print("Removing it from dataset.")
             self.data.pop(-1)
 
-    def Balance(self, parentPath):
+    def Balance(self, parentPath, filter_band="nofilter"):
         """
         Knowing that reference groups are named as follows:
             - ref 24-30
@@ -134,7 +141,7 @@ class Classifier:
 
                 totalneg += 1
 
-            elif item.group == 2:
+            elif item.group > 1:
 
                 totalpos += 1
 
@@ -159,18 +166,21 @@ class Classifier:
             while (subjects[h], folder) in filled_subs:
                 h += 1
 
-            sub_fnames = [fname for fname in fnames \
-                if subjects[h] in fname[:config.participantNumLen]]
+            sub_fnames = [
+                fname for fname in fnames if
+                subjects[h] in fname[:config.participantNumLen]]
 
             for sub_fname in sub_fnames:
-                self.LoadData(
-                    parentPath
-                    + "/"
-                    + folder
-                    + "/"
-                    + dataFolder
-                    + "/"
-                    + sub_fname)
+                reqs = [filter_band, ".evt", ".art"]
+                if any(ext in sub_fname for ext in reqs):
+                    self.LoadData(
+                        parentPath
+                        + "/"
+                        + folder
+                        + "/"
+                        + dataFolder
+                        + "/"
+                        + sub_fname)
 
                 i += 1
 
@@ -186,8 +196,8 @@ class Classifier:
             self,
             normalize='standard',
             tt_split=0.33,
-            lowbound=3,
-            highbound=20,
+            lowbound=0,
+            highbound=25,
             plot_data=False):
         """
         Linear Discriminant Analysis
@@ -216,7 +226,7 @@ class Classifier:
 
                 totalneg += 1
 
-            elif item.group == 2:
+            elif item.group > 1:
 
                 totalpos += 1
 
@@ -259,8 +269,8 @@ class Classifier:
             # -1 = negative condition
             train_dataset = np.stack(
                     [SpecObj.data[
-                        int(lowbound // SpecObj.freq_res) + 1:
-                        int(highbound // SpecObj.freq_res) + 2]
+                        int(lowbound // SpecObj.freq_res):
+                        int(highbound // SpecObj.freq_res) + 1]
                         for SpecObj in self.data
                         if (SpecObj.source, SpecObj.subject)
                         in train_subjects])
@@ -275,8 +285,8 @@ class Classifier:
 
             test_dataset = np.stack(
                     [SpecObj.data[
-                        int(lowbound // SpecObj.freq_res) + 1:
-                        int(highbound // SpecObj.freq_res) + 2]
+                        int(lowbound // SpecObj.freq_res):
+                        int(highbound // SpecObj.freq_res) + 1]
                         for SpecObj in self.data
                         if (SpecObj.source, SpecObj.subject)
                         in test_subjects])
@@ -505,6 +515,8 @@ class Classifier:
             plt.subplots_adjust(top=0.92)
             plt.show()
 
+        return clf, clf.predict(test_dataset), test_labels
+
     def SVM(
             self,
             C=1,
@@ -515,8 +527,8 @@ class Classifier:
             plot_Features=False,
             feat_select=False,
             num_feats=10,
-            lowbound=3,
-            highbound=20,
+            lowbound=0,
+            highbound=25,
             tt_split=0.33):
 
         """
@@ -540,13 +552,12 @@ class Classifier:
         from sklearn.svm import SVC
         from sklearn import svm, metrics
 
-
         # shuffle dataset
         random.shuffle(self.data)
 
         Features = np.array(self.data[0].freq[
-            int(lowbound // self.data[0].freq_res) + 1:
-            int(highbound // self.data[0].freq_res) + 2])
+            int(lowbound // self.data[0].freq_res):
+            int(highbound // self.data[0].freq_res) + 1])
 
         # total num for each class
 
@@ -603,8 +614,8 @@ class Classifier:
             # -1 = negative condition
             train_dataset = np.stack(
                 [SpecObj.data[
-                    int(lowbound // SpecObj.freq_res) + 1:
-                    int(highbound // SpecObj.freq_res) + 2]
+                    int(lowbound // SpecObj.freq_res):
+                    int(highbound // SpecObj.freq_res) + 1]
                     for SpecObj in self.data
                     if (SpecObj.source, SpecObj.subject) in train_subjects])
 
@@ -615,8 +626,8 @@ class Classifier:
 
             test_dataset = np.stack(
                 [SpecObj.data[
-                    int(lowbound // SpecObj.freq_res) + 1:
-                    int(highbound // SpecObj.freq_res) + 2]
+                    int(lowbound // SpecObj.freq_res):
+                    int(highbound // SpecObj.freq_res) + 1]
                     for SpecObj in self.data
                     if (SpecObj.source, SpecObj.subject) in test_subjects])
 
@@ -782,68 +793,24 @@ class Classifier:
 
         if plot_Features is True:
 
+            import Plots
+
             if kernel == 'linear':
-                # set up figure and axes (rows)
-                fig, axs = plt.subplots(
-                    nrows=len(self.network_channels),
-                    figsize=(20, 40))
 
-                plt.rcParams['figure.dpi'] = 200
+                if feat_select is False:
+                    Plots.plot_svm_features(
+                        Features,
+                        svm_weights,
+                        network_channels=self.network_channels)
 
-                # plt.clf()
+                elif feat_select is True:
+                    Plots.plot_svm_features(
+                        Features,
+                        svm_weights_selected,
+                        scores=scores,
+                        network_channels=self.network_channels)
 
-                # X_indices = np.arange(train_dataset.shape[-1])
-                X_indices = Features
-
-                i = 0
-
-                j = 0
-
-                for channel in self.network_channels:
-
-                    axs[j].set_title(channel)
-
-                    axs[j].bar(
-                            X_indices - .25,
-                            svm_weights[i:i + len(X_indices)],
-                            width=.1, label='SVM weight')
-
-                    if feat_select is not True:
-
-                        axs[j].legend()
-
-                    i += len(X_indices)
-
-                    j += 1
-
-                if feat_select is True:
-
-                    i = 0
-
-                    j = 0
-
-                    for channel in self.network_channels:
-
-                        axs[j].bar(
-                            X_indices - .45,
-                            scores[i:i+len(X_indices)],
-                            width=.1,
-                            label=r'Univariate score ($-Log(p_{value})$)')
-
-                        axs[j].legend()
-
-                        i += len(X_indices)
-
-                        j += 1
-
-                axs[0].set_title("Comparing feature selection")
-
-                axs[-1].set_xlabel('Feature number (in Hz)')
-
-                # plt.yticks(())
-                fig.tight_layout()
-
-                plt.show()
+        return clf, clf.predict(test_dataset), test_labels
 
     def CNN(
         self,
@@ -855,7 +822,7 @@ class Classifier:
         epochs=100,
         plot_ROC=False,
         tt_split=0.33,
-        k_fold=None):
+            k_fold=None):
 
         """
         Convolutional Neural Network classifier, using Tensorflow base
@@ -883,7 +850,8 @@ class Classifier:
                 cross-validation fold i and total folds k
                 ex: (2, 5) fold 2 of 5
         """
-
+        # quiet some TF warnings
+        TF_CPP_MIN_LOG_LEVEL = 2
         import tensorflow as tf
         from tensorflow.keras import Model
         from tensorflow.keras import regularizers
@@ -907,7 +875,7 @@ class Classifier:
         for item in self.data:
             if item.group == 1:
                 totalneg += 1
-            elif item.group == 2:
+            elif item.group > 1:
                 totalpos += 1
 
         if k_fold is None:
@@ -922,16 +890,22 @@ class Classifier:
         if k_fold is None:
             print("Total number of subjects:", len(self.subjects))
 
+        # get num condition positive
         j = 0
         for sub in self.subjects:
-            if sub[1][0] == "2":
-                j +=1
+            if int(sub[1][0]) > 1:
+                j += 1
 
         if k_fold is None:
-            print("% Positive in all subjects:",
+            print(
+                "% Positive in all subjects:",
                 j / len(self.subjects))
-            print("% Negative in all subjects:",
+            print(
+                "% Negative in all subjects:",
                 (len(self.subjects) - j) / len(self.subjects))
+
+        train_subjects = []
+        test_subjects = []
 
         # shuffle subject list randomly and then
         # split data into train and test spectra (no overlapping subjects)
@@ -941,19 +915,21 @@ class Classifier:
 
             split = math.floor(len(self.subjects)*tt_split)
 
-            pos_subjects = [sub for sub in self.subjects if sub[1][0] == "2"]
+            pos_subjects = [
+                sub for sub in self.subjects if int(sub[1][0]) > 1]
             pos_split = math.floor(len(pos_subjects)*tt_split)
 
-            neg_subjects = [sub for sub in self.subjects if sub[1][0] == "1"]
+            neg_subjects = [
+                sub for sub in self.subjects if int(sub[1][0]) == 1]
             neg_split = math.floor(len(neg_subjects)*tt_split)
 
             train_subjects = pos_subjects[:pos_split*-1]
             for sub in neg_subjects[:neg_split*-1]:
-                self.train_subjects.append(sub)
+                train_subjects.append(sub)
 
             test_subjects = pos_subjects[pos_split*-1:]
             for sub in neg_subjects[neg_split*-1:]:
-                self.test_subjects.append(sub)
+                test_subjects.append(sub)
 
         else:
             from sklearn.model_selection import KFold
@@ -965,12 +941,10 @@ class Classifier:
             # n_samples // n_splits
             kf = KFold(n_splits=k_fold[1])
 
-            train_subjects = []
-            test_subjects = []
-
-            # first look at only subjects with subject code "2" (condition-pos)
-            pos_subjects = [sub for sub in self.subjects if sub[1][0] == "2"]
-            train_indexes, test_indexes = list(kf.split(pos_subjects))[k_fold[0]]
+            # first look at only subjects with subject code above 1 (cond-pos)
+            pos_subjects = [sub for sub in self.subjects if int(sub[1][0]) > 1]
+            train_indexes, test_indexes = list(
+                kf.split(pos_subjects))[k_fold[0]]
 
             for i, sub in enumerate(pos_subjects):
                 if i in train_indexes:
@@ -983,8 +957,10 @@ class Classifier:
                     sys.exit(1)
 
             # then look at subjects with subject code "1" (condition-neg)
-            neg_subjects = [sub for sub in self.subjects if sub[1][0] == "1"]
-            train_indexes, test_indexes = list(kf.split(neg_subjects))[k_fold[0]]
+            neg_subjects = [
+                sub for sub in self.subjects if int(sub[1][0]) == 1]
+            train_indexes, test_indexes = list(
+                kf.split(neg_subjects))[k_fold[0]]
 
             for i, sub in enumerate(neg_subjects):
                 if i in train_indexes:
@@ -1003,7 +979,7 @@ class Classifier:
             -1)
 
         train_labels = np.array(
-            [int(1) if (ContigObj.group == 2) else int(0)
+            [int(1) if (ContigObj.group > 1) else int(0)
                 for ContigObj in self.data
                 if (ContigObj.source, ContigObj.subject) in train_subjects])
 
@@ -1014,7 +990,7 @@ class Classifier:
             -1)
 
         test_labels = np.array(
-            [int(1) if (ContigObj.group == 2) else int(0)
+            [int(1) if (ContigObj.group > 1) else int(0)
                 for ContigObj in self.data
                 if (ContigObj.source, ContigObj.subject) in test_subjects])
 
@@ -1024,18 +1000,20 @@ class Classifier:
 
         num_pos_train_samps = 0
         for label in train_labels:
-            if label==1:
+            if label == 1:
                 num_pos_train_samps += 1
 
         num_pos_test_samps = 0
         for label in test_labels:
-            if label==1:
+            if label == 1:
                 num_pos_test_samps += 1
 
         if k_fold is None:
-            print("% Positive samples in train:",
+            print(
+                "% Positive samples in train:",
                 num_pos_train_samps / len(train_labels))
-            print("% Positive samples in test:",
+            print(
+                "% Positive samples in test:",
                 num_pos_test_samps / len(test_labels))
 
         # introduce equential set
@@ -1155,7 +1133,7 @@ class Classifier:
             print("Input shape:", train_dataset.shape)
 
         # adaptive learning rate
-        if lr_decay==True:
+        if lr_decay is True:
             learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(
                 initial_learning_rate=learning_rate,
                 decay_steps=100,
@@ -1174,7 +1152,8 @@ class Classifier:
             metrics=['accuracy'])
 
         # tensorboard setup
-        log_dir = 'logs/fit/' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+        log_dir = 'logs/fit/'\
+            + datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
         tensorboard_callback = tf.keras.callbacks.TensorBoard(
             log_dir=log_dir,
             histogram_freq=1)
@@ -1189,22 +1168,31 @@ class Classifier:
             # verbose=0 if k_fold is not None else 1
         )
 
-        y_pred_keras = model.predict(test_dataset)[:,0]
+        y_pred_keras = model.predict(test_dataset)[:, 0]
 
-        if plot_ROC == True:
+        if plot_ROC is True:
             from Plots import roc
             roc(y_pred_keras, test_labels, fname=log_dir+"/ROC")
 
         return(history, model, y_pred_keras, test_labels)
 
-    def KfoldCrossVal(self, path, ref_path, k=5, pos_only=True):
+    def KfoldCrossVal(
+        self,
+        path,
+        ref_path,
+        k=5,
+        pos_only=True,
+        filter_band="nofilter",
+            model_type='CNN'):
         """
-        Resampling procedure used to evaluate ML models on a limited data sample
+        Resampling procedure used to evaluate ML models
+        on a limited data sample
 
         Parameters:
             - path (required positional): str
                 path of file (spectra or contig)
-                to be loaded and stacked on the parent object's 'data' attribute
+                to be loaded and stacked on the parent
+                object's 'data' attribute
                 note: objects will be loaded in as Contig or Spectra objects
             - ref_path (required positional): str
                 parent path of reference folders listed above
@@ -1215,8 +1203,10 @@ class Classifier:
                 and controls will only be loaded from reference dataset
         """
         for fname in os.listdir(path):
-            if int(fname[0]) > 1:
-                self.LoadData(path+"/"+fname)
+            reqs = [filter_band, ".evt", ".art"]
+            if any(ext in fname for ext in reqs):
+                if int(fname[0]) > 1:
+                    self.LoadData(path+"/"+fname)
 
         self.Balance(ref_path)
 
@@ -1229,7 +1219,27 @@ class Classifier:
         f = open(self.type+"_"+os.path.basename(path)+".txt", 'w')
 
         for i in tqdm(range(k)):
-            hist, model, y_pred, y_labels = self.CNN(k_fold=(i, k), plot_ROC=True)
+            if model_type == 'CNN':
+                hist, model, y_pred, y_labels = self.CNN(
+                    k_fold=(i, k),
+                    plot_ROC=True)
+
+            elif model_type == 'SVM':
+                model, y_pred, y_labels = self.SVM(
+                    kernel='linear',
+                    iterations=1000,
+                    normalize=None,
+                    num_feats=30,
+                    feat_select=False,
+                    plot_Features=True,
+                    lowbound=0,
+                    highbound=25)
+
+            elif model_type == 'LDA':
+                model, y_pred, y_labels = self.LDA(
+                    normalize=None,
+                    lowbound=0,
+                    highbound=25)
 
             for pred, label in zip(y_pred, y_labels):
                 all_y_preds.append(pred)

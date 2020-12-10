@@ -1,0 +1,30 @@
+language: python
+
+before_install:
+    - wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    - bash Miniconda3-latest-Linux-x86_64.sh -b
+    - . /home/travis/miniconda3/etc/profile.d/conda.sh
+    - conda update --yes conda
+    - conda config --add channels r
+    - conda create --yes -n test
+    - conda activate test
+    - conda install -y pycodestyle
+    - conda install --yes python=3.6
+    - conda install -y numpy
+    - conda install -y matplotlib
+    - conda install -y argparase
+    - conda install -y tqdm
+    -
+
+script:
+  - python fun_tests.sh
+  - pycodestyle Ex_contigs.py
+  - pycodestyle Ex_cleaning.py
+  - pycodestyle Ex_cnn.py
+  - pycodestyle Clean.py
+  - pycodestyle delim_fix.py
+  - pycodestyle ML.py
+  - pycodestyle Plots.py
+  - pycodestyle Signals.py
+  - pycodestyle Standard.py
+  - pycodestyle template-config.py
