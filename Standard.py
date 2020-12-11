@@ -172,6 +172,8 @@ class BandFilter:
                 new_fname = fname.replace("nofilter", filter_band)
             elif self.type == "lowpass":
                 new_fname = fname.replace("nofilter", "lo"+filter_band)
+            elif self.type == "highpass":
+                new_fname = fname.replace("nofilter", "hi"+filter_band)
 
             self.new_data.append((new_fname, post.T))
 
