@@ -14,7 +14,7 @@ class TestPreprocessing(unittest.TestCase):
     def test_taskdata_generation(self):
 
         for sub in taskObj.subjects:
-            task_length = random.randint(2000, 5000)
+            task_length = random.randint(20, 200)
             eeg_file = []
             art_file = []
             evt_file = []
@@ -135,6 +135,11 @@ if __name__ == '__main__':
                     "Try manually deleting ''/testdata/'")
                 sys.exit(1)
 
+    else:
+        shutil.rmtree('testdata/')
+        os.mkdir('testdata/')
+        os.mkdir('testdata/P300')
+
     taskObj = Prep.TaskData(
         'testdata/'
         # +  str([
@@ -142,9 +147,6 @@ if __name__ == '__main__':
         #     random.randint(0, len(config.tasks)-1)]))
         + "P300")
     taskObj.task_fnames = None
-    # else:
-    #     shutil.rmtree('testdata/')
-    #     os.mkdir('testdata/'+taskObj.task)
 
     # make random list of fake subjects
     # adhering to subj-number lengths defined in config.py

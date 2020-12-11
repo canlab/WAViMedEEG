@@ -12,7 +12,7 @@ def sin_wave(
 
     t = np.linspace(
         0,
-        time // sample_rate,
+        time,
         time * sample_rate,
         endpoint=False)
 
@@ -40,7 +40,7 @@ def square_wave(
 
     t = np.linspace(
         0,
-        time // sample_rate,
+        time,
         time * sample_rate,
         endpoint=False)
 
@@ -71,7 +71,7 @@ def rand_bin_string(
 
     t = np.linspace(
         0,
-        time // sample_rate,
+        time,
         time * sample_rate,
         endpoint=False)
 
