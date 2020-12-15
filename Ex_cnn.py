@@ -277,13 +277,14 @@ def main():
 
     for fname in os.listdir(patient_path):
         if fname[:config.participantNumLen] not in config.excludeSubs:
-            myclf.LoadData(patient_path+"/"+fname)
+            if fname[0] != "1":
+                myclf.LoadData(patient_path+"/"+fname)
 
     # ============== Load Control (Condition-Negative) Data ==============
     # the dataset will automatically add healthy control data
     # found in the reference folders
-
-    myclf.Balance(studies_folder)
+    if balance is True:
+        myclf.Balance(studies_folder)
 
     myclf.CNN(
         normalize=normalize,
