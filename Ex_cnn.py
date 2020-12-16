@@ -19,16 +19,26 @@ def main():
     parser.add_argument('--studies_folder',
                         dest='studies_folder',
                         type=str,
-                        default=config.myStudies,
-                        help="(Default: " + config.myStudies + ") Path to "
+                        default=config.my_studies,
+                        help="(Default: " + config.my_studies + ") Path to "
                         + "parent folder containing study folders")
 
     parser.add_argument('--study_name',
                         dest='study_name',
                         type=str,
-                        default=config.studyDirectory,
-                        help="(Default: " + config.studyDirectory + ") "
+                        default=config.study_directory,
+                        help="(Default: " + config.study_directory + ") "
                         + "Study folder containing dataset")
+
+    parser.add_argument('--balance',
+                        dest='balance',
+                        nargs='+',
+                        default=config.ref_folders,
+                        help="(Default: " + str(config.ref_folders) + ") "
+                        + "List of study folders against which to "
+                        + "evenly balance the dataset (iterates over folders) "
+                        + "such that there are an equal number of data "
+                        + "in each class.")
 
     parser.add_argument('--task',
                         dest='task',
@@ -56,17 +66,29 @@ def main():
 
     parser.add_argument('--artifact',
                         dest='artifact',
-                        type=int,
-                        default=0,
-                        help="(Default: 0) Strictness of artifacting "
+                        type=str,
+                        default=''.join(map(str, config.custom_art_map)),
+                        help="(Default: (custom) "
+                        + ''.join(map(str, config.custom_art_map))
+                        + ") Strictness of artifacting "
                         + "algorithm to be used: 0=strict, 1=some, 2=raw")
 
     parser.add_argument('--erp_degree',
                         dest='erp_degree',
                         type=int,
                         default=None,
-                        help="Lowest number in .evt files which will "
-                        + "be accepted as an erp event")
+                        help="(Default: None) If not None, lowest number in "
+                        + ".evt files which will be accepted as an erp event. "
+                        + "Only contigs falling immediately after erp event, "
+                        + "i.e. evoked responses, are handled.")
+
+    parser.add_argument('--filter_band',
+                        dest='filter_band',
+                        type=str,
+                        default='nofilter',
+                        help="(Default: nofilter) Bandfilter to be used in "
+                        + "analysis steps, such "
+                        + "as: 'noalpha', 'delta', or 'nofilter'")
 
     # ============== CNN args ==============
 
@@ -112,6 +134,13 @@ def main():
                         help="(Default: False) Whether learning rate should "
                         + "decay adhering to a 0.96 decay rate schedule")
 
+    parser.add_argument('--k_folds',
+                        dest='k_folds',
+                        type=int,
+                        default=1,
+                        help="(Default: 1) If you want to perform "
+                        + "cross evaluation, set equal to number of k-folds.")
+
     # save the variables in 'args'
     args = parser.parse_args()
 
@@ -121,14 +150,17 @@ def main():
     task = args.task
     length = args.length
     channels = args.channels
-    art_degree = args.artifact
+    artifact = args.artifact
     erp_degree = args.erp_degree
+    filter_band = args.filter_band
+    balance = args.balance
     epochs = args.epochs
     normalize = args.normalize
     plot_ROC = args.plot_ROC
     tt_split = args.tt_split
     learning_rate = args.learning_rate
     lr_decay = args.lr_decay
+    k_folds = args.k_folds
 
     # ERROR HANDLING
     if data_type not in ["erps", "spectra", "contigs"]:
@@ -234,13 +266,48 @@ def main():
         raise ValueError
         sy.exit(3)
 
-    if art_degree not in [0, 1, 2]:
-        print("Invalid entry for artifact. Must be int between 0 and 2.")
+    try:
+        if len(str(artifact)) == 19:
+            for char in artifact:
+                if int(char) < 0 or int(char) > 2:
+                    raise ValueError
+
+        elif artifact in ["0", "1", "2"]:
+            artifact = int(artifact)
+
+        else:
+            raise ValueError
+
+    except ValueError:
+        print(
+            "Invalid entry for artifact. Must be str with length 19, "
+            + "or int between 0 and 2.")
         raise ValueError
         sys.exit(3)
 
     if erp_degree not in [1, 2, None]:
-        print("Invalid entry for erp_degree. Must be int between 1 and 2.")
+        print("Invalid entry for erp_degree. Must be None, 1, or 2.")
+        raise ValueError
+        sys.exit(3)
+
+    if k_folds <= 0:
+        print("Invalid entry for k_folds. Must be int 1 or greater.")
+        raise ValueError
+        sys.exit(3)
+
+    if any(band == filter_band for band in config.frequency_bands):
+        pass
+    elif any("no"+band == filter_band for band in config.frequency_bands):
+        pass
+    elif any("lo"+band == filter_band for band in config.frequency_bands):
+        pass
+    elif any("hi"+band == filter_band for band in config.frequency_bands):
+        pass
+    else:
+        print("That is not a valid filterband option. "
+              + "Please an option listed here:")
+        for item in filterband_options:
+            print(item)
         raise ValueError
         sys.exit(3)
 
@@ -259,7 +326,7 @@ def main():
         + '_'\
         + channels\
         + '_'\
-        + str(art_degree)
+        + str(artifact)
 
     if erp_degree is not None:
         patient_path += ("_" + str(erp_degree))
@@ -268,7 +335,23 @@ def main():
         print("Configuration supplied was not found in study folder data.")
         print("Failed:", patient_path)
         raise FileNotFoundError
-        sys.exit(1)
+        sys.exit(3)
+
+    for folder in balance:
+        if not os.path.isdir(studies_folder + "/" + folder):
+            print(
+                "Invalid path in balance. ",
+                studies_folder + "/" + folder + "  does not exist.")
+            raise FileNotFoundError
+            sys.exit(3)
+
+        if not os.path.isdir(patient_path.replace(study_name, folder)):
+            print(
+                "Invalid path in balance. "
+                + patient_path.replace(study_name, folder)
+                + "does not exist.")
+            raise FileNotFoundError
+            sys.exit(3)
 
     # Instantiate a 'Classifier' Object
     myclf = ML.Classifier(data_type)
@@ -276,15 +359,14 @@ def main():
     # ============== Load Patient (Condition-Positive) Data ==============
 
     for fname in os.listdir(patient_path):
-        if fname[:config.participantNumLen] not in config.excludeSubs:
-            if fname[0] != "1":
+        if fname[:config.participantNumLen] not in config.exclude_subs:
+            if filter_band in fname:
                 myclf.LoadData(patient_path+"/"+fname)
 
     # ============== Load Control (Condition-Negative) Data ==============
     # the dataset will automatically add healthy control data
     # found in the reference folders
-    if balance is True:
-        myclf.Balance(studies_folder)
+    myclf.Balance(studies_folder, filter_band=filter_band, ref_folders=balance)
 
     myclf.CNN(
         normalize=normalize,
@@ -293,6 +375,19 @@ def main():
         epochs=epochs,
         plot_ROC=plot_ROC,
         tt_split=tt_split)
+
+    if k_folds > 1:
+        myclf.KfoldCrossVal(
+            myclf.CNN(
+                normalize=normalize,
+                learning_rate=learning_rate,
+                lr_decay=lr_decay,
+                epochs=epochs,
+                plot_ROC=plot_ROC,
+                tt_split=tt_split
+            ),
+            k=k_folds
+        )
 
 
 if __name__ == '__main__':

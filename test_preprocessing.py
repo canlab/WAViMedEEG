@@ -38,34 +38,34 @@ class TestPreprocessing(unittest.TestCase):
                 weighted=True).T
 
             np.savetxt(
-                taskObj.studyFolder\
-                +"/"+taskObj.task+"/"\
-                +sub\
-                +"_"\
-                +taskObj.task\
-                +"_nofilter.eeg",
+                taskObj.studyFolder
+                + "/" + taskObj.task + "/"
+                + sub
+                + "_"
+                + taskObj.task
+                + "_nofilter.eeg",
                 eeg_file,
                 delimiter=" ",
                 fmt="%2.1f")
 
             np.savetxt(
-                taskObj.studyFolder\
-                +"/"+taskObj.task+"/"\
-                +sub\
-                +"_"\
-                +taskObj.task\
-                +".art",
+                taskObj.studyFolder
+                + "/" + taskObj.task + "/"
+                + sub
+                + "_"
+                + taskObj.task
+                + ".art",
                 art_file,
                 delimiter=" ",
                 fmt="%2.1f")
 
             np.savetxt(
-                taskObj.studyFolder\
-                +"/"+taskObj.task+"/"\
-                +sub\
-                +"_"\
-                +taskObj.task\
-                +".evt",
+                taskObj.studyFolder
+                + "/" + taskObj.task + "/"
+                + sub
+                + "_"
+                + taskObj.task
+                + ".evt",
                 evt_file,
                 delimiter=" ",
                 fmt="%2.1f")
@@ -90,7 +90,7 @@ class TestPreprocessing(unittest.TestCase):
         channels = ""
         for val in list(Signals.rand_bin_string(
             19,
-            sample_rate=1)):
+                sample_rate=1)):
             channels += str(val)
 
         for art_degree in art_degrees:

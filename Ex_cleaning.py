@@ -14,20 +14,23 @@ def main():
     parser.add_argument('--studies_folder',
                         dest='studies_folder',
                         type=str,
-                        default=config.myStudies,
-                        help='Path to parent folder containing study folders')
+                        default=config.my_studies,
+                        help="(Default: " + config.my_studies + ") Path to "
+                        + "parent folder containing study folders")
 
     parser.add_argument('--study_name',
                         dest='study_name',
                         type=str,
-                        default=config.studyDirectory,
-                        help='Study folder containing dataset')
+                        default=config.study_directory,
+                        help="(Default: " + config.study_directory + ") "
+                        + "Study folder containing dataset")
 
     parser.add_argument('--group_num',
                         dest='group_num',
                         type=int,
                         default=1,
-                        help='Group number to be assigned to dataset')
+                        help='(Default: 1) Group number to be '
+                        + 'assigned to dataset')
 
     # save the variables in 'args'
     args = parser.parse_args()

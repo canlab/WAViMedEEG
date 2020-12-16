@@ -111,7 +111,12 @@ class Classifier:
             print("Removing it from dataset.")
             self.data.pop(-1)
 
-    def Balance(self, parentPath, filter_band="nofilter"):
+    def Balance(
+        self,
+        parentPath,
+        filter_band="nofilter",
+        ref_folders=config.ref_folders,
+            all=False):
         """
         Knowing that reference groups are named as follows:
             - ref 24-30
@@ -127,8 +132,6 @@ class Classifier:
             - parentPath (required positional): parent path of reference
               folders listed above
         """
-        folders = config.refGroupFolders
-
         dataFolder = self.trial_name
 
         totalpos = 0
@@ -145,7 +148,10 @@ class Classifier:
 
                 totalpos += 1
 
-        fill = (totalpos - totalneg)
+        if totalpos > totalneg:
+            fill = (totalpos - totalneg)
+        elif totalneg > totalpos:
+            fill = (totalneg - totalpos)
 
         filled_subs = []
 
@@ -153,13 +159,14 @@ class Classifier:
         j = 0
         while i < fill:
 
-            folder = folders[j]
+            folder = ref_folders[j]
 
             fnames = os.listdir(parentPath+"/"+folder+"/"+dataFolder)
 
             subjects = list(set(
                 [fname[:config.participantNumLen] for fname in fnames if
-                    fname[0] == "1"]))
+                    (fname[:config.participantNumLen]
+                    not in config.exclude_subs)]))
 
             random.shuffle(subjects)
 
@@ -169,7 +176,7 @@ class Classifier:
 
             sub_fnames = [
                 fname for fname in fnames if
-                subjects[h] in fname[:config.participantNumLen]]
+                subjects[h] == fname[:config.participantNumLen]]
 
             for sub_fname in sub_fnames:
                 reqs = [filter_band, ".evt", ".art"]
@@ -183,11 +190,11 @@ class Classifier:
                         + "/"
                         + sub_fname)
 
-                i += 1
+                    i += 1
 
             filled_subs.append((subjects[0], folder))
 
-            if j != len(folders) - 1:
+            if j != len(ref_folders) - 1:
                 j += 1
 
             else:
@@ -1175,72 +1182,51 @@ class Classifier:
             from Plots import roc
             roc(y_pred_keras, test_labels, fname=log_dir+"/ROC")
 
-        return(history, model, y_pred_keras, test_labels)
+        return(model, y_pred_keras, test_labels)
 
     def KfoldCrossVal(
         self,
-        path,
-        ref_path,
-        k=5,
-        pos_only=True,
-        filter_band="nofilter",
-            model_type='CNN'):
+        ML_function,
+            k=1):
         """
         Resampling procedure used to evaluate ML models
         on a limited data sample
 
         Parameters:
-            - path (required positional): str
-                path of file (spectra or contig)
-                to be loaded and stacked on the parent
-                object's 'data' attribute
-                note: objects will be loaded in as Contig or Spectra objects
-            - ref_path (required positional): str
-                parent path of reference folders listed above
             - k (default 5): int
-                number of groups that a given data sample will b e split into
-            - pos_only (default True): bool
-                if True, will only load condition positive (sub code >1) data
-                and controls will only be loaded from reference dataset
+                number of groups that a given data sample will be split into
         """
-        for fname in os.listdir(path):
-            reqs = [filter_band, ".evt", ".art"]
-            if any(ext in fname for ext in reqs):
-                if int(fname[0]) > 1:
-                    self.LoadData(path+"/"+fname)
-
-        self.Balance(ref_path)
-
         all_y_preds = []
         all_y_labels = []
         all_aucs = []
 
         from Plots import roc
 
-        f = open(self.type+"_"+os.path.basename(path)+".txt", 'w')
+        f = open(self.type+"_"+os.path.basename(self.trial_name)+".txt", 'w')
 
         for i in tqdm(range(k)):
-            if model_type == 'CNN':
-                hist, model, y_pred, y_labels = self.CNN(
-                    k_fold=(i, k),
-                    plot_ROC=True)
-
-            elif model_type == 'SVM':
-                model, y_pred, y_labels = self.SVM(
-                    kernel='linear',
-                    iterations=1000,
-                    normalize=None,
-                    num_feats=30,
-                    feat_select=False,
-                    plot_Features=True,
-                    lowbound=0,
-                    highbound=25)
-
-            elif model_type == 'LDA':
-                model, y_pred, y_labels = self.LDA(
-                    normalize=None,
-                    lowbound=0,
-                    highbound=25)
+            model, y_pred, y_labels = self.ML_function(k_fold=(i, k))
+            # if model_type == 'CNN':
+            #     hist, model, y_pred, y_labels = self.CNN(
+            #         k_fold=(i, k),
+            #         plot_ROC=True)
+            #
+            # elif model_type == 'SVM':
+            #     model, y_pred, y_labels = self.SVM(
+            #         kernel='linear',
+            #         iterations=1000,
+            #         normalize=None,
+            #         num_feats=30,
+            #         feat_select=False,
+            #         plot_Features=True,
+            #         lowbound=0,
+            #         highbound=25)
+            #
+            # elif model_type == 'LDA':
+            #     model, y_pred, y_labels = self.LDA(
+            #         normalize=None,
+            #         lowbound=0,
+            #         highbound=25)
 
             for pred, label in zip(y_pred, y_labels):
                 all_y_preds.append(pred)
@@ -1254,12 +1240,13 @@ class Classifier:
             f.write(str(auc))
             f.write('\n')
 
-            i += 1
-
         f.close()
 
-        auc = roc(all_y_preds, all_y_labels, fname=os.path.basename(
-            os.path.dirname(path))+"_"+os.path.basename(path))
+        auc = roc(
+            all_y_preds,
+            all_y_labels,
+            fname=self.type + "_" + self.trial_name)
+
         print(all_aucs)
 
         return roc

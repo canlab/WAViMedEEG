@@ -8,7 +8,7 @@ Most classes, scripts, etc., will reference it.
 INITIALIZING STUDY FILES
 ========================
 before beginning with new data, format your new study directory as follows:
-~/.../path/to/mystudies/newstudydir
+~/.../path/to/my_studies/newstudydir
 ----------> /raw
 --------------------> <subjID>_<taskID>.eeg
 --------------------> <subjID>_<taskID>.evt
@@ -26,24 +26,32 @@ participantNumLen = 4  # default length
 
 # if you are working with multiple studies at once,
 # set the parent directory where you will keep them all
-myStudies = "/wavi/EEGstudies"
-studyDirectory = 'CANlab'
+my_studies = "/wavi/EEGstudies"
+study_directory = 'canlab pain'
 
-excludeSubs = [
+exclude_subs = [
+    '1000',
     '1004',
-    '1020']
+    '1020',
+    '2007',
+    '2017',
+    '2013',
+    '2001',
+    '2010',
+    '2024']
 
 group_names = {
+    0: "Pilot",
     1: "Control",
     2: "Pain",
     3: "Rehab"
 }
 
-refGroupFolders = [
+ref_folders = [
     "ref 24-30",
     "ref 31-40",
     "ref 41-50",
-    # "ref 51-60",
+    "ref 51-60",
     # "ref 61-70",
     # "ref 71-80",
     # "ref 81+"
@@ -129,6 +137,28 @@ network_channels = [
     'Fz',
     'Cz',
     'Pz']
+
+custom_art_map = [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+]
 
 frequency_bands = {
     "delta": [0, 2],

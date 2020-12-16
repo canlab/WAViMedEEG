@@ -132,6 +132,7 @@ class BandFilter:
             fname for fname in os.listdir(self.study_folder+"/"+self.task)
             if "nofilter" in fname]
 
+        print("Generating filtered trials:")
         for fname in tqdm(fnames):
 
             arr = np.genfromtxt(
@@ -179,6 +180,7 @@ class BandFilter:
 
     def write_taskdata(self):
 
+        print("Writing filtered trials:")
         for file in tqdm(self.new_data):
 
             np.savetxt(
