@@ -179,19 +179,19 @@ class TaskData:
 
         # make a child subdirectory called contigs_<task>_<contig_length>
         self.contigsFolder = self.studyFolder\
-                            + "/contigs/"\
-                            + self.task\
-                            + "_"\
-                            + str(contigLength)\
-                            + "_"\
-                            + network_channels\
-                            + "_"\
-                            + str(art_degree)
+            + "/contigs/"\
+            + self.task\
+            + "_"\
+            + str(contigLength)\
+            + "_"\
+            + network_channels\
+            + "_"\
+            + str(art_degree)
 
         if erp_degree is not None:
-            self.contigsFolder = self.contigsFolder\
-                                + "_"\
-                                + str(erp_degree)
+            self.contigsFolder = self.contigsFolder.replace("contigs", "erps")\
+                + "_"\
+                + str(erp_degree)
 
         try:
             os.mkdir(self.contigsFolder)
@@ -266,9 +266,10 @@ class TaskData:
 
                 mxi = []
                 for i, channel in enumerate(artifact_data.T):
-                    mxi.append(np.ma.masked_where(
+                    channel_mxi = np.ma.masked_where(
                         channel > int(str_art_degree[i]),
-                        channel))
+                        channel)
+                    mxi.append(channel_mxi)
 
                 mxi = np.stack(mxi).T
 
@@ -409,49 +410,32 @@ class TaskData:
 
             self.spectra = []
 
-        if erp_degree is None:
-            self.contigsFolder = self.studyFolder\
-                + "/contigs/"\
-                + self.task\
-                + "_"\
-                + str(contigLength)\
-                + "_"\
-                + network_channels\
-                + "_"\
-                + str(art_degree)
+        self.contigsFolder = self.studyFolder\
+            + "/contigs/"\
+            + self.task\
+            + "_"\
+            + str(contigLength)\
+            + "_"\
+            + network_channels\
+            + "_"\
+            + str(art_degree)
 
-            self.spectraFolder = self.studyFolder\
-                + "/spectra/"\
-                + self.task\
-                + "_"\
-                + str(contigLength)\
-                + "_"\
-                + network_channels\
-                + "_"\
-                + str(art_degree)
+        self.spectraFolder = self.studyFolder\
+            + "/spectra/"\
+            + self.task\
+            + "_"\
+            + str(contigLength)\
+            + "_"\
+            + network_channels\
+            + "_"\
+            + str(art_degree)
 
-        elif erp_degree is not None:
-            self.contigsFolder = self.studyFolder\
-                + "/erps/"\
-                + self.task\
-                + "_"\
-                + str(contigLength)\
-                + "_"\
-                + network_channels\
-                + "_"\
-                + str(art_degree)\
+        if erp_degree is not None:
+            self.contigsFolder = self.contigsFolder.replace("contigs", "erps")\
                 + "_"\
                 + str(erp_degree)
 
-            self.spectraFolder = self.studyFolder\
-                + "/spectra/"\
-                + self.task\
-                + "_"\
-                + str(contigLength)\
-                + "_"\
-                + network_channels\
-                + "_"\
-                + str(art_degree)\
+            self.spectraFolder = self.spectraFolder\
                 + "_"\
                 + str(erp_degree)
 

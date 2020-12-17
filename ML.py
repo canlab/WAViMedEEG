@@ -166,7 +166,7 @@ class Classifier:
             subjects = list(set(
                 [fname[:config.participantNumLen] for fname in fnames if
                     (fname[:config.participantNumLen]
-                    not in config.exclude_subs)]))
+                        not in config.exclude_subs)]))
 
             random.shuffle(subjects)
 
