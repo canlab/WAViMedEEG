@@ -54,6 +54,15 @@ def main():
         raise FileNotFoundError
         sys.exit(3)
 
+    if not os.path.isdir(os.path.join(studies_folder, study_name, 'raw')):
+        print(
+            "No 'raw' folder found in the supplied directory. See the README. "
+            + "Data should be stored in studies_folder/study_name/raw before "
+            + "data cleaning can be run automatically."
+        )
+        raise FileNotFoundError
+        sys.exit(3)
+
     if group_num not in range(0, 9):
         print("group_num must be an int, between 0 and 9.")
         raise ValueError

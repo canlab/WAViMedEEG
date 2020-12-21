@@ -92,6 +92,24 @@ def FilterChannels(array, keep_channels, axis_num=1):
     return(newarr)
 
 
+def MaskChannel(channel_data, art_degree=0):
+    """
+    Returns a masked version of input array (1-dimensional) where any value
+    exceeding the supplied art_degree (default 0) is masked
+
+    Parameters:
+        - channel_data: (1d numpy.ndarray) input array
+        - art_degree (int): minimum value which will be passed
+            over and not masked
+
+    """
+    channel_mxi = np.ma.masked_where(
+        channel_data > art_degree,
+        channel_data)
+
+    return channel_mxi
+
+
 # takes one positional argument, path of TaskData folder
 class TaskData:
     """
@@ -244,13 +262,10 @@ class TaskData:
                 axis_num=1)
 
             # mask artifact array where numbers exceed art_degree
-            if art_degree in [0, 1, 2]:
-                mxi = np.ma.masked_where(
-                    artifact_data > art_degree,
-                    artifact_data)
+            if isinstance(art_degree, int) and (art_degree in [0, 1, 2]):
+                art_degree = np.repeat(art_degree, len(network_channels))
 
-            # if using custom artifact map, must do so iteratively
-            # over each channel
+            # if using custom artifact map
             else:
                 # cut out unused channels from artifact map
                 art_degree = FilterChannels(
@@ -258,22 +273,13 @@ class TaskData:
                     StringarizeChannels(network_channels),
                     axis_num=0)
 
-                str_art_degree = ""
-                for channel in art_degree:
-                    str_art_degree += str(channel)
+            mxi = []
+            for art, channel in zip(art_degree, artifact_data.T):
+                mxi.append(np.ma.filled(
+                    MaskChannel(channel, int(art)).astype(float),
+                    np.nan))
 
-                art_degree = str_art_degree
-
-                mxi = []
-                for i, channel in enumerate(artifact_data.T):
-                    channel_mxi = np.ma.masked_where(
-                        channel > int(str_art_degree[i]),
-                        channel)
-                    mxi.append(channel_mxi)
-
-                mxi = np.stack(mxi).T
-
-            mxi = np.ma.filled(mxi.astype(float), np.nan)
+            mxi = np.stack(mxi).T
 
             artifact_data = mxi
 
@@ -284,7 +290,7 @@ class TaskData:
                 # contig requirements
                 i = 0
 
-                while i < artifact_data.shape[0] - contigLength:
+                while i < (artifact_data.shape[0] - contigLength):
 
                     stk = artifact_data[i:(i + contigLength), :]
 
@@ -298,7 +304,7 @@ class TaskData:
                         # TODO
                         # contig alg can be sped up here to jump to
                         # last instance of NaN
-                        i += (np.where(np.isnan(stk))[1][-1] - i)
+                        i += 1
 
             else:
                 # only take oddball erp?
@@ -322,10 +328,10 @@ class TaskData:
             for eegfile in subfiles:
                 # print("EEG file:"+self.path+"/"+eegfile)
                 data = np.genfromtxt(self.path+"/"+eegfile, delimiter=" ")
-                data = FilterChannels(
-                    data,
-                    StringarizeChannels(network_channels),
-                    axis_num=1)
+                # data = FilterChannels(
+                #     data,
+                #     StringarizeChannels(network_channels),
+                #     axis_num=1)
 
                 if data.size == 0:
 
