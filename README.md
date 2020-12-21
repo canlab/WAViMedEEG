@@ -101,7 +101,7 @@ Your 'study folder' should be organized as follows:
 
 Next, we will use the [Clean](../blob/master/Clean.py) module to anonymize and standardize our data.
 
-#####Command Line
+##### Command Line
 ---
 [Ex_clean.py](../blob/master/Ex_cleaning.py)
 `python3 Ex_clean.py --help`
@@ -117,7 +117,7 @@ Next, we will use the [Clean](../blob/master/Clean.py) module to anonymize and s
 | group_num | int | 1 | Group number to be assigned to dataset |
 
 
-#####Writing Scripts
+##### Writing Scripts
 ---
 See the [cleaning](../blob/master/notebook_examples/Ex_cleaning.ipynb) jupyter notebook file for example code.
 
@@ -144,7 +144,7 @@ Note: you may need to manually update your subject numbers. The first number of 
 Next, we will use the [Prep](../blob/master/Prep.py) module to structure our data, and remove bad timepoints (such as blinks, motion, etc.).
 If you'd like to create new data that has been filtered to specific frequency ranges, see [Standard](../blob/master/Standard.py) and inspect the BandFilter class.
 
-#####Command Line
+##### Command Line
 ---
 [Ex_bandpass.py](../blob/master/Ex_bandpass.py)
 `python3 Ex_bandpass.py --help`
@@ -175,7 +175,7 @@ If you'd like to create new data that has been filtered to specific frequency ra
 | erp_degree | int | 1 | Lowest number in .evt files which will be accepted as an erp event |
 
 
-#####Writing Scripts
+##### Writing Scripts
 ---
 See the [contigs](../blob/master/notebook_examples/Ex_contigs.ipynb) jupyter notebook file for example code.
 
@@ -220,11 +220,11 @@ Writes TaskData.contigs objects to file, under TaskData.path / contigs or TaskDa
 
 
 #### Spectra
-#####Command Line
+##### Command Line
 ---
 Spectra can be automatically created using the --spectra flag in Ex_contigs.py, will have its own script soon.
 
-#####Writing Scripts
+##### Writing Scripts
 ---
 ##### Prep.TaskData(path)
 Parameters:
@@ -262,7 +262,7 @@ Next, we will use the [ML](../blob/master/ML.py) module to use a myriad of machi
 Independent of which method you select to employ, the same basic formula will load in our data.
 
 
-#####Writing Scripts
+##### Writing Scripts
 ---
 ##### ML.Classifier(type)
 Class object to which we can load our data before differentiating using various ML methods.
@@ -296,27 +296,27 @@ Spectra or Contig objects. New data are added with Classifier.LoadData.
 
 ### Linear Discriminant Analysis (LDA)
 
-#####Command Line
+##### Command Line
 ---
 A command-line script does not yet exist for this function.
 
-#####Writing Scripts
+##### Writing Scripts
 ---
 Documentation to be added soon.
 
 ### Support Vector Machine (SVM)
 
-#####Command Line
+##### Command Line
 ---
 A command-line script does not yet exist for this function.
 
-#####Writing Scripts
+##### Writing Scripts
 ---
 Documentation to be added soon.
 
 ### Convolutional Neural Network (CNN)
 
-#####Command Line
+##### Command Line
 ---
 [Ex_cnn.py](../blob/master/Ex_cnn.py)
 `python3 Ex_cnn.py --help`
@@ -339,7 +339,7 @@ Documentation to be added soon.
 | lr_decay | bool | False | Whether learning rate should decay adhering to a 0.96 / step decay rate schedule |
 
 
-#####Writing Scripts
+##### Writing Scripts
 ---
 See the [CNN](../blob/master/notebook_examples/Ex_cnn.ipynb) jupyter notebook file for example code.
 
