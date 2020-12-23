@@ -472,19 +472,16 @@ class TaskData:
             fname for fname in os.listdir(self.contigsFolder)
             if "_" + filter_band in fname]
         for contig in tqdm(contigs):
+            temp = Contig(
+                np.genfromtxt(
+                    self.contigsFolder + "/" + contig,
+                    delimiter=","),
+                contig.split('_')[2][:-4],
+                contig[:config.participantNumLen],
+                contig.split('_')[1]).fft()
 
-            if "_" + filter_band in contig:
-
-                temp = Contig(
-                    np.genfromtxt(
-                        self.contigsFolder + "/" + contig,
-                        delimiter=","),
-                    contig.split('_')[2][:-4],
-                    contig[:config.participantNumLen],
-                    contig.split('_')[1]).fft()
-
-                if temp is not None:
-                    self.spectra.append(temp)
+            if temp is not None:
+                self.spectra.append(temp)
 
     def write_spectra(self):
         """

@@ -82,11 +82,11 @@ class TestPreprocessing(unittest.TestCase):
 
         taskObj.task_fnames = taskObj.get_task_fnames(taskObj.task)
 
-        length = random.randint(100, 2000)
+        length = random.randint(100, 750)
         # art_degrees = [0, 1, 2]
         art_degrees = [1]
         # erps = [True, False]
-        erps = [False]
+        erps = [1]
         channels = ""
         for val in list(Signals.rand_bin_string(
             19,
@@ -99,13 +99,14 @@ class TestPreprocessing(unittest.TestCase):
                     length,
                     network_channels=channels,
                     art_degree=art_degree,
-                    erp=erp)
+                    erp_degree=erp)
                 taskObj.write_contigs()
                 taskObj.gen_spectra(
                     length,
                     network_channels=channels,
                     art_degree=art_degree,
-                    erp=erp)
+                    erp_degree=erp)
+                taskObj.write_spectra()
 
         self.assertEqual(
             len(os.listdir(taskObj.studyFolder+"/contigs")),
@@ -154,7 +155,7 @@ if __name__ == '__main__':
 
     lo_bound = int('1' + '0'*(1-config.participantNumLen))
     hi_bound = int('2' + '9'*(1-config.participantNumLen))
-    for i in range(2):
+    for i in range(8):
         num = None
         num = random.randint(1000, 3999)
         # no repeat subject numbers

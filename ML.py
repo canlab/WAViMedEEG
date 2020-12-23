@@ -4,6 +4,7 @@ import config
 import random
 import math
 from tqdm import tqdm
+import sys
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import MinMaxScaler
@@ -115,8 +116,7 @@ class Classifier:
         self,
         parentPath,
         filter_band="nofilter",
-        ref_folders=config.ref_folders,
-            all=False):
+            ref_folders=config.ref_folders):
         """
         Knowing that reference groups are named as follows:
             - ref 24-30
@@ -150,8 +150,11 @@ class Classifier:
 
         if totalpos > totalneg:
             fill = (totalpos - totalneg)
-        elif totalneg > totalpos:
+        elif totalpos < totalneg:
             fill = (totalneg - totalpos)
+        else:
+            print("Already equal - something went wrong.")
+            sys.exit(3)
 
         filled_subs = []
 
@@ -179,8 +182,7 @@ class Classifier:
                 subjects[h] == fname[:config.participantNumLen]]
 
             for sub_fname in sub_fnames:
-                reqs = [filter_band, ".evt", ".art"]
-                if any(ext in sub_fname for ext in reqs):
+                if filter_band in sub_fname:
                     self.LoadData(
                         parentPath
                         + "/"
@@ -193,6 +195,9 @@ class Classifier:
                     i += 1
 
             filled_subs.append((subjects[0], folder))
+
+            if len(filled_subs) == len(subjects):
+                break
 
             if j != len(ref_folders) - 1:
                 j += 1
@@ -253,9 +258,9 @@ class Classifier:
 
         split = math.floor(len(self.subjects)*tt_split)
 
-        train_subjects = self.subjects[:split*-1]
+        self.train_subjects = self.subjects[:split*-1]
 
-        test_subjects = self.subjects[split*-1:]
+        self.test_subjects = self.subjects[split*-1:]
 
         if normalize == 'standard':
 
@@ -281,7 +286,7 @@ class Classifier:
                         int(highbound // SpecObj.freq_res) + 1]
                         for SpecObj in self.data
                         if (SpecObj.source, SpecObj.subject)
-                        in train_subjects])
+                        in self.train_subjects])
 
             train_labels = np.array(
                     [int(1)
@@ -289,7 +294,7 @@ class Classifier:
                         else int(-1)
                         for SpecObj in self.data
                         if (SpecObj.source, SpecObj.subject)
-                        in train_subjects])
+                        in self.train_subjects])
 
             test_dataset = np.stack(
                     [SpecObj.data[
@@ -297,7 +302,7 @@ class Classifier:
                         int(highbound // SpecObj.freq_res) + 1]
                         for SpecObj in self.data
                         if (SpecObj.source, SpecObj.subject)
-                        in test_subjects])
+                        in self.test_subjects])
 
             test_labels = np.array(
                     [int(1)
@@ -305,7 +310,7 @@ class Classifier:
                         else int(-1)
                         for SpecObj in self.data
                         if (SpecObj.source, SpecObj.subject)
-                        in test_subjects])
+                        in self.test_subjects])
 
         # reshape datasets
         nsamples, nx, ny = train_dataset.shape
@@ -500,8 +505,8 @@ class Classifier:
                 fontsize=15)
 
             for i, (X, y) in enumerate([
-                                        dataset_fixed_cov(),
-                                        dataset_cov()]):
+                dataset_fixed_cov(),
+                    dataset_cov()]):
 
                 # Linear Discriminant Analysis
                 lda = LinearDiscriminantAnalysis(
@@ -526,17 +531,17 @@ class Classifier:
         return clf, clf.predict(test_dataset), test_labels
 
     def SVM(
-            self,
-            C=1,
-            kernel='linear',
-            normalize=None,
-            iterations=1000,
-            plot_PR=False,
-            plot_Features=False,
-            feat_select=False,
-            num_feats=10,
-            lowbound=0,
-            highbound=25,
+        self,
+        C=1,
+        kernel='linear',
+        normalize=None,
+        iterations=1000,
+        plot_PR=False,
+        plot_Features=False,
+        feat_select=False,
+        num_feats=10,
+        lowbound=0,
+        highbound=25,
             tt_split=0.33):
 
         """
@@ -599,9 +604,9 @@ class Classifier:
 
         split = math.floor(len(self.subjects)*tt_split)
 
-        train_subjects = self.subjects[:split*-1]
+        self.train_subjects = self.subjects[:split*-1]
 
-        test_subjects = self.subjects[split*-1:]
+        self.test_subjects = self.subjects[split*-1:]
 
         if normalize == 'standard':
 
@@ -625,24 +630,28 @@ class Classifier:
                     int(lowbound // SpecObj.freq_res):
                     int(highbound // SpecObj.freq_res) + 1]
                     for SpecObj in self.data
-                    if (SpecObj.source, SpecObj.subject) in train_subjects])
+                    if (SpecObj.source, SpecObj.subject)
+                    in self.train_subjects])
 
             train_labels = np.array(
                 [int(1) if (SpecObj.group == 2) else int(-1)
                     for SpecObj in self.data
-                    if (SpecObj.source, SpecObj.subject) in train_subjects])
+                    if (SpecObj.source, SpecObj.subject)
+                    in self.train_subjects])
 
             test_dataset = np.stack(
                 [SpecObj.data[
                     int(lowbound // SpecObj.freq_res):
                     int(highbound // SpecObj.freq_res) + 1]
                     for SpecObj in self.data
-                    if (SpecObj.source, SpecObj.subject) in test_subjects])
+                    if (SpecObj.source, SpecObj.subject)
+                    in self.test_subjects])
 
             test_labels = np.array(
                 [int(1) if (SpecObj.group == 2) else int(-1)
                     for SpecObj in self.data
-                    if (SpecObj.source, SpecObj.subject) in test_subjects])
+                    if (SpecObj.source, SpecObj.subject)
+                    in self.test_subjects])
 
         print("Number of samples in train:", train_dataset.shape[0])
 
@@ -886,17 +895,17 @@ class Classifier:
             elif item.group > 1:
                 totalpos += 1
 
-        if k_fold is None:
-            print("Number of negative outcomes:", totalneg)
-            print("Number of positive outcomes:", totalpos)
+        # if k_fold is None:
+        print("Number of negative outcomes:", totalneg)
+        print("Number of positive outcomes:", totalpos)
 
         # make list of subjects in this dataset
         self.subjects = list(set([
             (item.source, item.subject)
             for item in self.data]))
 
-        if k_fold is None:
-            print("Total number of subjects:", len(self.subjects))
+        # if k_fold is None:
+        print("Total number of subjects:", len(self.subjects))
 
         # get num condition positive
         j = 0
@@ -904,16 +913,16 @@ class Classifier:
             if int(sub[1][0]) > 1:
                 j += 1
 
-        if k_fold is None:
-            print(
-                "% Positive in all subjects:",
-                j / len(self.subjects))
-            print(
-                "% Negative in all subjects:",
-                (len(self.subjects) - j) / len(self.subjects))
+        # if k_fold is None:
+        print(
+            "% Positive in all subjects:",
+            j / len(self.subjects))
+        print(
+            "% Negative in all subjects:",
+            (len(self.subjects) - j) / len(self.subjects))
 
-        train_subjects = []
-        test_subjects = []
+        self.train_subjects = []
+        self.test_subjects = []
 
         # shuffle subject list randomly and then
         # split data into train and test spectra (no overlapping subjects)
@@ -931,13 +940,13 @@ class Classifier:
                 sub for sub in self.subjects if int(sub[1][0]) == 1]
             neg_split = math.floor(len(neg_subjects)*tt_split)
 
-            train_subjects = pos_subjects[:pos_split*-1]
+            self.train_subjects = pos_subjects[:pos_split*-1]
             for sub in neg_subjects[:neg_split*-1]:
-                train_subjects.append(sub)
+                self.train_subjects.append(sub)
 
-            test_subjects = pos_subjects[pos_split*-1:]
+            self.test_subjects = pos_subjects[pos_split*-1:]
             for sub in neg_subjects[neg_split*-1:]:
-                test_subjects.append(sub)
+                self.test_subjects.append(sub)
 
         else:
             from sklearn.model_selection import KFold
@@ -956,9 +965,9 @@ class Classifier:
 
             for i, sub in enumerate(pos_subjects):
                 if i in train_indexes:
-                    train_subjects.append(sub)
+                    self.train_subjects.append(sub)
                 elif i in test_indexes:
-                    test_subjects.append(sub)
+                    self.test_subjects.append(sub)
                 else:
                     print("There was an error in the k-fold algorithm.")
                     print("Exiting.")
@@ -972,9 +981,9 @@ class Classifier:
 
             for i, sub in enumerate(neg_subjects):
                 if i in train_indexes:
-                    train_subjects.append(sub)
+                    self.train_subjects.append(sub)
                 elif i in test_indexes:
-                    test_subjects.append(sub)
+                    self.test_subjects.append(sub)
                 else:
                     print("There was an error in the k-fold algorithm.")
                     print("Exiting.")
@@ -983,24 +992,28 @@ class Classifier:
         train_dataset = np.expand_dims(np.stack(
             [ContigObj.data
                 for ContigObj in self.data
-                if (ContigObj.source, ContigObj.subject) in train_subjects]),
+                if (ContigObj.source, ContigObj.subject)
+                in self.train_subjects]),
             -1)
 
         train_labels = np.array(
             [int(1) if (ContigObj.group > 1) else int(0)
                 for ContigObj in self.data
-                if (ContigObj.source, ContigObj.subject) in train_subjects])
+                if (ContigObj.source, ContigObj.subject)
+                in self.train_subjects])
 
         test_dataset = np.expand_dims(np.stack(
             [ContigObj.data
                 for ContigObj in self.data
-                if (ContigObj.source, ContigObj.subject) in test_subjects]),
+                if (ContigObj.source, ContigObj.subject)
+                in self.test_subjects]),
             -1)
 
         test_labels = np.array(
             [int(1) if (ContigObj.group > 1) else int(0)
                 for ContigObj in self.data
-                if (ContigObj.source, ContigObj.subject) in test_subjects])
+                if (ContigObj.source, ContigObj.subject)
+                in self.test_subjects])
 
         if k_fold is None:
             print("Number of samples in train:", train_dataset.shape[0])
@@ -1187,7 +1200,16 @@ class Classifier:
     def KfoldCrossVal(
         self,
         ML_function,
-            k=1):
+        normalize=None,
+        learning_rate=0.01,
+        lr_decay=False,
+        beta1=0.9,
+        beta2=0.999,
+        epochs=100,
+        plot_ROC=False,
+        tt_split=0.33,
+        k=1,
+            plot_spec_avgs=False):
         """
         Resampling procedure used to evaluate ML models
         on a limited data sample
@@ -1205,7 +1227,16 @@ class Classifier:
         f = open(self.type+"_"+os.path.basename(self.trial_name)+".txt", 'w')
 
         for i in tqdm(range(k)):
-            model, y_pred, y_labels = self.ML_function(k_fold=(i, k))
+            model, y_pred, y_labels = ML_function(
+                normalize=normalize,
+                learning_rate=learning_rate,
+                lr_decay=lr_decay,
+                beta1=beta1,
+                beta2=beta2,
+                epochs=epochs,
+                plot_ROC=plot_ROC,
+                tt_split=tt_split,
+                k_fold=(i, k))
             # if model_type == 'CNN':
             #     hist, model, y_pred, y_labels = self.CNN(
             #         k_fold=(i, k),
@@ -1239,13 +1270,25 @@ class Classifier:
             all_aucs.append(auc)
             f.write(str(auc))
             f.write('\n')
+            for sub in self.train_subjects:
+                f.write(str(sub[1]))
+                f.write('\n')
+
+            if self.type == 'spectra' and plot_spec_avgs is True:
+                from Standard import SpectralAverage
+                specavgObj = SpectralAverage(self, training_only=True)
+                specavgObj.plot(
+                    fig_fname="specavg_"
+                    + os.path.basename(self.trial_name)
+                    + "_"
+                    + str(i))
 
         f.close()
 
         auc = roc(
             all_y_preds,
             all_y_labels,
-            fname=self.type + "_" + self.trial_name)
+            fname=self.type+"_"+os.path.basename(self.trial_name))
 
         print(all_aucs)
 

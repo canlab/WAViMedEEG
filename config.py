@@ -30,15 +30,16 @@ my_studies = "/wavi/EEGstudies"
 study_directory = 'canlab pain'
 
 exclude_subs = [
-    '1000',
-    '1004',
-    '1020',
-    '2007',
-    '2017',
-    '2013',
-    '2001',
-    '2010',
-    '2024']
+    # '1000',
+    # '1004',
+    # '1020',
+    # '2007',
+    # '2017',
+    # '2013',
+    # '2001',
+    # '2010',
+    # '2024'
+    ]
 
 group_names = {
     0: "Pilot",
@@ -161,7 +162,7 @@ custom_art_map = [
 ]
 
 frequency_bands = {
-    "delta": [0, 2],
+    "delta": [0, 4],
     "theta": [2, 6],
     "alpha": [6, 13],
     "beta": [13, 30],

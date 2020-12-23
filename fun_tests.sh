@@ -1,7 +1,7 @@
 test -e ssshtest || wget -qhttps://raw.githubusercontent.com/ryanlayer/ssshtest/master/ssshtest
 . ssshtest
 
-run PEP8 pycodestyle Ex_bandpass.py Ex_cleaning.py Ex_cnn.py Ex_contigs.py Ex_spectra.py Clean.py ML.py Plots.py Prep.py Signals.py Standard.py config.py test_preprocessing.py
+run PEP8 pycodestyle Ex_bandpass.py Ex_cleaning.py Ex_cnn.py Ex_contigs.py Ex_spectra.py Ex_spectral_avg.py Clean.py ML.py Plots.py Prep.py Signals.py Standard.py config.py test_preprocessing.py
 assert_no_stdout
 
 # ============== Ex_cleaning.py ==============

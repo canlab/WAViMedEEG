@@ -3,7 +3,7 @@ import config
 import numpy as np
 
 
-def roc(y_preds, y_labels, fname="ROC", plot=True):
+def roc(y_preds, y_labels, fname=None, plot=True):
     """
     ROC curve plotting function
 
@@ -35,8 +35,13 @@ def roc(y_preds, y_labels, fname="ROC", plot=True):
         plt.ylabel('True positive rate')
         plt.title('Receiver Operating Characteristic')
         plt.legend(loc='best')
+
+    if fname is None:
         plt.show()
+
+    if fname is not None:
         fig1.savefig(fname)
+        plt.close(fig1)
 
     return auc_keras
 
@@ -52,7 +57,8 @@ def plot_svm_features(
     Features,
     svm_weights,
     scores=None,
-        network_channels=config.network_channels):
+    network_channels=config.network_channels,
+        fname=None):
 
     # set up figure and axes (rows)
     fig, axs = plt.subplots(
@@ -67,34 +73,26 @@ def plot_svm_features(
     X_indices = Features
 
     i = 0
-
     j = 0
-
     for channel in network_channels:
 
         axs[j].set_title(channel)
-
         axs[j].bar(
                 X_indices - .25,
                 svm_weights[i:i + len(X_indices)],
                 width=.1, label='SVM weight')
 
         if scores is None:
-
             axs[j].legend()
 
         i += len(X_indices)
-
         j += 1
 
     if scores is not None:
 
         i = 0
-
         j = 0
-
         for channel in network_channels:
-
             axs[j].bar(
                 X_indices - .45,
                 scores[i:i+len(X_indices)],
@@ -104,14 +102,14 @@ def plot_svm_features(
             axs[j].legend()
 
             i += len(X_indices)
-
             j += 1
 
     axs[0].set_title("Comparing feature selection")
-
     axs[-1].set_xlabel('Feature number (in Hz)')
-
     # plt.yticks(())
     fig.tight_layout()
-
     plt.show()
+
+    if fname is not None:
+        fig.savefig(fname)
+        plt.close(fig)

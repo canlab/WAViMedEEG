@@ -16,24 +16,23 @@ class SpectralAverage:
         self,
         inputClf,
         lowbound=0,
-            highbound=25):
+        highbound=25,
+            training_only=False):
 
         if inputClf.type == "spectra":
-
             return super(SpectralAverage, self).__new__(self)
 
         else:
-
             print("This class requires an ML.Classifier object with\
                   type 'spectra' as a positional argument.")
-
             raise ValueError
 
     def __init__(
         self,
         inputClf,
         lowbound=0,
-            highbound=25):
+        highbound=25,
+            training_only=False):
 
         self.Clf = inputClf
 
@@ -47,7 +46,8 @@ class SpectralAverage:
 
         self.avgs = []
 
-        self.groups = list(set(SpecObj.group for SpecObj in self.Clf.data))
+        self.groups = list(set(
+            [SpecObj.group for SpecObj in self.Clf.data]))
 
         for group in self.groups:
             dataset = np.stack([
@@ -56,12 +56,13 @@ class SpectralAverage:
                     int(self.highbound // SpecObj.freq_res) + 1])
                 for SpecObj in self.Clf.data
                 if SpecObj.group == group])
+            # and str(SpecObj.subject) in self.Clf.train_subjects])
 
             self.avgs.append(np.mean(dataset, axis=0))
 
     def plot(self, channels=config.network_channels, fig_fname=None):
 
-        plt.rcParams['figure.dpi'] = 200
+        plt.rcParams['figure.dpi'] = 100
 
         num_waves = len(self.avgs)
 
@@ -72,7 +73,7 @@ class SpectralAverage:
         fig, axs = plt.subplots(
             nrows=len(channels),
             sharex=False,
-            figsize=(20, 40))
+            figsize=(12, 1*num_channels))
 
         fig.tight_layout()
 
@@ -108,10 +109,13 @@ class SpectralAverage:
 
             i += 1
 
-        plt.show()
+        if fig_fname is None:
+            plt.show()
+
         if fig_fname is not None:
             fig.suptitle(fig_fname)
             fig.savefig(fig_fname)
+            plt.close(fig)
 
 
 class BandFilter:
@@ -159,7 +163,8 @@ class BandFilter:
                 else:
                     sos = scipy.signal.butter(
                         4,
-                        [range[0], range[1]],
+                        [range[0],
+                        range[1]],
                         btype=self.type,
                         fs=config.sample_rate,
                         output='sos')
