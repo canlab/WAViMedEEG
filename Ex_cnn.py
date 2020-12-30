@@ -360,7 +360,7 @@ def main():
 
     for fname in os.listdir(patient_path):
         if fname[:config.participantNumLen] not in config.exclude_subs:
-            if filter_band in fname:
+            if "_"+filter_band in fname:
                 myclf.LoadData(patient_path+"/"+fname)
 
     # ============== Load Control (Condition-Negative) Data ==============
@@ -369,13 +369,14 @@ def main():
     myclf.Balance(studies_folder, filter_band=filter_band, ref_folders=balance)
 
     if k_folds == 1:
+        myclf.Prepare(tt_split=tt_split)
+
         myclf.CNN(
             normalize=normalize,
             learning_rate=learning_rate,
             lr_decay=lr_decay,
             epochs=epochs,
-            plot_ROC=plot_ROC,
-            tt_split=tt_split)
+            plot_ROC=plot_ROC)
 
     if k_folds > 1:
         myclf.KfoldCrossVal(
@@ -385,7 +386,6 @@ def main():
             lr_decay=lr_decay,
             epochs=epochs,
             plot_ROC=plot_ROC,
-            tt_split=tt_split,
             k=k_folds,
             plot_spec_avgs=True)
 

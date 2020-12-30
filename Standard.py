@@ -17,7 +17,8 @@ class SpectralAverage:
         inputClf,
         lowbound=0,
         highbound=25,
-            training_only=False):
+        training_only=False,
+            testing_only=False):
 
         if inputClf.type == "spectra":
             return super(SpectralAverage, self).__new__(self)
@@ -32,7 +33,8 @@ class SpectralAverage:
         inputClf,
         lowbound=0,
         highbound=25,
-            training_only=False):
+        training_only=False,
+            testing_only=False):
 
         self.Clf = inputClf
 
@@ -50,13 +52,33 @@ class SpectralAverage:
             [SpecObj.group for SpecObj in self.Clf.data]))
 
         for group in self.groups:
-            dataset = np.stack([
-                np.sqrt(SpecObj.data[
-                    int(self.lowbound // SpecObj.freq_res):
-                    int(self.highbound // SpecObj.freq_res) + 1])
-                for SpecObj in self.Clf.data
-                if SpecObj.group == group])
-            # and str(SpecObj.subject) in self.Clf.train_subjects])
+            if (training_only is False) and (testing_only is False):
+                dataset = np.stack([
+                    np.sqrt(SpecObj.data[
+                        int(self.lowbound // SpecObj.freq_res):
+                        int(self.highbound // SpecObj.freq_res) + 1])
+                    for SpecObj in self.Clf.data
+                    if SpecObj.group == group])
+
+            elif training_only is True:
+                dataset = np.stack([
+                    np.sqrt(SpecObj.data[
+                        int(self.lowbound // SpecObj.freq_res):
+                        int(self.highbound // SpecObj.freq_res) + 1])
+                    for SpecObj in self.Clf.data
+                    if SpecObj.group == group
+                    and str(SpecObj.subject) in [sub[1]
+                        for sub in self.Clf.train_subjects]])
+
+            elif testing_only is True:
+                dataset = np.stack([
+                    np.sqrt(SpecObj.data[
+                        int(self.lowbound // SpecObj.freq_res):
+                        int(self.highbound // SpecObj.freq_res) + 1])
+                    for SpecObj in self.Clf.data
+                    if SpecObj.group == group
+                    and str(SpecObj.subject) in [sub[1]
+                        for sub in self.Clf.test_subjects]])
 
             self.avgs.append(np.mean(dataset, axis=0))
 
@@ -132,9 +154,32 @@ class BandFilter:
 
         range = config.frequency_bands[filter_band]
 
+        if self.type == 'lowpass':
+            sos = scipy.signal.butter(
+                4,
+                range[0],
+                btype=self.type,
+                fs=config.sample_rate,
+                output='sos')
+        elif self.type == 'highpass':
+            sos = scipy.signal.butter(
+                4,
+                range[1],
+                btype=self.type,
+                fs=config.sample_rate,
+                output='sos')
+        else:
+            sos = scipy.signal.butter(
+                4,
+                [range[0],
+                    range[1]],
+                btype=self.type,
+                fs=config.sample_rate,
+                output='sos')
+
         fnames = [
             fname for fname in os.listdir(self.study_folder+"/"+self.task)
-            if "nofilter" in fname]
+            if "_nofilter" in fname]
 
         print("Generating filtered trials:")
         for fname in tqdm(fnames):
@@ -142,35 +187,20 @@ class BandFilter:
             arr = np.genfromtxt(
                 self.study_folder+"/"+self.task+"/"+fname,
                 delimiter=" ")
-            j = 0
-            post = np.ndarray(
-                shape=(arr.shape[0], len(config.channel_names))).T
+
+            if arr.size == 0:
+                print(
+                    "Most likely an empty text file was "
+                    + "encountered. Skipping: " + fname)
+                continue
+
+            post = []
+
             for sig in arr.T:
-                if self.type == 'lowpass':
-                    sos = scipy.signal.butter(
-                        4,
-                        range[0],
-                        btype=self.type,
-                        fs=config.sample_rate,
-                        output='sos')
-                elif self.type == 'highpass':
-                    sos = scipy.signal.butter(
-                        4,
-                        range[1],
-                        btype=self.type,
-                        fs=config.sample_rate,
-                        output='sos')
-                else:
-                    sos = scipy.signal.butter(
-                        4,
-                        [range[0],
-                        range[1]],
-                        btype=self.type,
-                        fs=config.sample_rate,
-                        output='sos')
                 filtered = scipy.signal.sosfilt(sos, sig)
-                np.vstack((post, filtered))
-                j += 1
+                post.append(filtered)
+
+            post = np.stack(post)
 
             if self.type == "bandstop":
                 new_fname = fname.replace("nofilter", "no"+filter_band)
