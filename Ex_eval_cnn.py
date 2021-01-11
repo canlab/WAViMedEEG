@@ -151,11 +151,14 @@ def main():
 
     if checkpoint_dir is not None:
         if not os.path.isdir(checkpoint_dir):
-            print(
-                "Invalid entry for checkpoint directory, path does not exist "
-                + "as directory.")
-            raise FileNotFoundError
-            sys.exit(3)
+            if not os.path.isdir("logs/fit/"+checkpoint_dir):
+                print(
+                    "Invalid entry for checkpoint directory, "
+                    + "path does not exist as directory.")
+                raise FileNotFoundError
+                sys.exit(3)
+            else:
+                checkpoint_dir = "logs/fit/"+checkpoint_dir
 
     if task not in config.tasks:
         print(
