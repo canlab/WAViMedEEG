@@ -63,6 +63,15 @@ def main():
         raise FileNotFoundError
         sys.exit(3)
 
+    if len(os.listdir(os.path.join(studies_folder, study_name))) > 2:
+        print(
+            "Looks like this folder has already been cleaned. "
+            "Should probably move other study folders to avoid overwrite."
+        )
+        raise FileExistsError
+        sys.exit(3)
+        # TODO avoid overwrites here, / add force option 
+
     if group_num not in range(0, 9):
         print("group_num must be an int, between 0 and 9.")
         raise ValueError

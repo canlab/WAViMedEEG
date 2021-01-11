@@ -273,11 +273,14 @@ class Classifier:
         # shuffle subject list randomly and then
         # split data into train and test spectra (no overlapping subjects)
         # "subject-stratified" train-test split
-        if k_fold is None:
+        if k_fold is None and tt_split > 0:
             random.shuffle(self.subjects)
 
             split = math.floor(len(self.subjects)*tt_split)
 
+            # TODO
+            # not sure if this will work correctly with extremely low
+            # val for tt_split, e.g. 0, or 0.001
             pos_subjects = [
                 sub for sub in self.subjects if int(sub[1][0]) > 1]
             pos_split = math.floor(len(pos_subjects)*tt_split)
@@ -293,6 +296,36 @@ class Classifier:
             self.test_subjects = pos_subjects[pos_split*-1:]
             for sub in neg_subjects[neg_split*-1:]:
                 self.test_subjects.append(sub)
+
+        elif k_fold is None and tt_split == 0:
+            random.shuffle(self.subjects)
+
+            pos_subjects = [
+                sub for sub in self.subjects if int(sub[1][0]) > 1]
+
+            neg_subjects = [
+                sub for sub in self.subjects if int(sub[1][0]) == 1]
+
+            self.train_subjects = pos_subjects
+            for sub in neg_subjects:
+                self.train_subjects.append(sub)
+
+            self.test_subjects = []
+
+        elif k_fold is None and tt_split == 1:
+            random.shuffle(self.subjects)
+
+            pos_subjects = [
+                sub for sub in self.subjects if int(sub[1][0]) > 1]
+
+            neg_subjects = [
+                sub for sub in self.subjects if int(sub[1][0]) == 1]
+
+            self.test_subjects = pos_subjects
+            for sub in neg_subjects:
+                self.test_subjects.append(sub)
+
+            self.train_subjects = []
 
         else:
             from sklearn.model_selection import KFold
@@ -335,31 +368,42 @@ class Classifier:
                     print("Exiting.")
                     sys.exit(1)
 
-        self.train_dataset = np.expand_dims(np.stack(
-            [ContigObj.data
-                for ContigObj in self.data
-                if (ContigObj.source, ContigObj.subject)
-                in self.train_subjects]),
-            -1)
+        if tt_split != 1:
+            self.train_dataset = np.expand_dims(np.stack(
+                [ContigObj.data
+                    for ContigObj in self.data
+                    if (ContigObj.source, ContigObj.subject)
+                    in self.train_subjects]),
+                -1)
 
-        self.train_labels = np.array(
-            [int(1) if (ContigObj.group > 1) else int(0)
-                for ContigObj in self.data
-                if (ContigObj.source, ContigObj.subject)
-                in self.train_subjects])
+            self.train_labels = np.array(
+                [int(1) if (ContigObj.group > 1) else int(0)
+                    for ContigObj in self.data
+                    if (ContigObj.source, ContigObj.subject)
+                    in self.train_subjects])
 
-        self.test_dataset = np.expand_dims(np.stack(
-            [ContigObj.data
-                for ContigObj in self.data
-                if (ContigObj.source, ContigObj.subject)
-                in self.test_subjects]),
-            -1)
+        if tt_split != 0:
+            self.test_dataset = np.expand_dims(np.stack(
+                [ContigObj.data
+                    for ContigObj in self.data
+                    if (ContigObj.source, ContigObj.subject)
+                    in self.test_subjects]),
+                -1)
 
-        self.test_labels = np.array(
-            [int(1) if (ContigObj.group > 1) else int(0)
-                for ContigObj in self.data
-                if (ContigObj.source, ContigObj.subject)
-                in self.test_subjects])
+            self.test_labels = np.array(
+                [int(1) if (ContigObj.group > 1) else int(0)
+                    for ContigObj in self.data
+                    if (ContigObj.source, ContigObj.subject)
+                    in self.test_subjects])
+
+        else:
+            self.test_dataset = np.ndarray(self.train_dataset.shape)
+            self.test_labels = np.ndarray(self.train_labels.shape)
+
+        if tt_split == 1:
+            self.train_dataset = np.ndarray(self.test_dataset.shape)
+            self.train_labels = np.ndarray(self.test_labels.shape)
+
 
         if k_fold is None:
             print("Number of samples in train:", self.train_dataset.shape[0])
@@ -409,27 +453,6 @@ class Classifier:
         else:
             normalize = None
 
-        # if self.type == "spectra":
-        #     # load dataset into np arrays / train & test
-        #     # make label maps for each set:
-        #     # 1 = positive condition,
-        #     # -1 = negative condition
-        #     rs_train_dataset = np.stack(
-        #         [SpecObj.data[
-        #             int(lowbound // SpecObj.freq_res):
-        #             int(highbound // SpecObj.freq_res) + 1]
-        #             for SpecObj in self.data
-        #             if (SpecObj.source, SpecObj.subject)
-        #             in self.train_subjects])
-        #
-        #     rs_test_dataset = np.stack(
-        #         [SpecObj.data[
-        #             int(lowbound // SpecObj.freq_res):
-        #             int(highbound // SpecObj.freq_res) + 1]
-        #             for SpecObj in self.data
-        #             if (SpecObj.source, SpecObj.subject)
-        #             in self.test_subjects])
-
         # reshape datasets
         nsamples, nx, ny, ndepth = self.train_dataset.shape
 
@@ -456,11 +479,16 @@ class Classifier:
         print('Classification accuracy on validation data: {:.3f}'.format(
             clf.score(rs_test_dataset, self.test_labels)))
 
+        y_pred = clf.predict(rs_test_dataset)
+
         if plot_data is True:
             import Plots
-            Plots.plot_LDA(self)
+            Plots.plot_LDA(
+                clf,
+                rs_train_dataset,
+                self.test_labels, y_pred)
 
-        return clf, clf.predict(rs_test_dataset), self.test_labels
+        return clf, y_pred, self.test_labels
 
     def SVM(
         self,
@@ -496,31 +524,7 @@ class Classifier:
         # shuffle dataset
         random.shuffle(self.data)
 
-        # Features = np.array(self.data[0].freq[
-        #     int(lowbound // self.data[0].freq_res):
-        #     int(highbound // self.data[0].freq_res) + 1])
         Features = np.array(self.data[0].freq)
-
-        # if self.type == "spectra":
-        #     # load dataset into np arrays / train & test
-        #     # make label maps for each set:
-        #     # 1 = positive condition,
-        #     # -1 = negative condition
-        #     rs_train_dataset = np.stack(
-        #         [SpecObj.data[
-        #             int(lowbound // SpecObj.freq_res):
-        #             int(highbound // SpecObj.freq_res) + 1]
-        #             for SpecObj in self.data
-        #             if (SpecObj.source, SpecObj.subject)
-        #             in self.train_subjects])
-        #
-        #     rs_test_dataset = np.stack(
-        #         [SpecObj.data[
-        #             int(lowbound // SpecObj.freq_res):
-        #             int(highbound // SpecObj.freq_res) + 1]
-        #             for SpecObj in self.data
-        #             if (SpecObj.source, SpecObj.subject)
-        #             in self.test_subjects])
 
         # reshape datasets
         nsamples, nx, ny, ndepth = self.train_dataset.shape
@@ -680,7 +684,8 @@ class Classifier:
         beta2=0.999,
         epochs=100,
         plot_ROC=False,
-            verbosity=True):
+        verbosity=True,
+            eval=None):
         """
         Convolutional Neural Network classifier, using Tensorflow base
 
@@ -839,18 +844,55 @@ class Classifier:
         # tensorboard setup
         log_dir = 'logs/fit/'\
             + datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+
         tensorboard_callback = tf.keras.callbacks.TensorBoard(
             log_dir=log_dir,
             histogram_freq=1)
+
+        # save model history (acc, loss) to csv file
+        csv_logger = tf.keras.callbacks.CSVLogger(
+            log_dir+"/training.log",
+            separator=',')
 
         history = model.fit(
             self.train_dataset,
             self.train_labels,
             epochs=epochs,
-            validation_data=(self.test_dataset, self.test_labels),
+            validation_data=(self.test_dataset, self.test_labels) if
+                any(val in [1, 2, 3] for val in self.test_labels) else
+                None,
+
             batch_size=32,
-            callbacks=[tensorboard_callback],
+            callbacks=[
+                tensorboard_callback,
+                csv_logger],
             verbose=verbosity)
+
+        model.save(log_dir+"/my_model")
+
+        # save accuracy curve to log dir
+        plt.plot(history.history['accuracy'], label='train')
+        if any(val in [1, 2, 3] for val in self.test_labels):
+            plt.plot(history.history['val_accuracy'], label='test')
+        plt.title('Epoch Accuracy')
+        plt.ylabel('accuracy')
+        plt.xlabel('epoch')
+        plt.legend(loc='upper left')
+        plt.grid(True)
+        plt.savefig(log_dir+"/epoch_accuracy")
+
+        plt.clf()
+
+        # save loss curve to log dir
+        plt.plot(history.history['loss'], label='train')
+        if any(val in [1, 2, 3] for val in self.test_labels):
+            plt.plot(history.history['val_loss'], label='test')
+        plt.title('Epoch Loss')
+        plt.ylabel('loss')
+        plt.xlabel('epoch')
+        plt.legend(loc='upper left')
+        plt.grid(True)
+        plt.savefig(log_dir+"/epoch_loss")
 
         y_pred_keras = model.predict(self.test_dataset)[:, 0]
 
@@ -859,6 +901,37 @@ class Classifier:
             roc(y_pred_keras, self.test_labels, fname=log_dir+"/ROC")
 
         return(model, y_pred_keras, self.test_labels)
+
+    def eval_saved_CNN(
+        self,
+        checkpoint_path,
+        plot_ROC=False,
+        plot_hist=False,
+            fname=1):
+
+        import tensorflow as tf
+
+        model = tf.keras.models.load_model(checkpoint_path+"/my_model")
+
+        model.summary()
+
+        y_pred_keras = model.predict(self.test_dataset)[:, 0]
+
+        if plot_ROC is True:
+            from Plots import roc
+            roc(
+                y_pred_keras,
+                self.test_labels,
+                fname=checkpoint_path+"/"+fname)
+
+        if plot_hist is True:
+            from Plots import pred_hist
+            pred_hist(
+                y_pred_keras,
+                self.test_labels,
+                fname=checkpoint_path+"/"+fname)
+
+        return y_pred_keras
 
     def KfoldCrossVal(
         self,

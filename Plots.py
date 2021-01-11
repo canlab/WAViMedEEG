@@ -46,6 +46,45 @@ def roc(y_preds, y_labels, fname=None, plot=True):
     return auc_keras
 
 
+def pred_hist(y_preds, y_labels, fname=None, plot=True):
+    """
+    Prediction Histogram
+
+    Parameters:
+        - y_preds: (list) floats
+            predictions for y_data
+        - y_labels: (list) strings
+            true labels for y_data
+        - fname: (str) default 'ROC'
+            plot filename to save as
+    """
+
+    correct = 0
+    for pred, true in zip(y_preds, y_labels):
+        if np.rint(pred) == true:
+            correct += 1
+    acc = correct / len(y_preds)
+
+    if plot is True:
+        fig1 = plt.figure(1)
+        plt.hist(
+            y_preds,
+            label='(acc = {:.3f})'.format(acc))
+        plt.xlabel('Prediction Value')
+        plt.ylabel('Count')
+        plt.title('Model Evaluation')
+        plt.legend(loc='best')
+
+    if fname is None:
+        plt.show()
+
+    if fname is not None:
+        fig1.savefig(fname)
+        plt.close(fig1)
+
+    return acc
+
+
 def plot_signal(t, sig):
     plt.figure(1)
     plt.plot(t, sig)
@@ -115,7 +154,8 @@ def plot_svm_features(
         plt.close(fig)
 
 
-def plot_LDA(inputClf):
+def plot_LDA(lda, X, y, y_pred):
+    from matplotlib import colors
     # Colormap
     cmap = colors.LinearSegmentedColormap(
         'red_blue_classes',
@@ -124,45 +164,10 @@ def plot_LDA(inputClf):
          'blue': [(0, 0.7, 0.7), (1, 1, 1)]})
     plt.cm.register_cmap(cmap=cmap)
 
-    # Generate datasets
-    def dataset_fixed_cov():
-        '''
-        Generate 2 Gaussians samples
-        with the same covariance matrix
-        '''
-        n, dim = 300, 2
-        np.random.seed(0)
-        C = np.array([[0., -0.23], [0.83, .23]])
-        X = np.r_[np.dot(np.random.randn(n, dim), C),
-                  np.dot(np.random.randn(n, dim), C)
-                  + np.array([1, 1])]
-        y = np.hstack((np.zeros(n), np.ones(n)))
-        return X, y
-
-    def dataset_cov():
-        '''
-        Generate 2 Gaussians samples
-        with different covariance matrices
-        '''
-        n, dim = 300, 2
-        np.random.seed(0)
-        C = np.array([[0., -1.], [2.5, .7]]) * 2.
-        X = np.r_[np.dot(np.random.randn(n, dim), C),
-                  np.dot(np.random.randn(n, dim), C.T)
-                  + np.array([1, 4])]
-        y = np.hstack((np.zeros(n), np.ones(n)))
-        return X, y
-
     # Plot functions
-    def plot_data(lda, X, y, y_pred, fig_index):
-        splot = plt.subplot(2, 2, fig_index)
-        if fig_index == 1:
-            plt.title('Linear Discriminant Analysis')
-            plt.ylabel('Data with\n fixed covariance')
-        elif fig_index == 2:
-            plt.title('Quadratic Discriminant Analysis')
-        elif fig_index == 3:
-            plt.ylabel('Data with\n varying covariances')
+    def plot_data(lda, X, y, y_pred):
+        fig = plt.plot()
+        plt.title('Linear Discriminant Analysis')
 
         tp = (y == y_pred)  # True Positive
         tp0, tp1 = tp[y == 0], tp[y == 1]
@@ -267,37 +272,8 @@ def plot_LDA(inputClf):
         plot_ellipse(splot, lda.means_[0], lda.covariance_, 'red')
         plot_ellipse(splot, lda.means_[1], lda.covariance_, 'blue')
 
-    def plot_qda_cov(qda, splot):
-        plot_ellipse(splot, qda.means_[0], qda.covariance_[0], 'red')
-        plot_ellipse(splot, qda.means_[1], qda.covariance_[1], 'blue')
-
-    plt.figure(figsize=(10, 8), facecolor='white')
-    plt.suptitle(
-        'Linear Discriminant Analysis vs \
-        Quadratic Discriminant Analysis',
-        y=0.98,
-        fontsize=15)
-
-    for i, (X, y) in enumerate([
-        dataset_fixed_cov(),
-            dataset_cov()]):
-
-        # Linear Discriminant Analysis
-        lda = LinearDiscriminantAnalysis(
-            solver="svd",
-            store_covariance=True)
-
-        y_pred = lda.fit(X, y).predict(X)
-        splot = plot_data(lda, X, y, y_pred, fig_index=2 * i + 1)
-        plot_lda_cov(lda, splot)
-        plt.axis('tight')
-
-        # Quadratic Discriminant Analysis
-        qda = QuadraticDiscriminantAnalysis(store_covariance=True)
-        y_pred = qda.fit(X, y).predict(X)
-        splot = plot_data(qda, X, y, y_pred, fig_index=2 * i + 2)
-        plot_qda_cov(qda, splot)
-        plt.axis('tight')
+    splot = plot_data(lda, X, y, y_pred)
+    plot_lda_cov(lda, splot)
     plt.tight_layout()
     plt.subplots_adjust(top=0.92)
     plt.show()

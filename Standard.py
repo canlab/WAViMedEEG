@@ -184,9 +184,14 @@ class BandFilter:
         print("Generating filtered trials:")
         for fname in tqdm(fnames):
 
-            arr = np.genfromtxt(
+            try:
+                arr = np.genfromtxt(
                 self.study_folder+"/"+self.task+"/"+fname,
                 delimiter=" ")
+            except:
+                print(fname, " FAILED")
+                print("Couldn't load data. Needs delim fix probably.")
+                sys.exit(3)
 
             if arr.size == 0:
                 print(

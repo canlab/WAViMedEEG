@@ -30,15 +30,12 @@ def main():
                         help="(Default: " + config.study_directory + ") "
                         + "Study folder containing dataset")
 
-    parser.add_argument('--balance',
-                        dest='balance',
-                        nargs='+',
-                        default=config.ref_folders,
-                        help="(Default: " + str(config.ref_folders) + ") "
-                        + "List of study folders against which to "
-                        + "evenly balance the dataset (iterates over folders) "
-                        + "such that there are an equal number of data "
-                        + "in each class.")
+    parser.add_argument('--checkpoint_dir',
+                        dest='checkpoint_dir',
+                        type=str,
+                        default=None,
+                        help="(Default: None) Checkpoint directory (most "
+                        + "likely found in logs/fit) containing saved model.")
 
     parser.add_argument('--task',
                         dest='task',
@@ -90,7 +87,7 @@ def main():
                         + "analysis steps, such "
                         + "as: 'noalpha', 'delta', or 'nofilter'")
 
-    # ============== LDA args ==============
+    # ============== CNN args ==============
 
     parser.add_argument('--normalize',
                         dest='normalize',
@@ -100,27 +97,18 @@ def main():
                         + "to use. One of "
                         + "the following: standard, minmax, None")
 
-    parser.add_argument('--tt_split',
-                        dest='tt_split',
-                        type=float,
-                        default=0.33,
-                        help="(Default: 0.33) Ratio of test samples "
-                        + "to train samples. Note: not applicable if using "
-                        + "k_folds.")
-
-    parser.add_argument('--k_folds',
-                        dest='k_folds',
-                        type=int,
-                        default=1,
-                        help="(Default: 1) If you want to perform "
-                        + "cross evaluation, set equal to number of k-folds.")
-
-    parser.add_argument('--plot',
-                        dest='plot',
+    parser.add_argument('--plot_ROC',
+                        dest='plot_ROC',
                         type=bool,
                         default=False,
-                        help="(Default: False) Plots decision boundary.")
+                        help="(Default: False) Plot sensitivity-specificity "
+                        + "curve on validation dataset")
 
+    parser.add_argument('--plot_hist',
+                        dest='plot_hist',
+                        type=bool,
+                        default=False,
+                        help="(Default: False) Plot histogram of predictions.")
 
     # save the variables in 'args'
     args = parser.parse_args()
@@ -128,17 +116,16 @@ def main():
     data_type = args.data_type
     studies_folder = args.studies_folder
     study_name = args.study_name
+    checkpoint_dir = args.checkpoint_dir
     task = args.task
     length = args.length
     channels = args.channels
     artifact = args.artifact
     erp_degree = args.erp_degree
     filter_band = args.filter_band
-    balance = args.balance
     normalize = args.normalize
-    tt_split = args.tt_split
-    k_folds = args.k_folds
-    plot = args.plot
+    plot_ROC = args.plot_ROC
+    plot_hist = args.plot_hist
 
     # ERROR HANDLING
     if data_type not in ["erps", "spectra", "contigs"]:
@@ -161,6 +148,14 @@ def main():
             + "path does not exist as directory.")
         raise FileNotFoundError
         sys.exit(3)
+
+    if checkpoint_dir is not None:
+        if not os.path.isdir(checkpoint_dir):
+            print(
+                "Invalid entry for checkpoint directory, path does not exist "
+                + "as directory.")
+            raise FileNotFoundError
+            sys.exit(3)
 
     if task not in config.tasks:
         print(
@@ -217,13 +212,6 @@ def main():
         raise ValueError
         sys.exit(3)
 
-    if tt_split < 0 or tt_split > 0.999:
-        print(
-            "Invalid entry for tt_split. Must be float between "
-            + "0.1 and 0.9.")
-        raise ValueError
-        sys.exit(3)
-
     try:
         if len(str(artifact)) == 19:
             for char in artifact:
@@ -245,11 +233,6 @@ def main():
 
     if erp_degree not in [1, 2, None]:
         print("Invalid entry for erp_degree. Must be None, 1, or 2.")
-        raise ValueError
-        sys.exit(3)
-
-    if k_folds <= 0:
-        print("Invalid entry for k_folds. Must be int 1 or greater.")
         raise ValueError
         sys.exit(3)
 
@@ -294,50 +277,32 @@ def main():
         raise FileNotFoundError
         sys.exit(3)
 
-    for folder in balance:
-        if not os.path.isdir(studies_folder + "/" + folder):
-            print(
-                "Invalid path in balance. ",
-                studies_folder + "/" + folder + "  does not exist.")
-            raise FileNotFoundError
-            sys.exit(3)
 
-        if not os.path.isdir(patient_path.replace(study_name, folder)):
-            print(
-                "Invalid path in balance. "
-                + patient_path.replace(study_name, folder)
-                + "does not exist.")
-            raise FileNotFoundError
-            sys.exit(3)
+    if checkpoint_dir is None:
+        checkpoint_dirs = [
+            "logs/fit/" + folder
+            for folder in os.listdir("logs/fit")]
+    else:
+        checkpoint_dirs = [checkpoint_dir]
 
-    # Instantiate a 'Classifier' Object
-    myclf = ML.Classifier(data_type)
+    for checkpoint_dir in checkpoint_dirs:
+        # Instantiate a 'Classifier' Object
+        myclf = ML.Classifier(data_type)
 
-    # ============== Load Patient (Condition-Positive) Data ==============
+        # ============== Load Patient (Condition-Positive) Data ==============
 
-    for fname in os.listdir(patient_path):
-        if fname[:config.participantNumLen] not in config.exclude_subs:
-            if "_"+filter_band in fname:
-                myclf.LoadData(patient_path+"/"+fname)
+        for fname in os.listdir(patient_path):
+            if fname[:config.participantNumLen] not in config.exclude_subs:
+                if "_"+filter_band in fname:
+                    myclf.LoadData(patient_path+"/"+fname)
 
-    # ============== Load Control (Condition-Negative) Data ==============
-    # the dataset will automatically add healthy control data
-    # found in the reference folders
-    myclf.Balance(studies_folder, filter_band=filter_band, ref_folders=balance)
+        myclf.Prepare(tt_split=1)
 
-    if k_folds == 1:
-        myclf.Prepare(tt_split=tt_split)
-
-        myclf.LDA(
-            normalize='standard',
-            plot_data=plot)
-
-    if k_folds > 1:
-        myclf.KfoldCrossVal(
-            myclf.LDA,
-            normalize='standard',
-            k=k_folds,
-            plot_data=plot)
+        myclf.eval_saved_CNN(
+            checkpoint_dir,
+            plot_ROC=plot_ROC,
+            plot_hist=plot_hist,
+            fname=study_name)
 
 
 if __name__ == '__main__':

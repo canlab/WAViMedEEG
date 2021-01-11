@@ -253,10 +253,10 @@ def main():
         raise ValueError
         sys.exit(3)
 
-    if tt_split < 0.1 or tt_split > 0.9:
+    if tt_split < 0 or tt_split > 0.999:
         print(
             "Invalid entry for tt_split. Must be float between "
-            + "0.1 and 0.9.")
+            + "0 and 0.999.")
         raise ValueError
         sys.exit(3)
 
