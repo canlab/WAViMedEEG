@@ -70,7 +70,7 @@ def main():
         )
         raise FileExistsError
         sys.exit(3)
-        # TODO avoid overwrites here, / add force option 
+        # TODO avoid overwrites here, / add force option
 
     if group_num not in range(0, 9):
         print("group_num must be an int, between 0 and 9.")

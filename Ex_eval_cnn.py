@@ -280,7 +280,6 @@ def main():
         raise FileNotFoundError
         sys.exit(3)
 
-
     if checkpoint_dir is None:
         checkpoint_dirs = [
             "logs/fit/" + folder

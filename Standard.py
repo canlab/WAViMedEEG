@@ -67,8 +67,8 @@ class SpectralAverage:
                         int(self.highbound // SpecObj.freq_res) + 1])
                     for SpecObj in self.Clf.data
                     if SpecObj.group == group
-                    and str(SpecObj.subject) in [sub[1]
-                        for sub in self.Clf.train_subjects]])
+                    and str(SpecObj.subject) in
+                    [sub[1] for sub in self.Clf.train_subjects]])
 
             elif testing_only is True:
                 dataset = np.stack([
@@ -77,8 +77,8 @@ class SpectralAverage:
                         int(self.highbound // SpecObj.freq_res) + 1])
                     for SpecObj in self.Clf.data
                     if SpecObj.group == group
-                    and str(SpecObj.subject) in [sub[1]
-                        for sub in self.Clf.test_subjects]])
+                    and str(SpecObj.subject) in
+                    [sub[1] for sub in self.Clf.test_subjects]])
 
             self.avgs.append(np.mean(dataset, axis=0))
 
@@ -186,9 +186,9 @@ class BandFilter:
 
             try:
                 arr = np.genfromtxt(
-                self.study_folder+"/"+self.task+"/"+fname,
-                delimiter=" ")
-            except:
+                    self.study_folder+"/"+self.task+"/"+fname,
+                    delimiter=" ")
+            except Exception:
                 print(fname, " FAILED")
                 print("Couldn't load data. Needs delim fix probably.")
                 sys.exit(3)

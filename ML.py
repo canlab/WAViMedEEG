@@ -404,7 +404,6 @@ class Classifier:
             self.train_dataset = np.ndarray(self.test_dataset.shape)
             self.train_labels = np.ndarray(self.test_labels.shape)
 
-
         if k_fold is None:
             print("Number of samples in train:", self.train_dataset.shape[0])
             print("Number of samples in test:", self.test_dataset.shape[0])
@@ -859,9 +858,8 @@ class Classifier:
             self.train_labels,
             epochs=epochs,
             validation_data=(self.test_dataset, self.test_labels) if
-                any(val in [1, 2, 3] for val in self.test_labels) else
-                None,
-
+            any(val in [1, 2, 3] for val in self.test_labels)
+            else None,
             batch_size=32,
             callbacks=[
                 tensorboard_callback,
@@ -981,7 +979,6 @@ class Classifier:
                     + "_test_"
                     + str(i))
 
-
             if ML_function == Classifier.CNN:
                 model, y_pred, y_labels = ML_function(
                     normalize=normalize,
@@ -1010,7 +1007,7 @@ class Classifier:
                     plot_PR=False,
                     plot_Features=False,
                     feat_select=False,
-                        num_feats=10)
+                    num_feats=10)
 
                 self.saveModelEvaluation('svm', model, y_pred, y_labels, i)
 
@@ -1040,7 +1037,7 @@ class Classifier:
                     plot_PR=False,
                     plot_Features=False,
                     feat_select=False,
-                        num_feats=10)
+                    num_feats=10)
 
                 self.saveModelEvaluation('svm', model, y_pred, y_labels, i)
 
