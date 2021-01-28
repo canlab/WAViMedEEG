@@ -262,11 +262,11 @@ class TaskData:
                 axis_num=1)
 
             # mask artifact array where numbers exceed art_degree
-            if isinstance(art_degree, int) and (art_degree in [0, 1, 2]):
-                art_degree = np.repeat(art_degree, len(network_channels))
+            if isinstance(art_degree, int):
+                art_degree = np.repeat(art_degree, network_channels.count('1'))
 
             # if using custom artifact map
-            else:
+            elif isinstance(art_degree, str):
                 # cut out unused channels from artifact map
                 art_degree = FilterChannels(
                     art_degree,

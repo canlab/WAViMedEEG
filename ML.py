@@ -66,6 +66,8 @@ class Classifier:
 
         self.freq_snip = None
 
+        self.groups = []
+
     def LoadData(self, path):
         """
         Loads one data at a time, appending it to the Classifier.data attribute
@@ -112,98 +114,65 @@ class Classifier:
             print("Removing it from dataset.")
             self.data.pop(-1)
 
+        if self.data[-1].group not in self.groups:
+            self.groups.append(self.data[-1].group)
+        self.groups.sort()
+
     def Balance(
         self,
-        parentPath,
-        filter_band="nofilter",
-            ref_folders=config.ref_folders):
+            verbosity=True):
         """
-        Knowing that reference groups are named as follows:
-            - ref 24-30
-            - ref 31-40
-            - ref 81+
-            - ...
-
         Balances the classes of a dataset such that Classifier.data
         contains an equal number of control and condition-positive
-        Spectra or Contig objects. New data are added with Classifier.LoadData
-
-        Parameters:
-            - parentPath (required positional): parent path of reference
-              folders listed above
+        Spectra or Contig objects.
         """
-        dataFolder = self.trial_name
+        # pop off data from the class with less data until class sizes are equal
+        groups = []
+        for dataObj in self.data:
+            if dataObj.group not in groups:
+                groups.append(dataObj.group)
 
-        totalpos = 0
+        group_sizes = []
+        for group in groups:
+            group_size = 0
+            for dataObj in self.data:
+                if dataObj.group == group:
+                    group_size+=1
+            group_sizes.append(group_size)
 
-        totalneg = 0
+        random.shuffle(self.data)
 
-        for item in self.data:
-
-            if item.group == 1:
-
-                totalneg += 1
-
-            elif item.group > 1:
-
-                totalpos += 1
-
-        if totalpos > totalneg:
-            fill = (totalpos - totalneg)
-        elif totalpos < totalneg:
-            fill = (totalneg - totalpos)
+        if len(groups) != 2:
+            raise ValueError
         else:
-            print("Already equal - something went wrong.")
-            sys.exit(3)
+            larger_group = group_sizes.index(np.max(group_sizes))
+            smaller_group = group_sizes.index(np.min(group_sizes))
 
-        filled_subs = []
+        if verbosity:
+            print("Before balancing:")
+            for i, group in enumerate(groups):
+                print(
+                    "Type:",
+                    config.group_names[group],
+                    "\tAmount:",
+                    group_sizes[i])
 
         i = 0
-        j = 0
-        while i < fill:
-
-            folder = ref_folders[j]
-
-            fnames = os.listdir(parentPath+"/"+folder+"/"+dataFolder)
-
-            subjects = list(set(
-                [fname[:config.participantNumLen] for fname in fnames if
-                    (fname[:config.participantNumLen]
-                        not in config.exclude_subs)]))
-
-            random.shuffle(subjects)
-
-            h = 0
-            while (subjects[h], folder) in filled_subs:
-                h += 1
-
-            sub_fnames = [
-                fname for fname in fnames if
-                subjects[h] == fname[:config.participantNumLen]]
-
-            for sub_fname in sub_fnames:
-                if "_"+filter_band in sub_fname:
-                    self.LoadData(
-                        parentPath
-                        + "/"
-                        + folder
-                        + "/"
-                        + dataFolder
-                        + "/"
-                        + sub_fname)
-
-                    i += 1
-
-            filled_subs.append((subjects[0], folder))
-
-            if len(filled_subs) == len(subjects):
-                break
-
-            if j != len(ref_folders) - 1:
-                j += 1
-
+        while group_sizes[larger_group] > group_sizes[smaller_group]:
+            if self.data[i].group == groups[larger_group]:
+                self.data.pop(i)
+                group_sizes[larger_group]-=1
             else:
-                j = 0
+                i += 1
+
+        if verbosity:
+            print("After balancing:")
+            for i, group in enumerate(groups):
+                print(
+                    "Type:",
+                    config.group_names[group],
+                    "\tAmount:",
+                    group_sizes[i])
 
     def Prepare(
         self,
@@ -235,10 +204,32 @@ class Classifier:
         # total num for each class
         totalpos = 0
         totalneg = 0
+
+        if len(self.groups) > 2:
+            print("Warning: Not correct for # groups > 2 yet. Coming soon.")
+
+        self.groups.sort()
+        self.group_names = [config.group_names[group] for group in self.groups]
+
+        if any(
+            num not in config.group_names\
+            for num in self.groups):
+            print("Invalid group name encountered, you should have entered it "
+            + "in config.group_names and config.group_colors first.")
+            raise ValueError
+            sys.exit(1)
+        if any(
+            name not in config.group_names.values()\
+            for name in self.group_names):
+            print("Invalid group name encountered, you should have entered it "
+            + "in config.group_names and config.group_colors first.")
+            raise ValueError
+            sys.exit(1)
+
         for item in self.data:
-            if item.group == 1:
+            if item.group == self.groups[0]:
                 totalneg += 1
-            elif item.group > 1:
+            else:
                 totalpos += 1
 
         if verbosity:
@@ -256,7 +247,7 @@ class Classifier:
         # get num condition positive
         j = 0
         for sub in self.subjects:
-            if int(sub[1][0]) > 1:
+            if int(sub[1][0]) != self.groups[0]:
                 j += 1
 
         if verbosity:
@@ -282,11 +273,11 @@ class Classifier:
             # not sure if this will work correctly with extremely low
             # val for tt_split, e.g. 0, or 0.001
             pos_subjects = [
-                sub for sub in self.subjects if int(sub[1][0]) > 1]
+                sub for sub in self.subjects if int(sub[1][0]) != self.groups[0]]
             pos_split = math.floor(len(pos_subjects)*tt_split)
 
             neg_subjects = [
-                sub for sub in self.subjects if int(sub[1][0]) == 1]
+                sub for sub in self.subjects if int(sub[1][0]) == self.groups[0]]
             neg_split = math.floor(len(neg_subjects)*tt_split)
 
             self.train_subjects = pos_subjects[:pos_split*-1]
@@ -301,10 +292,10 @@ class Classifier:
             random.shuffle(self.subjects)
 
             pos_subjects = [
-                sub for sub in self.subjects if int(sub[1][0]) > 1]
+                sub for sub in self.subjects if int(sub[1][0]) != self.groups[0]]
 
             neg_subjects = [
-                sub for sub in self.subjects if int(sub[1][0]) == 1]
+                sub for sub in self.subjects if int(sub[1][0]) == self.groups[0]]
 
             self.train_subjects = pos_subjects
             for sub in neg_subjects:
@@ -316,10 +307,10 @@ class Classifier:
             random.shuffle(self.subjects)
 
             pos_subjects = [
-                sub for sub in self.subjects if int(sub[1][0]) > 1]
+                sub for sub in self.subjects if int(sub[1][0]) != self.groups[0]]
 
             neg_subjects = [
-                sub for sub in self.subjects if int(sub[1][0]) == 1]
+                sub for sub in self.subjects if int(sub[1][0]) == self.groups[0]]
 
             self.test_subjects = pos_subjects
             for sub in neg_subjects:
@@ -338,7 +329,7 @@ class Classifier:
             kf = KFold(n_splits=k_fold[1])
 
             # first look at only subjects with subject code above 1 (cond-pos)
-            pos_subjects = [sub for sub in self.subjects if int(sub[1][0]) > 1]
+            pos_subjects = [sub for sub in self.subjects if int(sub[1][0]) != self.groups[0]]
             train_indexes, test_indexes = list(
                 kf.split(pos_subjects))[k_fold[0]]
 
@@ -354,7 +345,7 @@ class Classifier:
 
             # then look at subjects with subject code "1" (condition-neg)
             neg_subjects = [
-                sub for sub in self.subjects if int(sub[1][0]) == 1]
+                sub for sub in self.subjects if int(sub[1][0]) == self.groups[0]]
             train_indexes, test_indexes = list(
                 kf.split(neg_subjects))[k_fold[0]]
 
@@ -377,7 +368,7 @@ class Classifier:
                 -1)
 
             self.train_labels = np.array(
-                [int(1) if (ContigObj.group > 1) else int(0)
+                [int(1) if (ContigObj.group != self.groups[0]) else int(0)
                     for ContigObj in self.data
                     if (ContigObj.source, ContigObj.subject)
                     in self.train_subjects])
@@ -391,7 +382,7 @@ class Classifier:
                 -1)
 
             self.test_labels = np.array(
-                [int(1) if (ContigObj.group > 1) else int(0)
+                [int(1) if (ContigObj.group != self.groups[0]) else int(0)
                     for ContigObj in self.data
                     if (ContigObj.source, ContigObj.subject)
                     in self.test_subjects])
@@ -677,7 +668,7 @@ class Classifier:
     def CNN(
         self,
         normalize=None,
-        learning_rate=0.01,
+        learning_rate=0.001,
         lr_decay=False,
         beta1=0.9,
         beta2=0.999,
@@ -812,7 +803,7 @@ class Classifier:
         # flatten
         model.add(Flatten(data_format='channels_last'))
 
-        model.add(Dense(10, activation='softmax'))
+        # model.add(Dense(10, activation='softmax'))
         model.add(Dense(2, activation='softmax'))
 
         # build model
@@ -842,7 +833,12 @@ class Classifier:
 
         # tensorboard setup
         log_dir = 'logs/fit/'\
-            + datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+            + datetime.datetime.now().strftime('%Y%m%d-%H%M%S')\
+            + "_"\
+            + self.trial_name.replace("/", "_")\
+
+        for group in self.group_names:
+            log_dir = log_dir + "_" + group
 
         tensorboard_callback = tf.keras.callbacks.TensorBoard(
             log_dir=log_dir,
@@ -869,9 +865,17 @@ class Classifier:
         model.save(log_dir+"/my_model")
 
         # save accuracy curve to log dir
-        plt.plot(history.history['accuracy'], label='train')
-        if any(val in [1, 2, 3] for val in self.test_labels):
-            plt.plot(history.history['val_accuracy'], label='test')
+        plt.plot(
+            history.history['accuracy'],
+            label='train: '\
+                + "Subs: " + str(len(self.train_subjects)) + " "\
+                + "Data: " + str(len(self.train_dataset)))
+        if all(val in config.group_names for val in self.test_labels):
+            plt.plot(
+                history.history['val_accuracy'],
+                label='test: '\
+                    + "Subs: " + str(len(self.test_subjects)) + " "\
+                    + "Data: " + str(len(self.test_dataset)))
         plt.title('Epoch Accuracy')
         plt.ylabel('accuracy')
         plt.xlabel('epoch')
@@ -882,9 +886,17 @@ class Classifier:
         plt.clf()
 
         # save loss curve to log dir
-        plt.plot(history.history['loss'], label='train')
-        if any(val in [1, 2, 3] for val in self.test_labels):
-            plt.plot(history.history['val_loss'], label='test')
+        plt.plot(
+            history.history['loss'],
+            label='train: '\
+                + "Subs: " + str(len(self.train_subjects)) + " "\
+                + "Data: " + str(len(self.train_dataset)))
+        if all(val in config.group_names for val in self.test_labels):
+            plt.plot(
+                history.history['val_loss'],
+                label='test: '\
+                    + "Subs: " + str(len(self.test_subjects)) + " "\
+                    + "Data: " + str(len(self.test_dataset)))
         plt.title('Epoch Loss')
         plt.ylabel('loss')
         plt.xlabel('epoch')
@@ -903,31 +915,53 @@ class Classifier:
     def eval_saved_CNN(
         self,
         checkpoint_path,
-        plot_ROC=False,
         plot_hist=False,
-            fname=1):
+        fname=None,
+            pred_level='all'):
 
         import tensorflow as tf
 
         model = tf.keras.models.load_model(checkpoint_path+"/my_model")
 
+        self.group_names = checkpoint_path.split('_')[-2:]
+        self.groups = []
+        for name in self.group_names:
+            for key, value in config.group_names.items():
+                if name == value:
+                    self.groups.append(key)
+        self.groups.sort()
+
         model.summary()
 
-        y_pred_keras = model.predict(self.test_dataset)[:, 0]
+        y_pred_keras = model.predict(self.test_dataset)[:, 1]
+        test_set_labels = self.test_labels
 
-        if plot_ROC is True:
-            from Plots import roc
-            roc(
-                y_pred_keras,
-                self.test_labels,
-                fname=checkpoint_path+"/"+fname)
+        if pred_level == 'subject':
+            sub_level_preds = []
+            sub_level_labels = []
+            for j, sub in enumerate(self.subjects):
+                subject_preds = []
+                for i, (pred, inputObj) in enumerate(
+                    zip(y_pred_keras, self.data)):
+
+                    if inputObj.subject == str(sub[1]):
+                        subject_preds.append(pred)
+                        if len(sub_level_labels) == j:
+                            sub_level_labels.append(
+                                1 if inputObj.group == self.groups[1] else 0)
+                sub_level_preds.append(np.mean(subject_preds))
+            y_pred_keras = sub_level_preds
+            test_set_labels = np.array(sub_level_labels)
+
 
         if plot_hist is True:
             from Plots import pred_hist
             pred_hist(
                 y_pred_keras,
-                self.test_labels,
-                fname=checkpoint_path+"/"+fname)
+                test_set_labels,
+                fname=None if fname is None
+                    else checkpoint_path+"/"+fname,
+                group_names=self.group_names)
 
         return y_pred_keras
 
@@ -935,7 +969,7 @@ class Classifier:
         self,
         ML_function,
         normalize=None,
-        learning_rate=0.01,
+        learning_rate=0.001,
         lr_decay=False,
         beta1=0.9,
         beta2=0.999,

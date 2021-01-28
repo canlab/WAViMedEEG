@@ -4,6 +4,8 @@ import os
 from tqdm import tqdm
 import config
 import argparse
+from Standard import SpectralAverage
+from datetime import datetime
 
 
 def main():
@@ -23,22 +25,12 @@ def main():
                         help="(Default: " + config.my_studies + ") Path to "
                         + "parent folder containing study folders")
 
-    parser.add_argument('--study_name',
-                        dest='study_name',
-                        type=str,
+    parser.add_argument('--study_names',
+                        dest='study_names',
+                        nargs='+',
                         default=config.study_directory,
                         help="(Default: " + config.study_directory + ") "
                         + "Study folder containing dataset")
-
-    parser.add_argument('--balance',
-                        dest='balance',
-                        nargs='+',
-                        default=config.ref_folders,
-                        help="(Default: " + str(config.ref_folders) + ") "
-                        + "List of study folders against which to "
-                        + "evenly balance the dataset (iterates over folders) "
-                        + "such that there are an equal number of data "
-                        + "in each class.")
 
     parser.add_argument('--task',
                         dest='task',
@@ -114,6 +106,13 @@ def main():
                         help="(Default: False) Plot sensitivity-specificity "
                         + "curve on validation dataset")
 
+    parser.add_argument('--plot_spectra',
+                        dest='plot_spectra',
+                        type=bool,
+                        default=True,
+                        help="(Default: True) Plot spectra by group for "
+                        + "training data")
+
     parser.add_argument('--tt_split',
                         dest='tt_split',
                         type=float,
@@ -125,7 +124,7 @@ def main():
     parser.add_argument('--learning_rate',
                         dest='learning_rate',
                         type=float,
-                        default=0.01,
+                        default=0.001,
                         help="(Default: 0.01) CNN step size")
 
     parser.add_argument('--lr_decay',
@@ -147,17 +146,17 @@ def main():
 
     data_type = args.data_type
     studies_folder = args.studies_folder
-    study_name = args.study_name
+    study_names = args.study_names
     task = args.task
     length = args.length
     channels = args.channels
     artifact = args.artifact
     erp_degree = args.erp_degree
     filter_band = args.filter_band
-    balance = args.balance
     epochs = args.epochs
     normalize = args.normalize
     plot_ROC = args.plot_ROC
+    plot_spectra = args.plot_spectra
     tt_split = args.tt_split
     learning_rate = args.learning_rate
     lr_decay = args.lr_decay
@@ -178,12 +177,13 @@ def main():
         raise FileNotFoundError
         sys.exit(3)
 
-    if not os.path.isdir(os.path.join(studies_folder, study_name)):
-        print(
-            "Invalid entry for study_name, "
-            + "path does not exist as directory.")
-        raise FileNotFoundError
-        sys.exit(3)
+    for study_name in study_names:
+        if not os.path.isdir(os.path.join(studies_folder, study_name)):
+            print(
+                "Invalid entry for study_name, "
+                + "path does not exist as directory.")
+            raise FileNotFoundError
+            sys.exit(3)
 
     if task not in config.tasks:
         print(
@@ -311,65 +311,62 @@ def main():
         raise ValueError
         sys.exit(3)
 
+    patient_paths = []
     # patient_path points to our 'condition-positive' dataset
     # ex. patient_path =
     # "/wavi/EEGstudies/CANlab/spectra/P300_250_1111111111111111111_0_1"
-    patient_path = studies_folder\
-        + '/'\
-        + study_name\
-        + '/'\
-        + data_type\
-        + '/'\
-        + task\
-        + '_'\
-        + str(length)\
-        + '_'\
-        + channels\
-        + '_'\
-        + str(artifact)
+    for study_name in study_names:
 
-    if erp_degree is not None:
-        patient_path += ("_" + str(erp_degree))
+        patient_path = studies_folder\
+            + '/'\
+            + study_name\
+            + '/'\
+            + data_type\
+            + '/'\
+            + task\
+            + '_'\
+            + str(length)\
+            + '_'\
+            + channels\
+            + '_'\
+            + str(artifact)
 
-    if not os.path.isdir(patient_path):
-        print("Configuration supplied was not found in study folder data.")
-        print("Failed:", patient_path)
-        raise FileNotFoundError
-        sys.exit(3)
+        if erp_degree is not None:
+            patient_path += ("_" + str(erp_degree))
 
-    for folder in balance:
-        if not os.path.isdir(studies_folder + "/" + folder):
-            print(
-                "Invalid path in balance. ",
-                studies_folder + "/" + folder + "  does not exist.")
+        if not os.path.isdir(patient_path):
+            print("Configuration supplied was not found in study folder data.")
+            print("Failed:", patient_path)
             raise FileNotFoundError
             sys.exit(3)
 
-        if not os.path.isdir(patient_path.replace(study_name, folder)):
-            print(
-                "Invalid path in balance. "
-                + patient_path.replace(study_name, folder)
-                + "does not exist.")
-            raise FileNotFoundError
-            sys.exit(3)
+        patient_paths.append(patient_path)
 
     # Instantiate a 'Classifier' Object
     myclf = ML.Classifier(data_type)
 
-    # ============== Load Patient (Condition-Positive) Data ==============
-
-    for fname in os.listdir(patient_path):
-        if fname[:config.participantNumLen] not in config.exclude_subs:
+    # ============== Load All Studies' Data ==============
+    for patient_path in patient_paths:
+        for fname in os.listdir(patient_path):
             if "_"+filter_band in fname:
                 myclf.LoadData(patient_path+"/"+fname)
 
-    # ============== Load Control (Condition-Negative) Data ==============
-    # the dataset will automatically add healthy control data
+    # ============== Balance Class Data Sizes ==============
+    # pops data off from the larger class until class sizes are equal
     # found in the reference folders
-    myclf.Balance(studies_folder, filter_band=filter_band, ref_folders=balance)
+    myclf.Balance()
 
     if k_folds == 1:
         myclf.Prepare(tt_split=tt_split)
+
+        if data_type == 'spectra':
+            if plot_spectra is True:
+                specavgObj = SpectralAverage(myclf)
+                specavgObj.plot(
+                    fig_fname="specavg_"
+                    + os.path.basename(myclf.trial_name)
+                    + "_train_"
+                    + str(datetime.now().strftime("%H-%M-%S")))
 
         myclf.CNN(
             normalize=normalize,
@@ -387,7 +384,7 @@ def main():
             epochs=epochs,
             plot_ROC=plot_ROC,
             k=k_folds,
-            plot_spec_avgs=True)
+            plot_spec_avgs=plot_spectra)
 
 
 if __name__ == '__main__':

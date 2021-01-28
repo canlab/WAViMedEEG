@@ -4,6 +4,9 @@ import os
 from tqdm import tqdm
 import config
 import argparse
+from Standard import SpectralAverage
+from datetime import datetime
+import numpy as np
 
 
 def main():
@@ -23,9 +26,9 @@ def main():
                         help="(Default: " + config.my_studies + ") Path to "
                         + "parent folder containing study folders")
 
-    parser.add_argument('--study_name',
-                        dest='study_name',
-                        type=str,
+    parser.add_argument('--study_names',
+                        dest='study_names',
+                        nargs='+',
                         default=config.study_directory,
                         help="(Default: " + config.study_directory + ") "
                         + "Study folder containing dataset")
@@ -36,6 +39,14 @@ def main():
                         default=None,
                         help="(Default: None) Checkpoint directory (most "
                         + "likely found in logs/fit) containing saved model.")
+
+    parser.add_argument('--pred_level',
+                        dest='pred_level',
+                        type=str,
+                        default='all',
+                        help="(Default: 'all') If 'all', returns a prediction "
+                        + "for every individual piece of data. If 'subject', "
+                        + "then returns 1 averaged prediction per subject.")
 
     parser.add_argument('--task',
                         dest='task',
@@ -97,25 +108,25 @@ def main():
                         + "to use. One of "
                         + "the following: standard, minmax, None")
 
-    parser.add_argument('--plot_ROC',
-                        dest='plot_ROC',
-                        type=bool,
-                        default=False,
-                        help="(Default: False) Plot sensitivity-specificity "
-                        + "curve on validation dataset")
-
     parser.add_argument('--plot_hist',
                         dest='plot_hist',
                         type=bool,
                         default=False,
                         help="(Default: False) Plot histogram of predictions.")
 
+    parser.add_argument('--plot_spectra',
+                        dest='plot_spectra',
+                        type=bool,
+                        default=True,
+                        help="(Default: True) Plot spectra by group for "
+                        + "training data")
+
     # save the variables in 'args'
     args = parser.parse_args()
 
     data_type = args.data_type
     studies_folder = args.studies_folder
-    study_name = args.study_name
+    study_names = args.study_names
     checkpoint_dir = args.checkpoint_dir
     task = args.task
     length = args.length
@@ -124,8 +135,9 @@ def main():
     erp_degree = args.erp_degree
     filter_band = args.filter_band
     normalize = args.normalize
-    plot_ROC = args.plot_ROC
+    plot_spectra = args.plot_spectra
     plot_hist = args.plot_hist
+    pred_level = args.pred_level
 
     # ERROR HANDLING
     if data_type not in ["erps", "spectra", "contigs"]:
@@ -142,12 +154,13 @@ def main():
         raise FileNotFoundError
         sys.exit(3)
 
-    if not os.path.isdir(os.path.join(studies_folder, study_name)):
-        print(
-            "Invalid entry for study_name, "
-            + "path does not exist as directory.")
-        raise FileNotFoundError
-        sys.exit(3)
+    for study_name in study_names:
+        if not os.path.isdir(os.path.join(studies_folder, study_name)):
+            print(
+                "Invalid entry for study_name, "
+                + "path does not exist as directory.")
+            raise FileNotFoundError
+            sys.exit(3)
 
     if checkpoint_dir is not None:
         if not os.path.isdir(checkpoint_dir):
@@ -254,58 +267,92 @@ def main():
         raise ValueError
         sys.exit(3)
 
+    if pred_level not in ["all", "subject"]:
+        print(
+            "Invalid entry for pred_level. Must be either "
+            + "'all' or 'subject'")
+        raise ValueError
+        sys.exit(3)
+
     # patient_path points to our 'condition-positive' dataset
     # ex. patient_path =
     # "/wavi/EEGstudies/CANlab/spectra/P300_250_1111111111111111111_0_1"
-    patient_path = studies_folder\
-        + '/'\
-        + study_name\
-        + '/'\
-        + data_type\
-        + '/'\
-        + task\
-        + '_'\
-        + str(length)\
-        + '_'\
-        + channels\
-        + '_'\
-        + str(artifact)
-
-    if erp_degree is not None:
-        patient_path += ("_" + str(erp_degree))
-
-    if not os.path.isdir(patient_path):
-        print("Configuration supplied was not found in study folder data.")
-        print("Failed:", patient_path)
-        raise FileNotFoundError
-        sys.exit(3)
-
     if checkpoint_dir is None:
         checkpoint_dirs = [
             "logs/fit/" + folder
-            for folder in os.listdir("logs/fit")]
+            for folder in os.listdir("logs/fit/")
+            if "_"+data_type in folder]
     else:
         checkpoint_dirs = [checkpoint_dir]
 
+    patient_paths = []
+    for study_name in study_names:
+
+        patient_path = studies_folder\
+            + '/'\
+            + study_name\
+            + '/'\
+            + data_type\
+            + '/'\
+            + task\
+            + '_'\
+            + str(length)\
+            + '_'\
+            + channels\
+            + '_'\
+            + str(artifact)
+
+        if erp_degree is not None:
+            patient_path += ("_" + str(erp_degree))
+
+        if not os.path.isdir(patient_path):
+            print("Configuration supplied was not found in study folder data.")
+            print("Failed:", patient_path)
+            raise FileNotFoundError
+            sys.exit(3)
+
+        patient_paths.append(patient_path)
+
     for checkpoint_dir in checkpoint_dirs:
-        # Instantiate a 'Classifier' Object
-        myclf = ML.Classifier(data_type)
 
-        # ============== Load Patient (Condition-Positive) Data ==============
+        # ============== Load All Studies' Data ==============
+        for study_name, patient_path in zip(study_names, patient_paths):
 
-        for fname in os.listdir(patient_path):
-            if fname[:config.participantNumLen] not in config.exclude_subs:
+            # Instantiate a 'Classifier' Object
+            myclf = ML.Classifier(data_type)
+
+            for fname in os.listdir(patient_path):
                 if "_"+filter_band in fname:
                     myclf.LoadData(patient_path+"/"+fname)
 
-        myclf.Prepare(tt_split=1)
+            myclf.Prepare(tt_split=1)
 
-        myclf.eval_saved_CNN(
-            checkpoint_dir,
-            plot_ROC=plot_ROC,
-            plot_hist=plot_hist,
-            fname=study_name)
+            if data_type == 'spectra':
+                if plot_spectra is True:
+                    specavgObj = SpectralAverage(myclf)
+                    specavgObj.plot(
+                        fig_fname=checkpoint_dir+"/"
+                        + study_name
+                        + "_true_"
+                        + str(datetime.now().strftime("%H-%M-%S")))
 
+            y_preds = myclf.eval_saved_CNN(
+                checkpoint_dir,
+                plot_hist=plot_hist,
+                fname=study_name,
+                pred_level=pred_level)
+
+            for i, (pred, inputObj) in enumerate(zip(np.rint(y_preds), myclf.data)):
+                inputObj.group = myclf.groups[int(pred)]
+
+            if data_type == 'spectra':
+                if plot_spectra is True:
+                    specavgObj = SpectralAverage(myclf)
+                    specavgObj.plot(
+                        fig_fname=checkpoint_dir+"/"
+                        + study_name
+                        + "_pred_"
+                        + str(datetime.now().strftime("%H-%M-%S")))
 
 if __name__ == '__main__':
     main()

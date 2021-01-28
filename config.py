@@ -29,27 +29,18 @@ participantNumLen = 4  # default length
 my_studies = "/wavi/EEGstudies"
 study_directory = 'canlab pain'
 
-exclude_subs = [
-    # '1000',
-    # '1009',
-    # '1015',
-    # '1016',
-    # '1021',
-    # '1022',
-    # '2007',
-    # '2010',
-    # '2012',
-    # '2013',
-    # '2023',
-    # '2024',
-]
-
-
 group_names = {
     0: "Pilot",
     1: "Control",
     2: "Pain",
     3: "Rehab"
+}
+
+group_colors = {
+    0: "black",
+    1: "green",
+    2: "purple",
+    3: "orange"
 }
 
 ref_folders = [

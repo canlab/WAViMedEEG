@@ -46,7 +46,12 @@ def roc(y_preds, y_labels, fname=None, plot=True):
     return auc_keras
 
 
-def pred_hist(y_preds, y_labels, fname=None, plot=True):
+def pred_hist(
+    y_preds,
+    y_labels,
+    fname=None,
+    plot=True,
+    group_names=['', '']):
     """
     Prediction Histogram
 
@@ -69,8 +74,16 @@ def pred_hist(y_preds, y_labels, fname=None, plot=True):
         fig1 = plt.figure(1)
         plt.hist(
             y_preds,
-            label='(acc = {:.3f})'.format(acc))
-        plt.xlabel('Prediction Value')
+            label='(acc = {:.3f})'.format(acc),
+            bins=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
+        plt.xlabel(
+            "Pr("\
+            + group_names[0]\
+            + ') = 1'\
+            + ' -> '\
+            + 'Pr('\
+            + group_names[1]\
+            + ") = 1")
         plt.ylabel('Count')
         plt.title('Model Evaluation')
         plt.legend(loc='best')

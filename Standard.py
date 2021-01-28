@@ -112,7 +112,8 @@ class SpectralAverage:
                 axs[i].plot(
                     self.f,
                     array.T[i],
-                    label=config.group_names[self.groups[j]])
+                    label=config.group_names[self.groups[j]],
+                    color=config.group_colors[self.groups[j]])
 
                 j += 1
 
