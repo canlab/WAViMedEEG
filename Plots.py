@@ -18,8 +18,7 @@ def roc(y_preds, y_labels, fname=None, plot=True):
     from sklearn.metrics import roc_curve
     fpr, tpr, thresholds = roc_curve(
         y_labels,
-        y_preds,
-        pos_label=1)
+        y_preds)
 
     from sklearn.metrics import auc
     auc_keras = auc(fpr, tpr)
@@ -289,4 +288,16 @@ def plot_LDA(lda, X, y, y_pred):
     plot_lda_cov(lda, splot)
     plt.tight_layout()
     plt.subplots_adjust(top=0.92)
+    plt.show()
+
+
+def plot_layer_size_covariance(sizes=[], values=[], metric=""):
+    for dataset in values:
+        plt.plot(sizes, dataset)
+    plt.legend(labels=['Training', 'Validation'])
+    plt.title("Performance Metric vs. Depth")
+    plt.xlabel("# of Convolutional Layers (Depth)")
+    plt.ylabel("Performance Metric Value")
+    if metric != "":
+        plt.ylabel(metric)
     plt.show()

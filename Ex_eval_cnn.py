@@ -33,6 +33,13 @@ def main():
                         help="(Default: " + config.study_directory + ") "
                         + "Study folder containing dataset")
 
+    parser.add_argument('--log_dir',
+                        dest='log_dir',
+                        type=str,
+                        default="logs/fit",
+                        help="(Default: logs/fit) Parent directory for "
+                        + "checkpoints.")
+
     parser.add_argument('--checkpoint_dir',
                         dest='checkpoint_dir',
                         type=str,
@@ -127,6 +134,7 @@ def main():
     data_type = args.data_type
     studies_folder = args.studies_folder
     study_names = args.study_names
+    log_dir = args.log_dir
     checkpoint_dir = args.checkpoint_dir
     task = args.task
     length = args.length
@@ -164,14 +172,14 @@ def main():
 
     if checkpoint_dir is not None:
         if not os.path.isdir(checkpoint_dir):
-            if not os.path.isdir("logs/fit/"+checkpoint_dir):
+            if not os.path.isdir(log_dir+checkpoint_dir):
                 print(
                     "Invalid entry for checkpoint directory, "
                     + "path does not exist as directory.")
                 raise FileNotFoundError
                 sys.exit(3)
             else:
-                checkpoint_dir = "logs/fit/"+checkpoint_dir
+                checkpoint_dir = log_dir+checkpoint_dir
 
     if task not in config.tasks:
         print(
@@ -279,8 +287,8 @@ def main():
     # "/wavi/EEGstudies/CANlab/spectra/P300_250_1111111111111111111_0_1"
     if checkpoint_dir is None:
         checkpoint_dirs = [
-            "logs/fit/" + folder
-            for folder in os.listdir("logs/fit/")
+            log_dir + folder
+            for folder in os.listdir(log_dir)
             if "_"+data_type in folder]
     else:
         checkpoint_dirs = [checkpoint_dir]
@@ -325,7 +333,23 @@ def main():
                 if "_"+filter_band in fname:
                     myclf.LoadData(patient_path+"/"+fname)
 
-            myclf.Prepare(tt_split=1)
+            label_names=checkpoint_dir.split('_')[-2:]
+            label_values=[]
+            for group in label_names:
+                for key, value in config.group_names.items():
+                    if group == value:
+                        label_values.append(key)
+
+            if len(label_values) != 2:
+                print(
+                    "Warning: supplying program with " + str(len(label_values))
+                    + " labels. This is not permitted yet.")
+                raise ValueError
+                sys.exit(3)
+
+            myclf.Prepare(
+                tt_split=1,
+                labels=label_values)
 
             if data_type == 'spectra':
                 if plot_spectra is True:
@@ -342,7 +366,9 @@ def main():
                 fname=study_name,
                 pred_level=pred_level)
 
-            for i, (pred, inputObj) in enumerate(zip(np.rint(y_preds), myclf.data)):
+            for i, (pred, inputObj) in enumerate(
+                zip(np.rint(y_preds), myclf.data)):
+
                 inputObj.group = myclf.groups[int(pred)]
 
             if data_type == 'spectra':

@@ -125,7 +125,7 @@ def main():
                         dest='learning_rate',
                         type=float,
                         default=0.001,
-                        help="(Default: 0.01) CNN step size")
+                        help="(Default: 0.001) CNN step size")
 
     parser.add_argument('--lr_decay',
                         dest='lr_decay',
@@ -140,6 +140,20 @@ def main():
                         default=1,
                         help="(Default: 1) If you want to perform "
                         + "cross evaluation, set equal to number of k-folds.")
+
+    parser.add_argument('--depth',
+                        dest='depth',
+                        type=int,
+                        default=5,
+                        help="(Default: 5) Number of sets of {convoutional, "
+                        + "pooling, batch norm} to include in the model.")
+
+    parser.add_argument('--regularizer',
+                        dest='regularizer',
+                        type=str,
+                        default=None,
+                        help="(Default: l2) Regularizer to be used in dense "
+                        + "layers. One of: ['l1', 'l2', 'l1_l2']")
 
     # save the variables in 'args'
     args = parser.parse_args()
@@ -161,6 +175,8 @@ def main():
     learning_rate = args.learning_rate
     lr_decay = args.lr_decay
     k_folds = args.k_folds
+    depth = args.depth
+    regularizer = args.regularizer
 
     # ERROR HANDLING
     if data_type not in ["erps", "spectra", "contigs"]:
@@ -296,6 +312,12 @@ def main():
         raise ValueError
         sys.exit(3)
 
+    if regularizer is not None:
+        if regularizer not in ['l1', 'l2', 'l1_l2']:
+            print("Invalid entry for regularizer. Must be l1, l2, or l1_l2.")
+            raise ValueError
+            sys.exit(3)
+
     if filter_band == "nofilter":
         pass
     elif any(band == filter_band for band in config.frequency_bands):
@@ -357,23 +379,25 @@ def main():
     myclf.Balance()
 
     if k_folds == 1:
-        myclf.Prepare(tt_split=tt_split)
+        myclf.Prepare(tt_split=tt_split, normalize=normalize)
+
+        myclf.CNN(
+            learning_rate=learning_rate,
+            lr_decay=lr_decay,
+            epochs=epochs,
+            plot_ROC=plot_ROC,
+            depth=depth,
+            regularizer=regularizer)
 
         if data_type == 'spectra':
             if plot_spectra is True:
                 specavgObj = SpectralAverage(myclf)
                 specavgObj.plot(
-                    fig_fname="specavg_"
+                    fig_fname=myclf.checkpoint_dir
+                    + "/specavg_"
                     + os.path.basename(myclf.trial_name)
                     + "_train_"
                     + str(datetime.now().strftime("%H-%M-%S")))
-
-        myclf.CNN(
-            normalize=normalize,
-            learning_rate=learning_rate,
-            lr_decay=lr_decay,
-            epochs=epochs,
-            plot_ROC=plot_ROC)
 
     if k_folds > 1:
         myclf.KfoldCrossVal(

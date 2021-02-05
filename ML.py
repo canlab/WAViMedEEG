@@ -178,7 +178,9 @@ class Classifier:
         self,
         k_fold=None,
         verbosity=True,
-            tt_split=0.33):
+        tt_split=0.33,
+        labels=None,
+            normalize=None):
         """
         Prepares data within Classifier object such that all in Classifier.data
         are contained in either self.train_dataset or self.test_dataset,
@@ -196,6 +198,12 @@ class Classifier:
             - verbosity: (bool, default True) whether to print information
                 such as the ratios of condition positive-to-negative subjects,
                 total number of samples loaded into each set, etc.
+            - labels: (list, default None) the real set of false and
+                position condition labels, if only loading in one class
+                under the context
+            - normalize: 'standard', 'minmax', or None
+                method with which contig data will be normalized
+                note: within itself, not relative to baseline or other
         """
 
         # shuffle dataset
@@ -208,7 +216,11 @@ class Classifier:
         if len(self.groups) > 2:
             print("Warning: Not correct for # groups > 2 yet. Coming soon.")
 
-        self.groups.sort()
+        if labels is None:
+            self.groups.sort()
+        else:
+            self.groups = list(labels)
+
         self.group_names = [config.group_names[group] for group in self.groups]
 
         if any(
@@ -399,6 +411,23 @@ class Classifier:
             print("Number of samples in train:", self.train_dataset.shape[0])
             print("Number of samples in test:", self.test_dataset.shape[0])
 
+        # normalize / standardize
+        if normalize is not None:
+            if normalize == 'standard':
+                scaler = StandardScaler()
+
+            elif normalize == 'minmax':
+                scaler = MinMaxScaler()
+
+            else:
+                print("Unsupported type of normalize:", normalize)
+                raise ValueError
+                sys.exit(3)
+
+            scaler.fit([inputObj.data for inputObj in self.data])
+            self.train_dataset = scaler.transform(self.train_dataset)
+            self.test_dataset = scaler.transform(self.test_dataset)
+
         num_pos_train_samps = 0
         for label in self.train_labels:
             if label == 1:
@@ -419,13 +448,11 @@ class Classifier:
 
     def LDA(
         self,
-        normalize='standard',
             plot_data=False):
         """
         Linear Discriminant Analysis
 
         Parameters:
-            - normalize: 'standard', 'minmax', or None
             - tt_split: (float) default 0.33
             - lowbound: (int) default 3
             - highbound: (int) default 20
@@ -433,15 +460,6 @@ class Classifier:
         """
 
         from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-
-        if normalize == 'standard':
-            myscaler = StandardScaler()
-
-        elif normalize == 'minmax':
-            myscaler = MinMaxScaler()
-
-        else:
-            normalize = None
 
         # reshape datasets
         nsamples, nx, ny, ndepth = self.train_dataset.shape
@@ -454,14 +472,8 @@ class Classifier:
 
         # << Normalize features (z-score standardization) >> #
         # create classifier pipeline
-        if normalize is not None:
-            clf = make_pipeline(
-                    myscaler,
-                    LinearDiscriminantAnalysis())
-
-        else:
-            clf = make_pipeline(
-                    LinearDiscriminantAnalysis())
+        clf = make_pipeline(
+                LinearDiscriminantAnalysis())
 
         # fit to train data
         clf.fit(rs_train_dataset, self.train_labels)
@@ -484,7 +496,6 @@ class Classifier:
         self,
         C=1,
         kernel='linear',
-        normalize=None,
         iterations=1000,
         plot_PR=False,
         plot_Features=False,
@@ -496,7 +507,6 @@ class Classifier:
         Parameters:
             - C: (float) default 1
             - kernel: 'linear' or 'rbf'
-            - normalize: 'standard', 'minmax', or None
             - iterations: (int) default 1000
             - plot_PR: (bool) default False
             - plot_Features: (bool) default False
@@ -527,39 +537,20 @@ class Classifier:
 
         # << Normalize features (z-score standardization) >> #
         # create classifier pipeline
-        if normalize is not None:
-            if kernel == 'linear':
-                clf = make_pipeline(
-                        myscaler,
-                        LinearSVC(
-                            C=C,
-                            random_state=0,
-                            max_iter=iterations,
-                            dual=False))
+        if kernel == 'linear':
+            clf = make_pipeline(
+                    LinearSVC(
+                        C=C,
+                        random_state=0,
+                        max_iter=iterations,
+                        dual=False))
 
-            elif kernel == 'rbf':
-                clf = make_pipeline(
-                        myscaler,
-                        SVC(
-                            kernel='rbf',
-                            C=C, random_state=0,
-                            max_iter=iterations))
-
-        else:
-            if kernel == 'linear':
-                clf = make_pipeline(
-                        LinearSVC(
-                            C=C,
-                            random_state=0,
-                            max_iter=iterations,
-                            dual=False))
-
-            elif kernel == 'rbf':
-                clf = make_pipeline(
-                        SVC(
-                            kernel='rbf',
-                            C=C, random_state=0,
-                            max_iter=iterations))
+        elif kernel == 'rbf':
+            clf = make_pipeline(
+                    SVC(
+                        kernel='rbf',
+                        C=C, random_state=0,
+                        max_iter=iterations))
 
         # fit to train data
         clf.fit(rs_train_dataset, self.train_labels)
@@ -593,44 +584,23 @@ class Classifier:
             scores /= scores.max()
 
             # Compare to the selected-weights of an SVM
-            if normalize is not None:
-                if kernel == 'linear':
-                    clf_selected = make_pipeline(
-                            SelectKBest(f_classif, k=num_feats),
-                            myscaler,
-                            LinearSVC(
-                                C=C,
-                                random_state=0,
-                                max_iter=iterations,
-                                dual=False))
+            if kernel == 'linear':
+                clf_selected = make_pipeline(
+                        SelectKBest(f_classif, k=num_feats),
+                        LinearSVC(
+                            C=C,
+                            random_state=0,
+                            max_iter=iterations,
+                            dual=False))
 
-                elif kernel == 'rbf':
-                    clf_selected = make_pipeline(
-                            SelectKBest(f_classic, k=num_feats),
-                            myscaler,
-                            SVC(kernel='rbf',
-                                C=C,
-                                random_state=0,
-                                max_iter=iterations))
-
-            else:
-                if kernel == 'linear':
-                    clf_selected = make_pipeline(
-                            SelectKBest(f_classif, k=num_feats),
-                            LinearSVC(
-                                C=C,
-                                random_state=0,
-                                max_iter=iterations,
-                                dual=False))
-
-                elif kernel == 'rbf':
-                    clf_selected = make_pipeline(
-                            SelectKbest(f_classic, k=num_feats),
-                            SVC(
-                                kernel='rbf',
-                                C=C,
-                                random_state=0,
-                                max_iter=iterations))
+            elif kernel == 'rbf':
+                clf_selected = make_pipeline(
+                        SelectKbest(f_classic, k=num_feats),
+                        SVC(
+                            kernel='rbf',
+                            C=C,
+                            random_state=0,
+                            max_iter=iterations))
 
             clf_selected.fit(rs_train_dataset, self.train_labels)
 
@@ -667,7 +637,6 @@ class Classifier:
 
     def CNN(
         self,
-        normalize=None,
         learning_rate=0.001,
         lr_decay=False,
         beta1=0.9,
@@ -675,14 +644,13 @@ class Classifier:
         epochs=100,
         plot_ROC=False,
         verbosity=True,
-            eval=None):
+        eval=None,
+        depth=5,
+            regularizer=None):
         """
         Convolutional Neural Network classifier, using Tensorflow base
 
         Parameters:
-            - normalize: 'standard', 'minmax', or None
-                method with which contig data will be normalized
-                note: within itself, not relative to baseline or other
             - learning_rate: (float) 0.01
                 how quickly the weights adapt at each iteration
             - lr_decay: (bool) default True
@@ -715,96 +683,34 @@ class Classifier:
         # introduce sequential set
         model = tf.keras.models.Sequential()
 
-        # 1
-        model.add(BatchNormalization())
+        for i in range(depth):
+            # 1
+            model.add(BatchNormalization())
 
-        model.add(Conv2D(
-            5,
-            kernel_size=(3, 3),
-            strides=1,
-            padding='same',
-            activation='relu',
-            data_format='channels_last'))
+            model.add(Conv2D(
+                5,
+                kernel_size=(3, 3),
+                strides=1,
+                padding='same',
+                activation='swish',
+                data_format='channels_last'))
 
-        model.add(MaxPooling2D(
-            pool_size=(3, 3),
-            strides=1,
-            padding='valid',
-            data_format='channels_last'))
+            model.add(MaxPooling2D(
+                pool_size=(3, 3),
+                strides=1,
+                padding='valid',
+                data_format='channels_last'))
 
-        # 2
-        model.add(BatchNormalization())
-
-        model.add(Conv2D(
-            5,
-            kernel_size=(3, 3),
-            strides=1,
-            padding='same',
-            activation='relu',
-            data_format='channels_last'))
-
-        model.add(MaxPooling2D(
-            pool_size=(3, 3),
-            strides=1,
-            padding='valid',
-            data_format='channels_last'))
-
-        # 3
-        model.add(BatchNormalization())
-
-        model.add(Conv2D(
-            5,
-            kernel_size=(3, 3),
-            strides=1,
-            padding='same',
-            activation='relu',
-            data_format='channels_last'))
-
-        model.add(MaxPooling2D(
-            pool_size=(5, 5),
-            strides=1,
-            padding='valid',
-            data_format='channels_last'))
-
-        # 4
-        model.add(BatchNormalization())
-
-        model.add(Conv2D(
-            5,
-            kernel_size=(3, 3),
-            strides=1,
-            padding='same',
-            activation='relu',
-            data_format='channels_last'))
-
-        model.add(MaxPooling2D(
-            pool_size=(5, 5),
-            strides=1,
-            padding='valid',
-            data_format='channels_last'))
-
-        # 5
-        model.add(BatchNormalization())
-
-        model.add(Conv2D(
-            5,
-            kernel_size=(3, 3),
-            strides=1,
-            padding='same',
-            activation='relu',
-            data_format='channels_last'))
-
-        model.add(MaxPooling2D(
-            pool_size=(5, 5),
-            strides=1,
-            padding='valid',
-            data_format='channels_last'))
+        model.add(Dropout(0.5))
 
         # flatten
         model.add(Flatten(data_format='channels_last'))
 
         # model.add(Dense(10, activation='softmax'))
-        model.add(Dense(2, activation='softmax'))
+        model.add(Dense(
+            2,
+            activation='softmax',
+            kernel_regularizer=regularizer))
 
         # build model
         model.build(self.train_dataset.shape)
@@ -832,21 +738,23 @@ class Classifier:
             metrics=['accuracy'])
 
         # tensorboard setup
-        log_dir = 'logs/fit/'\
+        checkpoint_dir = 'logs/fit/'\
             + datetime.datetime.now().strftime('%Y%m%d-%H%M%S')\
             + "_"\
             + self.trial_name.replace("/", "_")\
 
         for group in self.group_names:
-            log_dir = log_dir + "_" + group
+            checkpoint_dir = checkpoint_dir + "_" + group
+
+        self.checkpoint_dir = checkpoint_dir
 
         tensorboard_callback = tf.keras.callbacks.TensorBoard(
-            log_dir=log_dir,
+            log_dir=checkpoint_dir,
             histogram_freq=1)
 
         # save model history (acc, loss) to csv file
         csv_logger = tf.keras.callbacks.CSVLogger(
-            log_dir+"/training.log",
+            checkpoint_dir+"/training.log",
             separator=',')
 
         history = model.fit(
@@ -862,7 +770,11 @@ class Classifier:
                 csv_logger],
             verbose=verbosity)
 
-        model.save(log_dir+"/my_model")
+        f = open(checkpoint_dir+"/summary.txt", 'w')
+        f.write(str(model.summary()))
+        f.close()
+
+        model.save(checkpoint_dir+"/my_model")
 
         # save accuracy curve to log dir
         plt.plot(
@@ -881,8 +793,7 @@ class Classifier:
         plt.xlabel('epoch')
         plt.legend(loc='upper left')
         plt.grid(True)
-        plt.savefig(log_dir+"/epoch_accuracy")
-
+        plt.savefig(checkpoint_dir+"/epoch_accuracy")
         plt.clf()
 
         # save loss curve to log dir
@@ -897,33 +808,38 @@ class Classifier:
                 label='test: '\
                     + "Subs: " + str(len(self.test_subjects)) + " "\
                     + "Data: " + str(len(self.test_dataset)))
+
         plt.title('Epoch Loss')
         plt.ylabel('loss')
         plt.xlabel('epoch')
         plt.legend(loc='upper left')
         plt.grid(True)
-        plt.savefig(log_dir+"/epoch_loss")
+        plt.savefig(checkpoint_dir+"/epoch_loss")
+        plt.clf()
 
         y_pred_keras = model.predict(self.test_dataset)[:, 0]
 
         if plot_ROC is True:
             from Plots import roc
-            roc(y_pred_keras, self.test_labels, fname=log_dir+"/ROC")
+            roc(
+                y_pred_keras,
+                self.test_labels,
+                fname=checkpoint_dir+"/ROC")
 
         return(model, y_pred_keras, self.test_labels)
 
     def eval_saved_CNN(
         self,
-        checkpoint_path,
+        checkpoint_dir,
         plot_hist=False,
         fname=None,
             pred_level='all'):
 
         import tensorflow as tf
 
-        model = tf.keras.models.load_model(checkpoint_path+"/my_model")
+        model = tf.keras.models.load_model(checkpoint_dir+"/my_model")
 
-        self.group_names = checkpoint_path.split('_')[-2:]
+        self.group_names = checkpoint_dir.split('_')[-2:]
         self.groups = []
         for name in self.group_names:
             for key, value in config.group_names.items():
@@ -960,7 +876,7 @@ class Classifier:
                 y_pred_keras,
                 test_set_labels,
                 fname=None if fname is None
-                    else checkpoint_path+"/"+fname,
+                    else checkpoint_dir+"/"+fname,
                 group_names=self.group_names)
 
         return y_pred_keras
@@ -995,7 +911,8 @@ class Classifier:
         """
         for i in tqdm(range(k)):
             self.Prepare(
-                k_fold=(i, k))
+                k_fold=(i, k),
+                normalize=normalize)
 
             if self.type == 'spectra' and plot_spec_avgs is True:
                 from Standard import SpectralAverage
@@ -1015,7 +932,6 @@ class Classifier:
 
             if ML_function == Classifier.CNN:
                 model, y_pred, y_labels = ML_function(
-                    normalize=normalize,
                     learning_rate=learning_rate,
                     lr_decay=lr_decay,
                     beta1=beta1,
@@ -1027,7 +943,6 @@ class Classifier:
 
             elif ML_function == Classifier.LDA:
                 model, y_pred, y_labels = ML_function(
-                    normalize=normalize,
                     plot_data=False)
 
                 self.saveModelEvaluation('lda', model, y_pred, y_labels, i)
@@ -1036,7 +951,6 @@ class Classifier:
                 model, y_pred, y_labels = ML_function(
                     C=1,
                     kernel='linear',
-                    normalize=None,
                     iterations=1000,
                     plot_PR=False,
                     plot_Features=False,
@@ -1047,7 +961,6 @@ class Classifier:
 
             elif ML_function == 'mixed':
                 model, y_pred, y_labels = self.CNN(
-                    normalize=normalize,
                     learning_rate=learning_rate,
                     lr_decay=lr_decay,
                     beta1=beta1,
@@ -1058,7 +971,6 @@ class Classifier:
                 self.saveModelEvaluation('cnn', model, y_pred, y_labels, i)
 
                 model, y_pred, y_labels = self.LDA(
-                    normalize=normalize,
                     plot_data=False)
 
                 self.saveModelEvaluation('lda', model, y_pred, y_labels, i)
@@ -1066,7 +978,6 @@ class Classifier:
                 model, y_pred, y_labels = self.SVM(
                     C=1,
                     kernel='linear',
-                    normalize=None,
                     iterations=1000,
                     plot_PR=False,
                     plot_Features=False,
