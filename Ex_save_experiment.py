@@ -89,7 +89,13 @@ def main():
         worksheet.write('H1', 'Training / Validation Loss')
         worksheet.write('I1', 'ROC Curve')
 
+        worksheet.write('J1', 'Eval CU_pain (>0.5)')
+        worksheet.write('K1', 'Eval CU_control (<0.5)')
+        worksheet.write('L1', 'Eval lyons_pain (>0.5) (old)')
+        worksheet.write('M1', 'Eval lyons_pain (>0.5) (new)')
         
+        evaluations = 
+        worksheet.write((9+
 
         for i, checkpoint_dir in enumerate(checkpoint_dirs):
 
