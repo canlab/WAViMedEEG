@@ -817,7 +817,7 @@ class Classifier:
         plt.savefig(checkpoint_dir+"/epoch_loss")
         plt.clf()
 
-        y_pred_keras = model.predict(self.test_dataset)[:, 0]
+        y_pred_keras = model.predict(self.test_dataset)[:, 1]
 
         if plot_ROC is True:
             from Plots import roc
