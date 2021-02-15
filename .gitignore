@@ -5,3 +5,4 @@ logs/
 december9th.sh
 /notebook_examples/.ipynb_checkpoints/
 /testdata
+*logs*/
