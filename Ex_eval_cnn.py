@@ -349,7 +349,8 @@ def main():
 
             myclf.Prepare(
                 tt_split=1,
-                labels=label_values)
+                labels=label_values,
+                normalize=normalize)
 
             if data_type == 'spectra':
                 if plot_spectra is True:

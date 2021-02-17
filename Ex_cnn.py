@@ -155,6 +155,25 @@ def main():
                         help="(Default: l2) Regularizer to be used in dense "
                         + "layers. One of: ['l1', 'l2', 'l1_l2']")
 
+    parser.add_argument('--regularizer_param',
+                        dest='regularizer_param',
+                        type=float,
+                        default=0.01,
+                        help="(Default: 0.01) Regularization parameter ")
+
+    parser.add_argument('--dropout',
+                        dest='dropout',
+                        type=float,
+                        default=None,
+                        help="(Default: None) Dropout rate ")
+
+    parser.add_argument('--hypertune',
+                        dest='hypertune',
+                        type=bool,
+                        default=False,
+                        help="(Default: False) If True, all args will be "
+                        + "tuned in keras tuner and saved to logs/fit.")
+
     # save the variables in 'args'
     args = parser.parse_args()
 
@@ -177,6 +196,9 @@ def main():
     k_folds = args.k_folds
     depth = args.depth
     regularizer = args.regularizer
+    regularizer_param = args.regularizer_param
+    dropout = args.dropout
+    hypertune = args.hypertune
 
     # ERROR HANDLING
     if data_type not in ["erps", "spectra", "contigs"]:
@@ -318,6 +340,21 @@ def main():
             raise ValueError
             sys.exit(3)
 
+    if (regularizer_param <= 0) or (regularizer_param >= 1):
+        print(
+            "Invalid entry for regularizer param. Must be float between "
+            + "0 and 1.")
+        raise ValueError
+        sys.exit(3)
+
+    if dropout is not None:
+        if (dropout <= 0) or (dropout >= 1):
+            print(
+                "Invalid entry for dropout. Must be float between 0 and 1 "
+                + "or None.")
+            raise ValueError
+            sys.exit(3)
+
     if filter_band == "nofilter":
         pass
     elif any(band == filter_band for band in config.frequency_bands):
@@ -381,28 +418,71 @@ def main():
     if k_folds == 1:
         myclf.Prepare(tt_split=tt_split, normalize=normalize)
 
-        myclf.CNN(
-            learning_rate=learning_rate,
-            lr_decay=lr_decay,
-            epochs=epochs,
-            plot_ROC=plot_ROC,
-            depth=depth,
-            regularizer=regularizer)
+        if hypertune is False:
+            myclf.CNN(
+                learning_rate=learning_rate,
+                lr_decay=lr_decay,
+                epochs=epochs,
+                plot_ROC=plot_ROC,
+                depth=depth,
+                regularizer=regularizer,
+                regularizer_param=regularizer_param,
+                dropout=dropout)
 
-        if data_type == 'spectra':
-            if plot_spectra is True:
-                specavgObj = SpectralAverage(myclf)
-                specavgObj.plot(
-                    fig_fname=myclf.checkpoint_dir
-                    + "/specavg_"
-                    + os.path.basename(myclf.trial_name)
-                    + "_train_"
-                    + str(datetime.now().strftime("%H-%M-%S")))
+            if data_type == 'spectra':
+                if plot_spectra is True:
+                    specavgObj = SpectralAverage(myclf)
+                    specavgObj.plot(
+                        fig_fname=myclf.checkpoint_dir
+                        + "/specavg_"
+                        + os.path.basename(myclf.trial_name)
+                        + "_train_"
+                        + str(datetime.now().strftime("%H-%M-%S")))
+
+        else:
+            import tensorflow as tf
+            from kerastuner.tuners import Hyperband
+
+            tuner = Hyperband(
+                myclf.hypertune_CNN,
+                objective='val_accuracy',
+                max_epochs=100,
+                directory='logs/fit/',
+                project_name='1second-spectra')
+
+            tuner.search_space_summary()
+
+            stop_early = tf.keras.callbacks.EarlyStopping(
+                monitor='val_loss',
+                patience=10)
+
+            tuner.search(
+                myclf.train_dataset,
+                myclf.train_labels,
+                epochs=100,
+                validation_data=(myclf.test_dataset, myclf.test_labels),
+                callbacks=[stop_early])
+
+            models = tuner.get_best_models(num_models=10)
+
+            for i, model in enumerate(models):
+                try:
+                    os.mkdir('logs/fit/'+str(i))
+
+                    model.save('logs/fit/'+str(i)+"/my_model")
+
+                except:
+                    print("Can't save models. :(")
+
+            tuner.results_summary()
 
     if k_folds > 1:
         myclf.KfoldCrossVal(
             myclf.CNN,
             normalize=normalize,
+            regularizer=regularizer,
+            regularizer_param=regularizer_param,
+            dropout=dropout,
             learning_rate=learning_rate,
             lr_decay=lr_decay,
             epochs=epochs,

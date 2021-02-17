@@ -424,9 +424,39 @@ class Classifier:
                 raise ValueError
                 sys.exit(3)
 
-            scaler.fit([inputObj.data for inputObj in self.data])
-            self.train_dataset = scaler.transform(self.train_dataset)
-            self.test_dataset = scaler.transform(self.test_dataset)
+            all_wavs = []
+            for inputObj in self.data:
+                for wav in inputObj.data:
+                    all_wavs.append(wav)
+
+            all_wavs = np.array(all_wavs)
+            all_wavs = np.reshape(
+                all_wavs,
+                (len(self.data),
+                self.train_dataset.shape[1]*
+                self.train_dataset.shape[2]))
+
+            scaler.fit(all_wavs)
+
+            og_shape = self.train_dataset.shape
+
+            self.train_dataset = scaler.transform(
+                np.reshape(
+                    self.train_dataset,
+                    (len(self.train_dataset),
+                    self.train_dataset.shape[1]*
+                    self.train_dataset.shape[2])))
+            self.train_dataset = np.reshape(self.train_dataset, og_shape)
+
+            og_shape = self.test_dataset.shape
+
+            self.test_dataset = scaler.transform(
+                np.reshape(
+                    self.test_dataset,
+                    (len(self.test_dataset),
+                    self.test_dataset.shape[1]*
+                    self.test_dataset.shape[2])))
+            self.test_dataset = np.reshape(self.test_dataset, og_shape)
 
         num_pos_train_samps = 0
         for label in self.train_labels:
@@ -646,7 +676,9 @@ class Classifier:
         verbosity=True,
         eval=None,
         depth=5,
-            regularizer=None):
+        regularizer=None,
+        regularizer_param=0.01,
+            dropout=None):
         """
         Convolutional Neural Network classifier, using Tensorflow base
 
@@ -679,11 +711,12 @@ class Classifier:
         from tensorflow.keras.layers import Dropout
         from tensorflow.keras.layers import BatchNormalization
         import datetime
+        import kerastuner as kt
 
         # introduce sequential set
         model = tf.keras.models.Sequential()
 
-        for i in range(depth):
+        for i in range(depth+1):
             # 1
             model.add(BatchNormalization())
 
@@ -701,7 +734,8 @@ class Classifier:
                 padding='valid',
                 data_format='channels_last'))
 
-        model.add(Dropout(0.5))
+        if dropout is not None:
+            model.add(Dropout(dropout))
 
         # flatten
         model.add(Flatten(data_format='channels_last'))
@@ -710,7 +744,9 @@ class Classifier:
         model.add(Dense(
             2,
             activation='softmax',
-            kernel_regularizer=regularizer))
+            kernel_regularizer=tf.keras.regularizers.l1_l2(
+                l1=regularizer_param,
+                l2=regularizer_param)))
 
         # build model
         model.build(self.train_dataset.shape)
@@ -828,6 +864,197 @@ class Classifier:
 
         return(model, y_pred_keras, self.test_labels)
 
+    def hypertune_CNN(
+        self,
+        hp):
+        """
+        Convolutional Neural Network classifier, using Tensorflow base
+
+        Parameters:
+            - learning_rate: (float) 0.01
+                how quickly the weights adapt at each iteration
+            - lr_decay: (bool) default True
+                whether the learning rate should decay at a rate of 0.96
+            - beta1: (float) default 0.9
+                beta1 value for Adam optimizer
+            - beta2: (float) default 0.999
+                beta2 value for Adam optimizer
+            - epochs: (int) default 100
+                number of training iterations
+            - plot_ROC: (bool) default False
+                evaluates model on validation data and plots ROC curve
+        """
+        # quiet some TF warnings
+        TF_CPP_MIN_LOG_LEVEL = 2
+        import tensorflow as tf
+        from tensorflow.keras import Model
+        from tensorflow.keras import regularizers
+        from tensorflow.keras.layers import Dense
+        from tensorflow.keras.layers import Flatten
+        from tensorflow.keras.layers import Conv2D
+        from tensorflow.keras.layers import Conv2DTranspose
+        from tensorflow.keras.layers import LeakyReLU
+        from tensorflow.keras.layers import UpSampling2D
+        from tensorflow.keras.layers import MaxPooling2D
+        from tensorflow.keras.layers import Dropout
+        from tensorflow.keras.layers import BatchNormalization
+        import datetime
+        import kerastuner as kt
+
+        learning_rate=hp.Float(
+            'learning_rate',
+            min_value=0.001,
+            max_value=0.1,
+            sampling='log')
+
+        lr_decay=hp.Float(
+            'lr_decay',
+            min_value=0.001,
+            max_value=0.999,
+            sampling='linear')
+
+        beta1=hp.Float(
+            'beta1',
+            min_value=0.09,
+            max_value=0.9999,
+            sampling='log')
+
+        beta2=hp.Float(
+            'beta2',
+            min_value=0.09,
+            max_value=0.9999,
+            sampling='log')
+
+        epochs=hp.Int(
+            'epochs',
+            min_value=10,
+            max_value=500,
+            step=10)
+
+        depth=hp.Int(
+            'depth',
+            min_value=1,
+            max_value=7,
+            step=1)
+
+        l1=hp.Float(
+            'l1',
+            min_value=0.001,
+            max_value=0.999,
+            sampling='linear')
+
+        l2=hp.Float(
+            'l2',
+            min_value=0.001,
+            max_value=0.999,
+            sampling='linear')
+
+        dropout=hp.Float(
+            'dropout',
+            min_value=0,
+            max_value=0.9,
+            sampling='linear')
+
+        activation=hp.Choice(
+            'activation',
+            ['relu', 'swish'])
+
+        dense_size=hp.Int(
+            'dense_size',
+            min_value=10,
+            max_value=100,
+            step=10)
+
+        # introduce sequential set
+        model = tf.keras.models.Sequential()
+
+        for i in range(depth+1):
+            # 1
+            model.add(BatchNormalization())
+
+            model.add(Conv2D(
+                hp.Int(
+                    'filters_'+str(i),
+                    min_value=3,
+                    max_value=25),
+                kernel_size=(
+                    hp.Int(
+                        'kw_' + str(i),
+                        min_value=1,
+                        max_value=3,
+                        step=1),
+                    hp.Int(
+                        'kl_' + str(i),
+                        min_value=1,
+                        max_value=10,
+                        step=1)),
+                strides=hp.Int(
+                    'kstride_' + str(i),
+                    min_value=1,
+                    max_value=1,
+                    step=1),
+                padding='same',
+                activation=activation,
+                data_format='channels_last'))
+
+            model.add(MaxPooling2D(
+                pool_size=(
+                    hp.Int(
+                        'pw_' + str(i),
+                        min_value=1,
+                        max_value=3,
+                        step=1),
+                    hp.Int(
+                        'pl_' + str(i),
+                        min_value=1,
+                        max_value=3,
+                        step=1)),
+                strides=hp.Int(
+                    'pstride_' + str(i),
+                    min_value=1,
+                    max_value=1,
+                    step=1),
+                padding='valid',
+                data_format='channels_last'))
+
+        model.add(Dropout(dropout))
+
+        # flatten
+        model.add(Flatten(data_format='channels_last'))
+
+        model.add(Dense(
+            dense_size,
+            activation='sigmoid'))
+
+        # model.add(Dense(10, activation='softmax'))
+        model.add(Dense(
+            2,
+            activation='softmax',
+            kernel_regularizer=tf.keras.regularizers.l1_l2(
+                l1=l1,
+                l2=l2)))
+
+        # build model
+        model.build(self.train_dataset.shape)
+
+        # adaptive learning rate
+        # learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(
+        #     initial_learning_rate=learning_rate,
+        #     decay_steps=epochs,
+        #     decay_rate=lr_decay)
+
+        # model compilation
+        model.compile(
+            optimizer=tf.keras.optimizers.Adagrad(
+                learning_rate=learning_rate,
+                initial_accumulator_value=0.1,
+                epsilon=1e-07,
+                name='Adagrad'),
+            loss='sparse_categorical_crossentropy',
+            metrics=['accuracy'])
+
+        return(model)
+
     def eval_saved_CNN(
         self,
         checkpoint_dir,
@@ -885,6 +1112,9 @@ class Classifier:
         self,
         ML_function,
         normalize=None,
+        regularizer=None,
+        regularizer_param=0.01,
+        dropout=None,
         learning_rate=0.001,
         lr_decay=False,
         beta1=0.9,
@@ -930,8 +1160,12 @@ class Classifier:
                     + "_test_"
                     + str(i))
 
-            if ML_function == Classifier.CNN:
+            if ML_function == self.CNN:
+
                 model, y_pred, y_labels = ML_function(
+                    regularizer=regularizer,
+                    regularizer_param=regularizer_param,
+                    dropout=dropout,
                     learning_rate=learning_rate,
                     lr_decay=lr_decay,
                     beta1=beta1,
@@ -941,13 +1175,13 @@ class Classifier:
 
                 self.saveModelEvaluation('cnn', model, y_pred, y_labels, i)
 
-            elif ML_function == Classifier.LDA:
+            elif ML_function == self.LDA:
                 model, y_pred, y_labels = ML_function(
                     plot_data=False)
 
                 self.saveModelEvaluation('lda', model, y_pred, y_labels, i)
 
-            elif ML_function == Classifier.SVM:
+            elif ML_function == self.SVM:
                 model, y_pred, y_labels = ML_function(
                     C=1,
                     kernel='linear',
@@ -961,6 +1195,9 @@ class Classifier:
 
             elif ML_function == 'mixed':
                 model, y_pred, y_labels = self.CNN(
+                    regularizer=regularizer,
+                    regularizer_param=regularizer_param,
+                    dropout=dropout,
                     learning_rate=learning_rate,
                     lr_decay=lr_decay,
                     beta1=beta1,
