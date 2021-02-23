@@ -399,7 +399,7 @@ class Classifier:
                     if (ContigObj.source, ContigObj.subject)
                     in self.test_subjects])
 
-        else:
+        if tt_split == 0:
             self.test_dataset = np.ndarray(self.train_dataset.shape)
             self.test_labels = np.ndarray(self.train_labels.shape)
 
@@ -739,6 +739,10 @@ class Classifier:
 
         # flatten
         model.add(Flatten(data_format='channels_last'))
+
+        # model.add(Dense(
+        #     3,
+        #     activation='softmax'))
 
         # model.add(Dense(10, activation='softmax'))
         model.add(Dense(

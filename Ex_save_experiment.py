@@ -74,6 +74,7 @@ def main():
     workbook = xlsxwriter.Workbook('Experiments.xlsx')
     for log_dir in log_dirs:
         checkpoint_dirs = os.listdir("logs/"+log_dir)
+        checkpoint_dirs.sort()
 
         worksheet = workbook.add_worksheet(log_dir)
         # worksheet.set_default_row(200)
@@ -115,7 +116,7 @@ def main():
             training = last_line.split(',')
             training = [val.strip() for val in training]
 
-            if training[0] != '99':
+            if training[0] != '19':
                 continue
             if len(training) != 5:
                 continue
