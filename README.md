@@ -4,7 +4,7 @@
 An awesome toolbox for performing rapid machine learning analysis on your EEG data
 
 
-## Table of Contents
+# Table of Contents
 * [About the Project](#about-the-project)
    * [Built With](#built-with)
 * [Getting Started](#getting-started)
@@ -25,19 +25,19 @@ An awesome toolbox for performing rapid machine learning analysis on your EEG da
    * [Special Thanks](#special-thanks-to)
 
 
-## About the Project
+# About the Project
 
 
-### Built With
+## Built With
 * Python v3.8 and up
 
 
-## Getting Started
+# Getting Started
 
 This should help you get the WAVi toolbox set up on your machine. To get a local copy up and running, follow these simple example steps.
 
 
-### Prerequisites
+## Prerequisites
 * Python v3.8 or higher
 * The following pip-installable packages:
    * [NumPy](https://numpy.org)
@@ -48,7 +48,7 @@ This should help you get the WAVi toolbox set up on your machine. To get a local
    * [TQDM](https://github.com/tqdm/tqdm)
 
 
-### Installation
+## Installation
 
 1. Clone the repo
 
@@ -62,13 +62,13 @@ This should help you get the WAVi toolbox set up on your machine. To get a local
 `vim config.py`
 
 
-## Usage
+# Usage
 
 
-### Preprocessing
+## Preprocessing
 
 
-#### File Cleaning
+### File Cleaning
 
 Before starting, you'll need to organize your dataset into a 'study folder'. If a single dataset contains more than one class, it may be useful to store them in separate folders.
 
@@ -101,7 +101,7 @@ Your 'study folder' should be organized as follows:
 
 Next, we will use the [Clean](../blob/master/Clean.py) module to anonymize and standardize our data.
 
-Command Line
+##### Command Line
 ---
 [Ex_clean.py](../blob/master/Ex_cleaning.py)
 `python3 Ex_clean.py --help`
@@ -117,7 +117,7 @@ Command Line
 | group_num | int | 1 | Group number to be assigned to dataset |
 
 
-Writing Scripts
+##### Writing Scripts
 ---
 See the [cleaning](../blob/master/notebook_examples/Ex_cleaning.ipynb) jupyter notebook file for example code.
 
@@ -125,7 +125,7 @@ See the [cleaning](../blob/master/notebook_examples/Ex_cleaning.ipynb) jupyter n
 
 `myStudy = Clean.StudyFolder('/path/on/my/computer/myStudy')`
 
-###### class Clean.StudyFolder(path)
+##### class Clean.StudyFolder(path)
 Parameters:
    * path: path to task folder
 
@@ -133,18 +133,18 @@ Parameters:
 
 `myStudy.autoclean()`
 
-###### method Clean.StudyFolder.autoclean()
+##### method Clean.StudyFolder.autoclean()
 For each task defined in config.tasks, performs StudyFolder.standardize and StudyFolder.anon, standardizing task names / file structure and anonymizing subject headers, leaving original filenames in translator stored in /myStudy/<task>_translator.txt
 
 Note: you may need to manually update your subject numbers. The first number of a subject code indicates the subject's group number, moving forward.
 
 
-#### Data Structure
+### Data Structure
 
 Next, we will use the [Prep](../blob/master/Prep.py) module to structure our data, and remove bad timepoints (such as blinks, motion, etc.).
 If you'd like to create new data that has been filtered to specific frequency ranges, see [Standard](../blob/master/Standard.py) and inspect the BandFilter class.
 
-Command Line
+##### Command Line
 ---
 [Ex_bandpass.py](../blob/master/Ex_bandpass.py)
 `python3 Ex_bandpass.py --help`
@@ -175,7 +175,7 @@ Command Line
 | erp_degree | int | 1 | Lowest number in .evt files which will be accepted as an erp event |
 
 
-Writing Scripts
+##### Writing Scripts
 ---
 See the [contigs](../blob/master/notebook_examples/Ex_contigs.ipynb) jupyter notebook file for example code.
 
@@ -183,11 +183,11 @@ See the [contigs](../blob/master/notebook_examples/Ex_contigs.ipynb) jupyter not
 
 `myTask = TaskData('/myStudy/task_name')`
 
-###### Prep.TaskData(path)
+##### Prep.TaskData(path)
 Parameters:
    * path: path to task folder
 
-##### Contigs
+#### Contigs
 
 Contigs are generated datasets of equal-length snippets from the raw data. We can use a range of criteria to deem them 'worthy' data. Such as:
    * strict (artDegree=0): require all .art datapoints to be 0 within the timeframe
@@ -199,7 +199,7 @@ Contigs are generated datasets of equal-length snippets from the raw data. We ca
 
 `myTask.gen_contigs(contigLength)`
 
-###### method Prep.TaskData.gen_contigs(contigLength)
+##### method Prep.TaskData.gen_contigs(contigLength)
 Generates Contig objects for every file possible in TaskData.path, appending each to TaskData.contigs
 
 Parameters:
@@ -215,22 +215,22 @@ Parameters:
 
 `myTask.write_contigs()`
 
-###### method Prep.TaskData.write_contigs()
+##### method Prep.TaskData.write_contigs()
 Writes TaskData.contigs objects to file, under TaskData.path / contigs or TaskData.path / erps
 
 
-##### Spectra
-Command Line
+#### Spectra
+##### Command Line
 ---
 Spectra can be automatically created using the --spectra flag in Ex_contigs.py, will have its own script soon.
 
-Writing Scripts
+##### Writing Scripts
 ---
-###### Prep.TaskData(path)
+##### Prep.TaskData(path)
 Parameters:
    * path: path to task folder
 
-##### Spectra
+#### Spectra
 
 Spectra are simply fourier-transformed contig files. They can be generated using saved contig files.
 
@@ -238,7 +238,7 @@ Spectra are simply fourier-transformed contig files. They can be generated using
 
 `myTask.gen_spectra(contigLength)`
 
-###### method Prep.TaskData.gen_spectra(contigLength)
+##### method Prep.TaskData.gen_spectra(contigLength)
 Generates Spectra objects for every file possible in TaskData.path, according to TaskData.contigs
 
 Parameters:
@@ -254,17 +254,17 @@ Parameters:
 
 `myTask.write_spectra()`
 
-###### method Prep.TaskData.write_spectra()
+##### method Prep.TaskData.write_spectra()
 Writes TaskData.spectra objects to file, under TaskData.path / spectra
 
-### Machine Learning
+## Machine Learning
 Next, we will use the [ML](../blob/master/ML.py) module to use a myriad of machine-learning tools to create archetypes for our patient groups.
 Independent of which method you select to employ, the same basic formula will load in our data.
 
 
-Writing Scripts
+##### Writing Scripts
 ---
-###### ML.Classifier(type)
+##### ML.Classifier(type)
 Class object to which we can load our data before differentiating using various ML methods.
 
 | argument | type | default | description |
@@ -272,14 +272,14 @@ Class object to which we can load our data before differentiating using various 
 | type | str | (required) | Which datatype the model should expect: "spectra", "erps", "contigs" |
 | network_channels | str | 1111111111111111111 | Binary string of channel names to be included in analysis |
 
-###### method ML.Classifier.LoadData(datapath)
+##### method ML.Classifier.LoadData(datapath)
 Loads one data at a time, appending it to the ML.Classifier.data attribute.
 
 | argument | type | default | description |
 | --- | --- | --- | --- |
 | path | str | (required) | Path to file (spectra, contig, or erp) |
 
-###### method ML.Classifier.Balance(datapath)
+##### method ML.Classifier.Balance(datapath)
 Knowing that reference groups are named as follows:
     - ref 24-30
     - ref 31-40
@@ -294,29 +294,29 @@ Spectra or Contig objects. New data are added with Classifier.LoadData.
 | --- | --- | --- | --- |
 | datapath | str | (required) | Parent path of reference folders listed above |
 
-#### Linear Discriminant Analysis (LDA)
+### Linear Discriminant Analysis (LDA)
 
-Command Line
+##### Command Line
 ---
 A command-line script does not yet exist for this function.
 
-Writing Scripts
+##### Writing Scripts
 ---
 Documentation to be added soon.
 
-#### Support Vector Machine (SVM)
+### Support Vector Machine (SVM)
 
-Command Line
+##### Command Line
 ---
 A command-line script does not yet exist for this function.
 
-Writing Scripts
+##### Writing Scripts
 ---
 Documentation to be added soon.
 
-#### Convolutional Neural Network (CNN)
+### Convolutional Neural Network (CNN)
 
-Command Line
+##### Command Line
 ---
 [Ex_cnn.py](../blob/master/Ex_cnn.py)
 `python3 Ex_cnn.py --help`
@@ -339,17 +339,17 @@ Command Line
 | lr_decay | bool | False | Whether learning rate should decay adhering to a 0.96 / step decay rate schedule |
 
 
-Writing Scripts
+##### Writing Scripts
 ---
 See the [CNN](../blob/master/notebook_examples/Ex_cnn.ipynb) jupyter notebook file for example code.
 
 
-## Roadmap
+# Roadmap
 
 See the [open issues](https://github.com/canlab/WAViMedEEG/issues) for a list of proposed features (and known issues)
 
 
-## Contributing
+# Contributing
 
 Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are *greatly appreciated*.
 
@@ -360,19 +360,19 @@ Contributions are what make the open source community such an amazing place to l
 5. Open a pull request
 
 
-## License
+# License
 
 Distributed under the MIT License. [See `LICENSE`](../blob/master/LICENSE) for more information.
 
 
-## Contact
+# Contact
 
 Clayton Schneider - @clayton_goob - claytonjschneider@gmail.com
 
 Project link: https://github.com/canlab/WAViMedEEG
 
 
-## Acknowledgements
+# Acknowledgements
 
 * [NumPy](https://numpy.org)
 * [TensorFlow](https://tensorflow.org)
@@ -382,7 +382,7 @@ Project link: https://github.com/canlab/WAViMedEEG
 * [TQDM](https://github.com/tqdm/tqdm)
 
 
-### Special Thanks to:
+## Special Thanks to:
 
 * Lyanna Kessler
 * Will Stritzel

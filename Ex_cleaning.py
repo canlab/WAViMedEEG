@@ -14,20 +14,23 @@ def main():
     parser.add_argument('--studies_folder',
                         dest='studies_folder',
                         type=str,
-                        default=config.myStudies,
-                        help='Path to parent folder containing study folders')
+                        default=config.my_studies,
+                        help="(Default: " + config.my_studies + ") Path to "
+                        + "parent folder containing study folders")
 
     parser.add_argument('--study_name',
                         dest='study_name',
                         type=str,
-                        default=config.studyDirectory,
-                        help='Study folder containing dataset')
+                        default=config.study_directory,
+                        help="(Default: " + config.study_directory + ") "
+                        + "Study folder containing dataset")
 
     parser.add_argument('--group_num',
                         dest='group_num',
                         type=int,
                         default=1,
-                        help='Group number to be assigned to dataset')
+                        help='(Default: 1) Group number to be '
+                        + 'assigned to dataset')
 
     # save the variables in 'args'
     args = parser.parse_args()
@@ -50,6 +53,24 @@ def main():
             + "path does not exist as directory.")
         raise FileNotFoundError
         sys.exit(3)
+
+    if not os.path.isdir(os.path.join(studies_folder, study_name, 'raw')):
+        print(
+            "No 'raw' folder found in the supplied directory. See the README. "
+            + "Data should be stored in studies_folder/study_name/raw before "
+            + "data cleaning can be run automatically."
+        )
+        raise FileNotFoundError
+        sys.exit(3)
+
+    if len(os.listdir(os.path.join(studies_folder, study_name))) > 2:
+        print(
+            "Looks like this folder has already been cleaned. "
+            "Should probably move other study folders to avoid overwrite."
+        )
+        raise FileExistsError
+        sys.exit(3)
+        # TODO avoid overwrites here, / add force option
 
     if group_num not in range(0, 9):
         print("group_num must be an int, between 0 and 9.")

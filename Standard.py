@@ -16,24 +16,25 @@ class SpectralAverage:
         self,
         inputClf,
         lowbound=0,
-            highbound=25):
+        highbound=25,
+        training_only=False,
+            testing_only=False):
 
         if inputClf.type == "spectra":
-
             return super(SpectralAverage, self).__new__(self)
 
         else:
-
             print("This class requires an ML.Classifier object with\
                   type 'spectra' as a positional argument.")
-
             raise ValueError
 
     def __init__(
         self,
         inputClf,
         lowbound=0,
-            highbound=25):
+        highbound=25,
+        training_only=False,
+            testing_only=False):
 
         self.Clf = inputClf
 
@@ -47,21 +48,43 @@ class SpectralAverage:
 
         self.avgs = []
 
-        self.groups = list(set(SpecObj.group for SpecObj in self.Clf.data))
+        self.groups = list(set(
+            [SpecObj.group for SpecObj in self.Clf.data]))
 
         for group in self.groups:
-            dataset = np.stack([
-                np.sqrt(SpecObj.data[
-                    int(self.lowbound // SpecObj.freq_res):
-                    int(self.highbound // SpecObj.freq_res) + 1])
-                for SpecObj in self.Clf.data
-                if SpecObj.group == group])
+            if (training_only is False) and (testing_only is False):
+                dataset = np.stack([
+                    np.sqrt(SpecObj.data[
+                        int(self.lowbound // SpecObj.freq_res):
+                        int(self.highbound // SpecObj.freq_res) + 1])
+                    for SpecObj in self.Clf.data
+                    if SpecObj.group == group])
+
+            elif training_only is True:
+                dataset = np.stack([
+                    np.sqrt(SpecObj.data[
+                        int(self.lowbound // SpecObj.freq_res):
+                        int(self.highbound // SpecObj.freq_res) + 1])
+                    for SpecObj in self.Clf.data
+                    if SpecObj.group == group
+                    and str(SpecObj.subject) in
+                    [sub[1] for sub in self.Clf.train_subjects]])
+
+            elif testing_only is True:
+                dataset = np.stack([
+                    np.sqrt(SpecObj.data[
+                        int(self.lowbound // SpecObj.freq_res):
+                        int(self.highbound // SpecObj.freq_res) + 1])
+                    for SpecObj in self.Clf.data
+                    if SpecObj.group == group
+                    and str(SpecObj.subject) in
+                    [sub[1] for sub in self.Clf.test_subjects]])
 
             self.avgs.append(np.mean(dataset, axis=0))
 
     def plot(self, channels=config.network_channels, fig_fname=None):
 
-        plt.rcParams['figure.dpi'] = 200
+        plt.rcParams['figure.dpi'] = 100
 
         num_waves = len(self.avgs)
 
@@ -72,7 +95,7 @@ class SpectralAverage:
         fig, axs = plt.subplots(
             nrows=len(channels),
             sharex=False,
-            figsize=(20, 40))
+            figsize=(12, 1*num_channels))
 
         fig.tight_layout()
 
@@ -89,7 +112,8 @@ class SpectralAverage:
                 axs[i].plot(
                     self.f,
                     array.T[i],
-                    label=config.group_names[self.groups[j]])
+                    label=config.group_names[self.groups[j]],
+                    color=config.group_colors[self.groups[j]])
 
                 j += 1
 
@@ -108,10 +132,13 @@ class SpectralAverage:
 
             i += 1
 
-        plt.show()
+        if fig_fname is None:
+            plt.show()
+
         if fig_fname is not None:
             fig.suptitle(fig_fname)
             fig.savefig(fig_fname)
+            plt.close(fig)
 
 
 class BandFilter:
@@ -128,43 +155,58 @@ class BandFilter:
 
         range = config.frequency_bands[filter_band]
 
+        if self.type == 'lowpass':
+            sos = scipy.signal.butter(
+                4,
+                range[0],
+                btype=self.type,
+                fs=config.sample_rate,
+                output='sos')
+        elif self.type == 'highpass':
+            sos = scipy.signal.butter(
+                4,
+                range[1],
+                btype=self.type,
+                fs=config.sample_rate,
+                output='sos')
+        else:
+            sos = scipy.signal.butter(
+                4,
+                [range[0],
+                    range[1]],
+                btype=self.type,
+                fs=config.sample_rate,
+                output='sos')
+
         fnames = [
             fname for fname in os.listdir(self.study_folder+"/"+self.task)
-            if "nofilter" in fname]
+            if "_nofilter" in fname]
 
+        print("Generating filtered trials:")
         for fname in tqdm(fnames):
 
-            arr = np.genfromtxt(
-                self.study_folder+"/"+self.task+"/"+fname,
-                delimiter=" ")
-            j = 0
-            post = np.ndarray(
-                shape=(arr.shape[0], len(config.channel_names))).T
+            try:
+                arr = np.genfromtxt(
+                    self.study_folder+"/"+self.task+"/"+fname,
+                    delimiter=" ")
+            except Exception:
+                print(fname, " FAILED")
+                print("Couldn't load data. Needs delim fix probably.")
+                sys.exit(3)
+
+            if arr.size == 0:
+                print(
+                    "Most likely an empty text file was "
+                    + "encountered. Skipping: " + fname)
+                continue
+
+            post = []
+
             for sig in arr.T:
-                if self.type == 'lowpass':
-                    sos = scipy.signal.butter(
-                        4,
-                        range[0],
-                        btype=self.type,
-                        fs=config.sample_rate,
-                        output='sos')
-                elif self.type == 'highpass':
-                    sos = scipy.signal.butter(
-                        4,
-                        range[1],
-                        btype=self.type,
-                        fs=config.sample_rate,
-                        output='sos')
-                else:
-                    sos = scipy.signal.butter(
-                        4,
-                        [range[0], range[1]],
-                        btype=self.type,
-                        fs=config.sample_rate,
-                        output='sos')
                 filtered = scipy.signal.sosfilt(sos, sig)
-                np.vstack((post, filtered))
-                j += 1
+                post.append(filtered)
+
+            post = np.stack(post)
 
             if self.type == "bandstop":
                 new_fname = fname.replace("nofilter", "no"+filter_band)
@@ -179,6 +221,7 @@ class BandFilter:
 
     def write_taskdata(self):
 
+        print("Writing filtered trials:")
         for file in tqdm(self.new_data):
 
             np.savetxt(

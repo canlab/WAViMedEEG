@@ -4,6 +4,7 @@ import config
 import random
 import math
 from tqdm import tqdm
+import sys
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import MinMaxScaler
@@ -65,6 +66,8 @@ class Classifier:
 
         self.freq_snip = None
 
+        self.groups = []
+
     def LoadData(self, path):
         """
         Loads one data at a time, appending it to the Classifier.data attribute
@@ -97,7 +100,7 @@ class Classifier:
                     np.genfromtxt(path, delimiter=",").T[0].T,
                     fname.split('_')[2][:-4], fname[:config.participantNumLen],
                     fname.split('_')[1],
-                    source=os.path.basename(os.path.dirname(path))))
+                    source=os.path.dirname(path)))
 
         if (self.data[-1].data.shape != self.data[0].data.shape):
 
@@ -111,100 +114,341 @@ class Classifier:
             print("Removing it from dataset.")
             self.data.pop(-1)
 
-    def Balance(self, parentPath, filter_band="nofilter"):
-        """
-        Knowing that reference groups are named as follows:
-            - ref 24-30
-            - ref 31-40
-            - ref 81+
-            - ...
+        if self.data[-1].group not in self.groups:
+            self.groups.append(self.data[-1].group)
+        self.groups.sort()
 
+    def Balance(
+        self,
+            verbosity=True):
+        """
         Balances the classes of a dataset such that Classifier.data
         contains an equal number of control and condition-positive
-        Spectra or Contig objects. New data are added with Classifier.LoadData
-
-        Parameters:
-            - parentPath (required positional): parent path of reference
-              folders listed above
+        Spectra or Contig objects.
         """
-        folders = config.refGroupFolders
+        # pop off data from the class with less data until class sizes are equal
+        groups = []
+        for dataObj in self.data:
+            if dataObj.group not in groups:
+                groups.append(dataObj.group)
 
-        dataFolder = self.trial_name
+        group_sizes = []
+        for group in groups:
+            group_size = 0
+            for dataObj in self.data:
+                if dataObj.group == group:
+                    group_size+=1
+            group_sizes.append(group_size)
 
-        totalpos = 0
+        random.shuffle(self.data)
 
-        totalneg = 0
+        if len(groups) != 2:
+            raise ValueError
+        else:
+            larger_group = group_sizes.index(np.max(group_sizes))
+            smaller_group = group_sizes.index(np.min(group_sizes))
 
-        for item in self.data:
-
-            if item.group == 1:
-
-                totalneg += 1
-
-            elif item.group > 1:
-
-                totalpos += 1
-
-        fill = (totalpos - totalneg)
-
-        filled_subs = []
+        if verbosity:
+            print("Before balancing:")
+            for i, group in enumerate(groups):
+                print(
+                    "Type:",
+                    config.group_names[group],
+                    "\tAmount:",
+                    group_sizes[i])
 
         i = 0
-        j = 0
-        while i < fill:
-
-            folder = folders[j]
-
-            fnames = os.listdir(parentPath+"/"+folder+"/"+dataFolder)
-
-            subjects = list(set(
-                [fname[:config.participantNumLen] for fname in fnames if
-                    fname[0] == "1"]))
-
-            random.shuffle(subjects)
-
-            h = 0
-            while (subjects[h], folder) in filled_subs:
-                h += 1
-
-            sub_fnames = [
-                fname for fname in fnames if
-                subjects[h] in fname[:config.participantNumLen]]
-
-            for sub_fname in sub_fnames:
-                reqs = [filter_band, ".evt", ".art"]
-                if any(ext in sub_fname for ext in reqs):
-                    self.LoadData(
-                        parentPath
-                        + "/"
-                        + folder
-                        + "/"
-                        + dataFolder
-                        + "/"
-                        + sub_fname)
-
+        while group_sizes[larger_group] > group_sizes[smaller_group]:
+            if self.data[i].group == groups[larger_group]:
+                self.data.pop(i)
+                group_sizes[larger_group]-=1
+            else:
                 i += 1
 
-            filled_subs.append((subjects[0], folder))
+        if verbosity:
+            print("After balancing:")
+            for i, group in enumerate(groups):
+                print(
+                    "Type:",
+                    config.group_names[group],
+                    "\tAmount:",
+                    group_sizes[i])
 
-            if j != len(folders) - 1:
-                j += 1
+    def Prepare(
+        self,
+        k_fold=None,
+        verbosity=True,
+        tt_split=0.33,
+        labels=None,
+        normalize=None,
+            multi_label=False):
+        """
+        Prepares data within Classifier object such that all in Classifier.data
+        are contained in either self.train_dataset or self.test_dataset,
+        with the corresponding subjects listed in self.train_subjects and
+        self.test_subjects. This is done either according to a k_fold cross-
+        evaluation schema, if k_fold is provided, otherwise is split randomly
+        by the float provided in tt_split.
+
+            - tt_split: (float, default 0.33)
+                ratio of subjects (from each group, control or positive)
+                which is to be reserved from training for validation data
+            - k_fold: (tuple ints, default None)
+                cross-validation fold i and total folds k
+                ex: (2, 5) fold 2 of 5
+            - verbosity: (bool, default True) whether to print information
+                such as the ratios of condition positive-to-negative subjects,
+                total number of samples loaded into each set, etc.
+            - labels: (list, default None) the real set of false and
+                position condition labels, if only loading in one class
+                under the context
+            - normalize: 'standard', 'minmax', or None
+                method with which contig data will be normalized
+                note: within itself, not relative to baseline or other
+        """
+
+        # shuffle dataset
+        random.shuffle(self.data)
+
+        if labels is None:
+            self.groups.sort()
+        else:
+            self.groups = list(labels)
+
+        self.group_names = [config.group_names[group] for group in self.groups]
+
+        # total num for each class
+        class_amounts = {}
+
+        for group in self.group_names:
+            class_amounts[group] = 0
+
+        if any(
+            num not in config.group_names\
+            for num in self.groups):
+            print("Invalid group name encountered, you should have entered it "
+            + "in config.group_names and config.group_colors first.")
+            raise ValueError
+            sys.exit(1)
+        if any(
+            name not in config.group_names.values()\
+            for name in self.group_names):
+            print("Invalid group name encountered, you should have entered it "
+            + "in config.group_names and config.group_colors first.")
+            raise ValueError
+            sys.exit(1)
+
+        # make list of subjects in this dataset
+        self.subjects = list(set([
+            (item.source, item.subject)
+            for item in self.data]))
+
+        random.shuffle(self.subjects)
+
+        if verbosity:
+            print("Total number of subjects:", len(self.subjects))
+
+        for item in self.data:
+            class_amounts[config.group_names[item.group]] += 1
+
+        if verbosity:
+            for key, value in class_amounts.items():
+                print("Number of", key, "outcomes:", int(value))
+
+        self.train_subjects = []
+        self.test_subjects = []
+
+        # shuffle subject list randomly and then
+        # split data into train and test spectra (no overlapping subjects)
+        # "subject-stratified" train-test split
+        if (k_fold is None) and (tt_split > 0) and (tt_split < 1):
+
+            split = math.floor(len(self.subjects)*tt_split)
+
+            self.train_subjects = []
+            self.test_subjects = []
+
+            for group in self.groups:
+
+                group_subjects = [sub for sub in self.subjects
+                    if int(sub[1][0]) == group]
+
+                pos_split = math.floor(len(group_subjects)*tt_split)
+                self.train_subjects += group_subjects[:(pos_split*-1)]
+                self.test_subjects += group_subjects[(pos_split*-1):]
+
+            if (len(self.train_subjects)\
+                + len(self.test_subjects))\
+                    != len(self.subjects):
+                print("Number of train subjects:", len(self.train_subjects))
+                print("Number of test subjects:", len(self.test_subjects))
+                print("Throw a fit")
+                raise ValueError
+                sys.exit(3)
+
+        elif (k_fold is None) and (tt_split == 0):
+
+            self.train_subjects = self.subjects
+            self.test_subjects = []
+
+        elif (k_fold is None) and (tt_split == 1):
+
+            self.train_subjects = []
+            self.test_subjects = self.subjects
+
+        elif (k_fold is not None):
+            from sklearn.model_selection import KFold
+
+            self.subjects.sort()
+
+            self.train_subjects = []
+            self.test_subjects = []
+
+            # the first n_samples % n_splits folds have size:
+            # n_samples // n_splits + 1
+            # other folds have size:
+            # n_samples // n_splits
+            kf = KFold(n_splits=k_fold[1])
+
+            # first look at only subjects with subject code above 1 (cond-pos)
+            for group in self.groups:
+
+                group_subjects = [sub for sub in self.subjects
+                    if int(sub[1][0]) == group]
+
+                train_indexes, test_indexes = list(
+                    kf.split(group_subjects))[k_fold[0]]
+
+                for i, sub in enumerate(group_subjects):
+                    if i in train_indexes:
+                        self.train_subjects.append(sub)
+                    elif i in test_indexes:
+                        self.test_subjects.append(sub)
+                    else:
+                        print("There was an error in the k-fold algorithm.")
+                        print("Exiting.")
+                        sys.exit(1)
+
+        if len(self.train_subjects) > 0:
+            self.train_dataset = np.expand_dims(np.stack(
+                [dataObj.data
+                    for dataObj in self.data
+                    if (dataObj.source, dataObj.subject)
+                    in self.train_subjects]),
+                -1)
+
+            self.train_labels = np.array(
+                [self.group_names.index(config.group_names[dataObj.group])
+                    for dataObj in self.data
+                    if (dataObj.source, dataObj.subject)
+                    in self.train_subjects])
+
+            if tt_split == 0:
+                self.test_dataset = np.ndarray(self.train_dataset.shape)
+                self.test_labels = np.ndarray(self.train_labels.shape)
+
+        if len(self.test_subjects) > 0:
+            self.test_dataset = np.expand_dims(np.stack(
+                [dataObj.data
+                    for dataObj in self.data
+                    if (dataObj.source, dataObj.subject)
+                    in self.test_subjects]),
+                -1)
+
+            self.test_labels = np.array(
+                [self.group_names.index(config.group_names[dataObj.group])
+                    for dataObj in self.data
+                    if (dataObj.source, dataObj.subject)
+                    in self.test_subjects])
+
+            if tt_split == 1:
+                self.train_dataset = np.ndarray(self.test_dataset.shape)
+                self.train_labels = np.ndarray(self.test_dataset.shape)
+
+        if k_fold is None:
+            print("Number of samples in train:", self.train_dataset.shape[0])
+            print("Number of samples in test:", self.test_dataset.shape[0])
+
+        # normalize / standardize
+        if normalize is not None:
+            if normalize == 'standard':
+                scaler = StandardScaler()
+
+            elif normalize == 'minmax':
+                scaler = MinMaxScaler()
 
             else:
-                j = 0
+                print("Unsupported type of normalize:", normalize)
+                raise ValueError
+                sys.exit(3)
+
+            all_wavs = []
+            for inputObj in self.data:
+                for wav in inputObj.data:
+                    all_wavs.append(wav)
+
+            all_wavs = np.array(all_wavs)
+            all_wavs = np.reshape(
+                all_wavs,
+                (len(self.data),
+                self.train_dataset.shape[1]*
+                self.train_dataset.shape[2]))
+
+            scaler.fit(all_wavs)
+
+            og_shape = self.train_dataset.shape
+
+            self.train_dataset = scaler.transform(
+                np.reshape(
+                    self.train_dataset,
+                    (len(self.train_dataset),
+                    self.train_dataset.shape[1]*
+                    self.train_dataset.shape[2])))
+            self.train_dataset = np.reshape(self.train_dataset, og_shape)
+
+            og_shape = self.test_dataset.shape
+
+            self.test_dataset = scaler.transform(
+                np.reshape(
+                    self.test_dataset,
+                    (len(self.test_dataset),
+                    self.test_dataset.shape[1]*
+                    self.test_dataset.shape[2])))
+            self.test_dataset = np.reshape(self.test_dataset, og_shape)
+
+        num_pos_train_samps = 0
+        for label in self.train_labels:
+            if label == 1:
+                num_pos_train_samps += 1
+
+        num_pos_test_samps = 0
+        for label in self.test_labels:
+            if label == 1:
+                num_pos_test_samps += 1
+
+        if verbosity:
+            for group in self.group_names:
+                print(
+                    "% {} samples in train: {}".format(
+                        group,
+                        len([label for label in self.train_labels
+                            if label==self.group_names.index(group)]) \
+                            / len(self.train_labels)))
+                print(
+                    "% {} samples in test: {}".format(
+                        group,
+                        len([label for label in self.test_labels
+                            if label==self.group_names.index(group)]) \
+                            / len(self.test_labels)))
+
 
     def LDA(
-            self,
-            normalize='standard',
-            tt_split=0.33,
-            lowbound=0,
-            highbound=25,
+        self,
             plot_data=False):
         """
         Linear Discriminant Analysis
 
         Parameters:
-            - normalize: 'standard', 'minmax', or None
             - tt_split: (float) default 0.33
             - lowbound: (int) default 3
             - highbound: (int) default 20
@@ -213,332 +457,52 @@ class Classifier:
 
         from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
-        # shuffle dataset
-        random.shuffle(self.data)
-
-        # total num for each class
-        totalpos = 0
-
-        totalneg = 0
-
-        for item in self.data:
-
-            if item.group == 1:
-
-                totalneg += 1
-
-            elif item.group > 1:
-
-                totalpos += 1
-
-        print("Number of negative outcomes:", totalneg)
-
-        print("Number of positive outcomes:", totalpos)
-
-        # make list of subjects in this dataset
-        self.subjects = list(set(
-            [(item.source, item.subject) for item in self.data]))
-
-        # shuffle subject list randomly and then
-        # split data into train and test spectra (no overlapping subjects)
-        # "subject-stratified" train-test split
-        random.shuffle(self.subjects)
-
-        split = math.floor(len(self.subjects)*tt_split)
-
-        train_subjects = self.subjects[:split*-1]
-
-        test_subjects = self.subjects[split*-1:]
-
-        if normalize == 'standard':
-
-            myscaler = StandardScaler()
-
-        elif normalize == 'minmax':
-
-            myscaler = MinMaxScaler()
-
-        else:
-
-            normalize = None
-
-        if self.type == "spectra":
-
-            # load dataset into np arrays / train & test
-            # make label maps for each set:
-            # 1 = positive condition,
-            # -1 = negative condition
-            train_dataset = np.stack(
-                    [SpecObj.data[
-                        int(lowbound // SpecObj.freq_res):
-                        int(highbound // SpecObj.freq_res) + 1]
-                        for SpecObj in self.data
-                        if (SpecObj.source, SpecObj.subject)
-                        in train_subjects])
-
-            train_labels = np.array(
-                    [int(1)
-                        if (SpecObj.group == 2)
-                        else int(-1)
-                        for SpecObj in self.data
-                        if (SpecObj.source, SpecObj.subject)
-                        in train_subjects])
-
-            test_dataset = np.stack(
-                    [SpecObj.data[
-                        int(lowbound // SpecObj.freq_res):
-                        int(highbound // SpecObj.freq_res) + 1]
-                        for SpecObj in self.data
-                        if (SpecObj.source, SpecObj.subject)
-                        in test_subjects])
-
-            test_labels = np.array(
-                    [int(1)
-                        if (SpecObj.group == 2)
-                        else int(-1)
-                        for SpecObj in self.data
-                        if (SpecObj.source, SpecObj.subject)
-                        in test_subjects])
-
         # reshape datasets
-        nsamples, nx, ny = train_dataset.shape
+        nsamples, nx, ny, ndepth = self.train_dataset.shape
 
-        train_dataset = train_dataset.reshape((nsamples, nx*ny))
+        rs_train_dataset = self.train_dataset.reshape((nsamples, nx*ny))
 
-        nsamples, nx, ny = test_dataset.shape
+        nsamples, nx, ny, ndepth = self.test_dataset.shape
 
-        test_dataset = test_dataset.reshape((nsamples, nx*ny))
+        rs_test_dataset = self.test_dataset.reshape((nsamples, nx*ny))
 
         # << Normalize features (z-score standardization) >> #
         # create classifier pipeline
-        if normalize is not None:
-
-            clf = make_pipeline(
-                    myscaler,
-                    LinearDiscriminantAnalysis())
-
-        else:
-
-            clf = make_pipeline(
-                    LinearDiscriminantAnalysis())
+        clf = make_pipeline(
+                LinearDiscriminantAnalysis())
 
         # fit to train data
-
-        clf.fit(train_dataset, train_labels)
+        clf.fit(rs_train_dataset, self.train_labels)
 
         print('Classification accuracy on validation data: {:.3f}'.format(
-            clf.score(test_dataset, test_labels)))
+            clf.score(rs_test_dataset, self.test_labels)))
+
+        y_pred = clf.predict(rs_test_dataset)
 
         if plot_data is True:
-            # Colormap
-            cmap = colors.LinearSegmentedColormap(
-                'red_blue_classes',
-                {'red': [(0, 1, 1), (1, 0.7, 0.7)],
-                 'green': [(0, 0.7, 0.7), (1, 0.7, 0.7)],
-                 'blue': [(0, 0.7, 0.7), (1, 1, 1)]})
-            plt.cm.register_cmap(cmap=cmap)
+            import Plots
+            Plots.plot_LDA(
+                clf,
+                rs_train_dataset,
+                self.test_labels, y_pred)
 
-            # Generate datasets
-            def dataset_fixed_cov():
-                '''
-                Generate 2 Gaussians samples
-                with the same covariance matrix
-                '''
-                n, dim = 300, 2
-                np.random.seed(0)
-                C = np.array([[0., -0.23], [0.83, .23]])
-                X = np.r_[np.dot(np.random.randn(n, dim), C),
-                          np.dot(np.random.randn(n, dim), C)
-                          + np.array([1, 1])]
-                y = np.hstack((np.zeros(n), np.ones(n)))
-                return X, y
-
-            def dataset_cov():
-                '''
-                Generate 2 Gaussians samples
-                with different covariance matrices
-                '''
-                n, dim = 300, 2
-                np.random.seed(0)
-                C = np.array([[0., -1.], [2.5, .7]]) * 2.
-                X = np.r_[np.dot(np.random.randn(n, dim), C),
-                          np.dot(np.random.randn(n, dim), C.T)
-                          + np.array([1, 4])]
-                y = np.hstack((np.zeros(n), np.ones(n)))
-                return X, y
-
-            # Plot functions
-            def plot_data(lda, X, y, y_pred, fig_index):
-                splot = plt.subplot(2, 2, fig_index)
-                if fig_index == 1:
-                    plt.title('Linear Discriminant Analysis')
-                    plt.ylabel('Data with\n fixed covariance')
-                elif fig_index == 2:
-                    plt.title('Quadratic Discriminant Analysis')
-                elif fig_index == 3:
-                    plt.ylabel('Data with\n varying covariances')
-
-                tp = (y == y_pred)  # True Positive
-                tp0, tp1 = tp[y == 0], tp[y == 1]
-                X0, X1 = X[y == 0], X[y == 1]
-                X0_tp, X0_fp = X0[tp0], X0[~tp0]
-                X1_tp, X1_fp = X1[tp1], X1[~tp1]
-
-                # class 0: dots
-                plt.scatter(
-                    X0_tp[:, 0],
-                    X0_tp[:, 1],
-                    marker='.',
-                    color='red')
-
-                plt.scatter(
-                    X0_fp[:, 0],
-                    X0_fp[:, 1],
-                    marker='x',
-                    s=20,
-                    color='#990000')  # dark red
-
-                # class 1: dots
-                plt.scatter(
-                    X1_tp[:, 0],
-                    X1_tp[:, 1],
-                    marker='.',
-                    color='blue')
-
-                plt.scatter(
-                    X1_fp[:, 0],
-                    X1_fp[:, 1],
-                    marker='x',
-                    s=20,
-                    color='#000099')  # dark blue
-
-                # class 0 and 1 : areas
-                nx, ny = 200, 100
-                x_min, x_max = plt.xlim()
-                y_min, y_max = plt.ylim()
-                xx, yy = np.meshgrid(
-                    np.linspace(x_min, x_max, nx),
-                    np.linspace(y_min, y_max, ny))
-
-                Z = lda.predict_proba(np.c_[xx.ravel(), yy.ravel()])
-                Z = Z[:, 1].reshape(xx.shape)
-                plt.pcolormesh(
-                    xx,
-                    yy,
-                    Z,
-                    cmap='red_blue_classes',
-                    norm=colors.Normalize(0., 1.),
-                    zorder=0)
-
-                plt.contour(
-                    xx,
-                    yy,
-                    Z,
-                    [0.5],
-                    linewidths=2.,
-                    colors='white')
-
-                # means
-                plt.plot(
-                    lda.means_[0][0],
-                    lda.means_[0][1],
-                    '*',
-                    color='yellow',
-                    markersize=15,
-                    markeredgecolor='grey')
-
-                plt.plot(
-                    lda.means_[1][0],
-                    lda.means_[1][1],
-                    '*',
-                    color='yellow',
-                    markersize=15,
-                    markeredgecolor='grey')
-
-                return splot
-
-            def plot_ellipse(splot, mean, cov, color):
-                v, w = linalg.eigh(cov)
-                u = w[0] / linalg.norm(w[0])
-                angle = np.arctan(u[1] / u[0])
-                angle = 180 * angle / np.pi  # convert to degrees
-                # filled Gaussian at 2 standard deviation
-                ell = mpl.patches.Ellipse(
-                    mean,
-                    2 * v[0] ** 0.5, 2 * v[1] ** 0.5,
-                    180 + angle,
-                    facecolor=color,
-                    edgecolor='black',
-                    linewidth=2)
-
-                ell.set_clip_box(splot.bbox)
-                ell.set_alpha(0.2)
-                splot.add_artist(ell)
-                splot.set_xticks(())
-                splot.set_yticks(())
-
-            def plot_lda_cov(lda, splot):
-                plot_ellipse(splot, lda.means_[0], lda.covariance_, 'red')
-                plot_ellipse(splot, lda.means_[1], lda.covariance_, 'blue')
-
-            def plot_qda_cov(qda, splot):
-                plot_ellipse(splot, qda.means_[0], qda.covariance_[0], 'red')
-                plot_ellipse(splot, qda.means_[1], qda.covariance_[1], 'blue')
-
-            plt.figure(figsize=(10, 8), facecolor='white')
-            plt.suptitle(
-                'Linear Discriminant Analysis vs \
-                Quadratic Discriminant Analysis',
-                y=0.98,
-                fontsize=15)
-
-            for i, (X, y) in enumerate([
-                                        dataset_fixed_cov(),
-                                        dataset_cov()]):
-
-                # Linear Discriminant Analysis
-                lda = LinearDiscriminantAnalysis(
-                    solver="svd",
-                    store_covariance=True)
-
-                y_pred = lda.fit(X, y).predict(X)
-                splot = plot_data(lda, X, y, y_pred, fig_index=2 * i + 1)
-                plot_lda_cov(lda, splot)
-                plt.axis('tight')
-
-                # Quadratic Discriminant Analysis
-                qda = QuadraticDiscriminantAnalysis(store_covariance=True)
-                y_pred = qda.fit(X, y).predict(X)
-                splot = plot_data(qda, X, y, y_pred, fig_index=2 * i + 2)
-                plot_qda_cov(qda, splot)
-                plt.axis('tight')
-            plt.tight_layout()
-            plt.subplots_adjust(top=0.92)
-            plt.show()
-
-        return clf, clf.predict(test_dataset), test_labels
+        return clf, y_pred, self.test_labels
 
     def SVM(
-            self,
-            C=1,
-            kernel='linear',
-            normalize=None,
-            iterations=1000,
-            plot_PR=False,
-            plot_Features=False,
-            feat_select=False,
-            num_feats=10,
-            lowbound=0,
-            highbound=25,
-            tt_split=0.33):
-
+        self,
+        C=1,
+        kernel='linear',
+        iterations=1000,
+        plot_PR=False,
+        plot_Features=False,
+        feat_select=False,
+            num_feats=10):
         """
         Support Vector Machine classifier using scikit-learn base
 
         Parameters:
             - C: (float) default 1
             - kernel: 'linear' or 'rbf'
-            - normalize: 'standard', 'minmax', or None
             - iterations: (int) default 1000
             - plot_PR: (bool) default False
             - plot_Features: (bool) default False
@@ -556,165 +520,51 @@ class Classifier:
         # shuffle dataset
         random.shuffle(self.data)
 
-        Features = np.array(self.data[0].freq[
-            int(lowbound // self.data[0].freq_res):
-            int(highbound // self.data[0].freq_res) + 1])
-
-        # total num for each class
-
-        totalpos = 0
-
-        totalneg = 0
-
-        for item in self.data:
-
-            if item.group == 1:
-
-                totalneg += 1
-
-            elif item.group == 2:
-
-                totalpos += 1
-
-        print("Number of negative outcomes:", totalneg)
-
-        print("Number of positive outcomes:", totalpos)
-
-        # make list of subjects in this dataset
-        self.subjects = list(set([
-            (item.source, item.subject)
-            for item in self.data]))
-
-        # shuffle subject list randomly and then
-        # split data into train and test spectra (no overlapping subjects)
-        # "subject-stratified" train-test split
-        random.shuffle(self.subjects)
-
-        split = math.floor(len(self.subjects)*tt_split)
-
-        train_subjects = self.subjects[:split*-1]
-
-        test_subjects = self.subjects[split*-1:]
-
-        if normalize == 'standard':
-
-            myscaler = StandardScaler()
-
-        elif normalize == 'minmax':
-
-            myscaler = MinMaxScaler()
-
-        else:
-
-            normalize = None
-
-        if self.type == "spectra":
-            # load dataset into np arrays / train & test
-            # make label maps for each set:
-            # 1 = positive condition,
-            # -1 = negative condition
-            train_dataset = np.stack(
-                [SpecObj.data[
-                    int(lowbound // SpecObj.freq_res):
-                    int(highbound // SpecObj.freq_res) + 1]
-                    for SpecObj in self.data
-                    if (SpecObj.source, SpecObj.subject) in train_subjects])
-
-            train_labels = np.array(
-                [int(1) if (SpecObj.group == 2) else int(-1)
-                    for SpecObj in self.data
-                    if (SpecObj.source, SpecObj.subject) in train_subjects])
-
-            test_dataset = np.stack(
-                [SpecObj.data[
-                    int(lowbound // SpecObj.freq_res):
-                    int(highbound // SpecObj.freq_res) + 1]
-                    for SpecObj in self.data
-                    if (SpecObj.source, SpecObj.subject) in test_subjects])
-
-            test_labels = np.array(
-                [int(1) if (SpecObj.group == 2) else int(-1)
-                    for SpecObj in self.data
-                    if (SpecObj.source, SpecObj.subject) in test_subjects])
-
-        print("Number of samples in train:", train_dataset.shape[0])
-
-        print("Number of samples in test:", test_dataset.shape[0])
+        Features = np.array(self.data[0].freq)
 
         # reshape datasets
-        nsamples, nx, ny = train_dataset.shape
+        nsamples, nx, ny, ndepth = self.train_dataset.shape
 
-        train_dataset = train_dataset.reshape((nsamples, nx*ny))
+        rs_train_dataset = self.train_dataset.reshape((nsamples, nx*ny))
 
-        nsamples, nx, ny = test_dataset.shape
+        nsamples, nx, ny, ndepth = self.test_dataset.shape
 
-        test_dataset = test_dataset.reshape((nsamples, nx*ny))
+        rs_test_dataset = self.test_dataset.reshape((nsamples, nx*ny))
 
         # << Normalize features (z-score standardization) >> #
         # create classifier pipeline
-        if normalize is not None:
+        if kernel == 'linear':
+            clf = make_pipeline(
+                    LinearSVC(
+                        C=C,
+                        random_state=0,
+                        max_iter=iterations,
+                        dual=False))
 
-            if kernel == 'linear':
-
-                clf = make_pipeline(
-                        myscaler,
-                        LinearSVC(
-                            C=C,
-                            random_state=0,
-                            max_iter=iterations,
-                            dual=False))
-
-            elif kernel == 'rbf':
-
-                clf = make_pipeline(
-                        myscaler,
-                        SVC(
-                            kernel='rbf',
-                            C=C, random_state=0,
-                            max_iter=iterations))
-
-        else:
-
-            if kernel == 'linear':
-
-                clf = make_pipeline(
-                        LinearSVC(
-                            C=C,
-                            random_state=0,
-                            max_iter=iterations,
-                            dual=False))
-
-            elif kernel == 'rbf':
-
-                clf = make_pipeline(
-                        SVC(
-                            kernel='rbf',
-                            C=C, random_state=0,
-                            max_iter=iterations))
+        elif kernel == 'rbf':
+            clf = make_pipeline(
+                    SVC(
+                        kernel='rbf',
+                        C=C, random_state=0,
+                        max_iter=iterations))
 
         # fit to train data
-        clf.fit(train_dataset, train_labels)
+        clf.fit(rs_train_dataset, self.train_labels)
 
         print('Classification accuracy on validation data: {:.3f}'.format(
-            clf.score(test_dataset, test_labels)))
+            clf.score(rs_test_dataset, self.test_labels)))
 
         # Compare to the weights of an SVM
         # only available using linear kernel
         if kernel == "linear":
-
             svm_weights = np.abs(clf[-1].coef_).sum(axis=0)
-
             svm_weights /= svm_weights.sum()
 
         if plot_PR is True:
-            # test_score = clf.decision_function(test_dataset)
-            # average_precision =
-            # average_precision_score(test_dataset, test_score)
-
-            # print('Average precision-recall score:\
-            # {0:0.2f}'.format(average_precision))
-
-            disp = plot_precision_recall_curve(clf, test_dataset, test_labels)
+            disp = plot_precision_recall_curve(
+                clf,
+                rs_test_dataset,
+                self.test_labels)
 
             disp.ax_.set_title('2-class Precision-Recall curve: '
                                'AP={0:0.2f}'.format(average_precision))
@@ -725,79 +575,47 @@ class Classifier:
             # We use the default selection function to select the ten
             # most significant features
             selector = SelectKBest(f_classif, k=num_feats)
-
-            selector.fit(train_dataset, train_labels)
-
+            selector.fit(rs_train_dataset, self.train_labels)
             scores = -np.log10(selector.pvalues_)
-
             scores /= scores.max()
 
             # Compare to the selected-weights of an SVM
-            if normalize is not None:
+            if kernel == 'linear':
+                clf_selected = make_pipeline(
+                        SelectKBest(f_classif, k=num_feats),
+                        LinearSVC(
+                            C=C,
+                            random_state=0,
+                            max_iter=iterations,
+                            dual=False))
 
-                if kernel == 'linear':
+            elif kernel == 'rbf':
+                clf_selected = make_pipeline(
+                        SelectKbest(f_classic, k=num_feats),
+                        SVC(
+                            kernel='rbf',
+                            C=C,
+                            random_state=0,
+                            max_iter=iterations))
 
-                    clf_selected = make_pipeline(
-                            SelectKBest(f_classif, k=num_feats),
-                            myscaler,
-                            LinearSVC(
-                                C=C,
-                                random_state=0,
-                                max_iter=iterations,
-                                dual=False))
-
-                elif kernel == 'rbf':
-                    clf_selected = make_pipeline(
-                            SelectKBest(f_classic, k=num_feats),
-                            myscaler,
-                            SVC(kernel='rbf',
-                                C=C,
-                                random_state=0,
-                                max_iter=iterations))
-
-            else:
-
-                if kernel == 'linear':
-
-                    clf_selected = make_pipeline(
-                            SelectKBest(f_classif, k=num_feats),
-                            LinearSVC(
-                                C=C,
-                                random_state=0,
-                                max_iter=iterations,
-                                dual=False))
-
-                elif kernel == 'rbf':
-                    clf_selected = make_pipeline(
-                            SelectKbest(f_classic, k=num_feats),
-                            SVC(
-                                kernel='rbf',
-                                C=C,
-                                random_state=0,
-                                max_iter=iterations))
-
-            clf_selected.fit(train_dataset, train_labels)
+            clf_selected.fit(rs_train_dataset, self.train_labels)
 
             print('Classification accuracy after univariate feature selection:\
                     {:.3f}'.format(clf_selected.score(
-                        test_dataset,
-                        test_labels)))
+                        rs_test_dataset,
+                        self.test_labels)))
 
             # Compare to the weights of an SVM
             # only available using linear kernel
             if kernel == 'linear':
-
                 svm_weights_selected = np.abs(
                     clf_selected[-1].coef_).sum(axis=0)
-
                 svm_weights_selected /= svm_weights_selected.sum()
 
         if plot_Features is True:
-
             import Plots
 
             if kernel == 'linear':
-
                 if feat_select is False:
                     Plots.plot_svm_features(
                         Features,
@@ -811,27 +629,29 @@ class Classifier:
                         scores=scores,
                         network_channels=self.network_channels)
 
-        return clf, clf.predict(test_dataset), test_labels
+        return clf, clf.predict(rs_test_dataset), self.test_labels
 
     def CNN(
         self,
-        normalize=None,
-        learning_rate=0.01,
+        learning_rate=0.001,
         lr_decay=False,
         beta1=0.9,
         beta2=0.999,
         epochs=100,
+        verbosity=True,
+        eval=None,
+        depth=5,
+        regularizer=None,
+        regularizer_param=0.01,
+        initial_bias=None,
+        dropout=None,
         plot_ROC=False,
-        tt_split=0.33,
-            k_fold=None):
-
+        plot_conf=False,
+            plot_3d_preds=False):
         """
         Convolutional Neural Network classifier, using Tensorflow base
 
         Parameters:
-            - normalize: 'standard', 'minmax', or None
-                method with which contig data will be normalized
-                note: within itself, not relative to baseline or other
             - learning_rate: (float) 0.01
                 how quickly the weights adapt at each iteration
             - lr_decay: (bool) default True
@@ -844,12 +664,6 @@ class Classifier:
                 number of training iterations
             - plot_ROC: (bool) default False
                 evaluates model on validation data and plots ROC curve
-            - tt_split: (float) default 0.33
-                ratio of subjects (from each group, control or positive)
-                which is to be reserved from training for validation data
-            - k_fold: (tuple ints) default None
-                cross-validation fold i and total folds k
-                ex: (2, 5) fold 2 of 5
         """
         # quiet some TF warnings
         TF_CPP_MIN_LOG_LEVEL = 2
@@ -866,272 +680,70 @@ class Classifier:
         from tensorflow.keras.layers import Dropout
         from tensorflow.keras.layers import BatchNormalization
         import datetime
+        import kerastuner as kt
+        from Plots import plot_history
 
-        # shuffle dataset
-        random.shuffle(self.data)
+        if initial_bias == 'auto':
+            initial_bias = []
+            for i, group in enumerate(self.groups):
+                initial_bias.append(
+                    np.log([
+                        len([label for label in self.train_labels
+                            if label == i])\
+                        / len([label for label in self.train_labels
+                            if label != i])]))
+            initial_bias = tf.keras.initializers.Constant(initial_bias)
 
-        # total num for each class
-        totalpos = 0
-        totalneg = 0
-        for item in self.data:
-            if item.group == 1:
-                totalneg += 1
-            elif item.group > 1:
-                totalpos += 1
-
-        if k_fold is None:
-            print("Number of negative outcomes:", totalneg)
-            print("Number of positive outcomes:", totalpos)
-
-        # make list of subjects in this dataset
-        self.subjects = list(set([
-            (item.source, item.subject)
-            for item in self.data]))
-
-        if k_fold is None:
-            print("Total number of subjects:", len(self.subjects))
-
-        # get num condition positive
-        j = 0
-        for sub in self.subjects:
-            if int(sub[1][0]) > 1:
-                j += 1
-
-        if k_fold is None:
-            print(
-                "% Positive in all subjects:",
-                j / len(self.subjects))
-            print(
-                "% Negative in all subjects:",
-                (len(self.subjects) - j) / len(self.subjects))
-
-        train_subjects = []
-        test_subjects = []
-
-        # shuffle subject list randomly and then
-        # split data into train and test spectra (no overlapping subjects)
-        # "subject-stratified" train-test split
-        if k_fold is None:
-            random.shuffle(self.subjects)
-
-            split = math.floor(len(self.subjects)*tt_split)
-
-            pos_subjects = [
-                sub for sub in self.subjects if int(sub[1][0]) > 1]
-            pos_split = math.floor(len(pos_subjects)*tt_split)
-
-            neg_subjects = [
-                sub for sub in self.subjects if int(sub[1][0]) == 1]
-            neg_split = math.floor(len(neg_subjects)*tt_split)
-
-            train_subjects = pos_subjects[:pos_split*-1]
-            for sub in neg_subjects[:neg_split*-1]:
-                train_subjects.append(sub)
-
-            test_subjects = pos_subjects[pos_split*-1:]
-            for sub in neg_subjects[neg_split*-1:]:
-                test_subjects.append(sub)
-
-        else:
-            from sklearn.model_selection import KFold
-
-            self.subjects.sort()
-
-            # the first n_samples % n_splits folds have size:
-            # n_samples // n_splits + 1, other folds have size:
-            # n_samples // n_splits
-            kf = KFold(n_splits=k_fold[1])
-
-            # first look at only subjects with subject code above 1 (cond-pos)
-            pos_subjects = [sub for sub in self.subjects if int(sub[1][0]) > 1]
-            train_indexes, test_indexes = list(
-                kf.split(pos_subjects))[k_fold[0]]
-
-            for i, sub in enumerate(pos_subjects):
-                if i in train_indexes:
-                    train_subjects.append(sub)
-                elif i in test_indexes:
-                    test_subjects.append(sub)
-                else:
-                    print("There was an error in the k-fold algorithm.")
-                    print("Exiting.")
-                    sys.exit(1)
-
-            # then look at subjects with subject code "1" (condition-neg)
-            neg_subjects = [
-                sub for sub in self.subjects if int(sub[1][0]) == 1]
-            train_indexes, test_indexes = list(
-                kf.split(neg_subjects))[k_fold[0]]
-
-            for i, sub in enumerate(neg_subjects):
-                if i in train_indexes:
-                    train_subjects.append(sub)
-                elif i in test_indexes:
-                    test_subjects.append(sub)
-                else:
-                    print("There was an error in the k-fold algorithm.")
-                    print("Exiting.")
-                    sys.exit(1)
-
-        train_dataset = np.expand_dims(np.stack(
-            [ContigObj.data
-                for ContigObj in self.data
-                if (ContigObj.source, ContigObj.subject) in train_subjects]),
-            -1)
-
-        train_labels = np.array(
-            [int(1) if (ContigObj.group > 1) else int(0)
-                for ContigObj in self.data
-                if (ContigObj.source, ContigObj.subject) in train_subjects])
-
-        test_dataset = np.expand_dims(np.stack(
-            [ContigObj.data
-                for ContigObj in self.data
-                if (ContigObj.source, ContigObj.subject) in test_subjects]),
-            -1)
-
-        test_labels = np.array(
-            [int(1) if (ContigObj.group > 1) else int(0)
-                for ContigObj in self.data
-                if (ContigObj.source, ContigObj.subject) in test_subjects])
-
-        if k_fold is None:
-            print("Number of samples in train:", train_dataset.shape[0])
-            print("Number of samples in test:", test_dataset.shape[0])
-
-        num_pos_train_samps = 0
-        for label in train_labels:
-            if label == 1:
-                num_pos_train_samps += 1
-
-        num_pos_test_samps = 0
-        for label in test_labels:
-            if label == 1:
-                num_pos_test_samps += 1
-
-        if k_fold is None:
-            print(
-                "% Positive samples in train:",
-                num_pos_train_samps / len(train_labels))
-            print(
-                "% Positive samples in test:",
-                num_pos_test_samps / len(test_labels))
-
-        # introduce equential set
+        # introduce sequential set
         model = tf.keras.models.Sequential()
 
-        # 1
-        model.add(BatchNormalization())
+        for i in range(depth+1):
+            # 1
+            model.add(BatchNormalization())
 
-        model.add(Conv2D(
-            5,
-            kernel_size=(3, 3),
-            strides=1,
-            padding='same',
-            activation='relu',
-            data_format='channels_last'))
+            model.add(Conv2D(
+                5,
+                kernel_size=(3, 3),
+                strides=1,
+                padding='same',
+                activation='swish',
+                data_format='channels_last'))
 
-        # model.add(LeakyReLU(alpha=0.1))
+            model.add(MaxPooling2D(
+                pool_size=(3, 3),
+                strides=1,
+                padding='valid',
+                data_format='channels_last'))
 
-        model.add(MaxPooling2D(
-            pool_size=(3, 3),
-            strides=1,
-            padding='valid',
-            data_format='channels_last'))
-
-        # 2
-        model.add(BatchNormalization())
-
-        model.add(Conv2D(
-            5,
-            kernel_size=(3, 3),
-            strides=1,
-            padding='same',
-            activation='relu',
-            data_format='channels_last'))
-
-        # model.add(LeakyReLU(alpha=0.1))
-
-        model.add(MaxPooling2D(
-            pool_size=(3, 3),
-            strides=1,
-            padding='valid',
-            data_format='channels_last'))
-
-        # 3
-        model.add(BatchNormalization())
-
-        model.add(Conv2D(
-            5,
-            kernel_size=(3, 3),
-            strides=1,
-            padding='same',
-            activation='relu',
-            data_format='channels_last'))
-
-        # model.add(LeakyReLU(alpha=0.1))
-
-        model.add(MaxPooling2D(
-            pool_size=(5, 5),
-            strides=1,
-            padding='valid',
-            data_format='channels_last'))
-
-        # 4
-        model.add(BatchNormalization())
-
-        model.add(Conv2D(
-            5,
-            kernel_size=(3, 3),
-            strides=1,
-            padding='same',
-            activation='relu',
-            data_format='channels_last'))
-
-        # model.add(LeakyReLU(alpha=0.1))
-
-        model.add(MaxPooling2D(
-            pool_size=(5, 5),
-            strides=1,
-            padding='valid',
-            data_format='channels_last'))
-
-        # 5
-        model.add(BatchNormalization())
-
-        model.add(Conv2D(
-            5,
-            kernel_size=(3, 3),
-            strides=1,
-            padding='same',
-            activation='relu',
-            data_format='channels_last'))
-
-        # model.add(LeakyReLU(alpha=0.1))
-
-        model.add(MaxPooling2D(
-            pool_size=(5, 5),
-            strides=1,
-            padding='valid',
-            data_format='channels_last'))
-
-        # dropout
-        # model.add(Dropout(0.2))
+        if dropout is not None:
+            model.add(Dropout(dropout))
 
         # flatten
         model.add(Flatten(data_format='channels_last'))
 
+        # model.add(Dense(
+        #     3,
+        #     activation='softmax'))
+
         model.add(Dense(10, activation='softmax'))
-        model.add(Dense(2, activation='softmax'))
+        model.add(Dense(
+            len(self.groups),
+            activation='softmax',
+            use_bias=True if initial_bias is not None else False,
+            bias_initializer=initial_bias
+            if initial_bias is not None
+            else None,
+            kernel_regularizer=tf.keras.regularizers.l1_l2(
+                l1=regularizer_param,
+                l2=regularizer_param)))
 
         # build model
-        model.build(train_dataset.shape)
+        model.build(self.train_dataset.shape)
 
         # print model summary at buildtime
-        if k_fold is None:
+        if verbosity:
             model.summary()
-
-            print("Input shape:", train_dataset.shape)
+            print("Input shape:", self.train_dataset.shape)
 
         # adaptive learning rate
         if lr_decay is True:
@@ -1142,8 +754,6 @@ class Classifier:
 
         # model compilation
         model.compile(
-            # optimizer=tf.keras.optimizers.Adam(
-            #     learning_rate=learning_rate),
             optimizer=tf.keras.optimizers.Adagrad(
                 learning_rate=learning_rate,
                 initial_accumulator_value=0.1,
@@ -1153,113 +763,488 @@ class Classifier:
             metrics=['accuracy'])
 
         # tensorboard setup
-        log_dir = 'logs/fit/'\
-            + datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+        checkpoint_dir = 'logs/fit/'\
+            + datetime.datetime.now().strftime('%Y%m%d-%H%M%S')\
+            + "_"\
+            + self.trial_name.replace("/", "_")\
+
+        for group in self.group_names:
+            checkpoint_dir = checkpoint_dir + "_" + group
+
+        self.checkpoint_dir = checkpoint_dir
+
         tensorboard_callback = tf.keras.callbacks.TensorBoard(
-            log_dir=log_dir,
+            log_dir=checkpoint_dir,
             histogram_freq=1)
 
+        # save model history (acc, loss) to csv file
+        csv_logger = tf.keras.callbacks.CSVLogger(
+            checkpoint_dir+"/training.log",
+            separator=',')
+
         history = model.fit(
-            train_dataset,
-            train_labels,
+            self.train_dataset,
+            self.train_labels,
             epochs=epochs,
-            validation_data=(test_dataset, test_labels),
-            batch_size=32,
-            callbacks=[tensorboard_callback],
-            # verbose=0 if k_fold is not None else 1
-        )
+            validation_data=(self.test_dataset, self.test_labels) if
+            any(val in [1, 2, 3] for val in self.test_labels)
+            else None,
+            batch_size=64,
+            callbacks=[
+                tensorboard_callback,
+                csv_logger],
+            verbose=verbosity)
 
-        y_pred_keras = model.predict(test_dataset)[:, 0]
+        f = open(checkpoint_dir+"/summary.txt", 'w')
+        f.write(str(model.summary()))
+        f.close()
 
+        model.save(checkpoint_dir+"/my_model")
+
+        # plot and save accuracy and loss to checkpoint dir
+        plot_history(self, history, checkpoint_dir, 'accuracy')
+        plot_history(self, history, checkpoint_dir, 'loss')
+
+        y_pred_keras = model.predict(self.test_dataset)
+
+        if plot_conf is True:
+            from sklearn.metrics import confusion_matrix
+            from Plots import plot_confusion_matrix
+
+            y_pred = np.argmax(y_pred_keras, axis=1)
+
+            # calculate confusion matrix
+            cm = confusion_matrix(self.test_labels, y_pred)
+            plot_confusion_matrix(cm, checkpoint_dir, self.group_names)
+
+        if plot_3d_preds is True:
+            from Plots import plot_3d_scatter
+
+            plot_3d_scatter(
+                y_pred_keras,
+                self.test_labels,
+                self.group_names,
+                checkpoint_dir,
+                "validation_3d_preds")
+
+        # TODO:
+        # not working for multi-label atm
         if plot_ROC is True:
             from Plots import roc
-            roc(y_pred_keras, test_labels, fname=log_dir+"/ROC")
+            roc(
+                y_pred_keras[:, 1],
+                self.test_labels,
+                fname=checkpoint_dir+"/ROC")
 
-        return(history, model, y_pred_keras, test_labels)
+        return(model, y_pred_keras, self.test_labels)
+
+    def hypertune_CNN(
+        self,
+        hp):
+        """
+        Convolutional Neural Network classifier, using Tensorflow base
+
+        Parameters:
+            - learning_rate: (float) 0.01
+                how quickly the weights adapt at each iteration
+            - lr_decay: (bool) default True
+                whether the learning rate should decay at a rate of 0.96
+            - beta1: (float) default 0.9
+                beta1 value for Adam optimizer
+            - beta2: (float) default 0.999
+                beta2 value for Adam optimizer
+            - epochs: (int) default 100
+                number of training iterations
+            - plot_ROC: (bool) default False
+                evaluates model on validation data and plots ROC curve
+        """
+        # quiet some TF warnings
+        TF_CPP_MIN_LOG_LEVEL = 2
+        import tensorflow as tf
+        from tensorflow.keras import Model
+        from tensorflow.keras import regularizers
+        from tensorflow.keras.layers import Dense
+        from tensorflow.keras.layers import Flatten
+        from tensorflow.keras.layers import Conv2D
+        from tensorflow.keras.layers import Conv2DTranspose
+        from tensorflow.keras.layers import LeakyReLU
+        from tensorflow.keras.layers import UpSampling2D
+        from tensorflow.keras.layers import MaxPooling2D
+        from tensorflow.keras.layers import Dropout
+        from tensorflow.keras.layers import BatchNormalization
+        import datetime
+        import kerastuner as kt
+
+        learning_rate=hp.Float(
+            'learning_rate',
+            min_value=0.001,
+            max_value=0.1,
+            sampling='log')
+
+        lr_decay=hp.Float(
+            'lr_decay',
+            min_value=0.001,
+            max_value=0.999,
+            sampling='linear')
+
+        beta1=hp.Float(
+            'beta1',
+            min_value=0.09,
+            max_value=0.9999,
+            sampling='log')
+
+        beta2=hp.Float(
+            'beta2',
+            min_value=0.09,
+            max_value=0.9999,
+            sampling='log')
+
+        epochs=hp.Int(
+            'epochs',
+            min_value=10,
+            max_value=500,
+            step=10)
+
+        depth=hp.Int(
+            'depth',
+            min_value=1,
+            max_value=7,
+            step=1)
+
+        l1=hp.Float(
+            'l1',
+            min_value=0.001,
+            max_value=0.999,
+            sampling='linear')
+
+        l2=hp.Float(
+            'l2',
+            min_value=0.001,
+            max_value=0.999,
+            sampling='linear')
+
+        dropout=hp.Float(
+            'dropout',
+            min_value=0,
+            max_value=0.9,
+            sampling='linear')
+
+        activation=hp.Choice(
+            'activation',
+            ['relu', 'swish'])
+
+        dense_size=hp.Int(
+            'dense_size',
+            min_value=10,
+            max_value=100,
+            step=10)
+
+        # introduce sequential set
+        model = tf.keras.models.Sequential()
+
+        for i in range(depth+1):
+            # 1
+            model.add(BatchNormalization())
+
+            model.add(Conv2D(
+                hp.Int(
+                    'filters_'+str(i),
+                    min_value=3,
+                    max_value=25),
+                kernel_size=(
+                    hp.Int(
+                        'kw_' + str(i),
+                        min_value=1,
+                        max_value=3,
+                        step=1),
+                    hp.Int(
+                        'kl_' + str(i),
+                        min_value=1,
+                        max_value=10,
+                        step=1)),
+                strides=hp.Int(
+                    'kstride_' + str(i),
+                    min_value=1,
+                    max_value=1,
+                    step=1),
+                padding='same',
+                activation=activation,
+                data_format='channels_last'))
+
+            model.add(MaxPooling2D(
+                pool_size=(
+                    hp.Int(
+                        'pw_' + str(i),
+                        min_value=1,
+                        max_value=3,
+                        step=1),
+                    hp.Int(
+                        'pl_' + str(i),
+                        min_value=1,
+                        max_value=3,
+                        step=1)),
+                strides=hp.Int(
+                    'pstride_' + str(i),
+                    min_value=1,
+                    max_value=1,
+                    step=1),
+                padding='valid',
+                data_format='channels_last'))
+
+        model.add(Dropout(dropout))
+
+        # flatten
+        model.add(Flatten(data_format='channels_last'))
+
+        model.add(Dense(
+            dense_size,
+            activation='sigmoid'))
+
+        # model.add(Dense(10, activation='softmax'))
+        model.add(Dense(
+            2,
+            activation='softmax',
+            kernel_regularizer=tf.keras.regularizers.l1_l2(
+                l1=l1,
+                l2=l2)))
+
+        # build model
+        model.build(self.train_dataset.shape)
+
+        # adaptive learning rate
+        # learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(
+        #     initial_learning_rate=learning_rate,
+        #     decay_steps=epochs,
+        #     decay_rate=lr_decay)
+
+        # model compilation
+        model.compile(
+            optimizer=tf.keras.optimizers.Adagrad(
+                learning_rate=learning_rate,
+                initial_accumulator_value=0.1,
+                epsilon=1e-07,
+                name='Adagrad'),
+            loss=tf.keras.losses.BinaryCrossentropy(),
+            metrics=[
+                tf.keras.metrics.TruePositives(name='tp'),
+                tf.keras.metrics.FalsePositives(name='fp'),
+                tf.keras.metrics.TrueNegatives(name='tn'),
+                tf.keras.metrics.FalseNegatives(name='fn'),
+                tf.keras.metrics.BinaryAccuracy(name='accuracy'),
+                tf.keras.metrics.Precision(name='precision'),
+                tf.keras.metrics.Recall(name='recall'),
+                tf.keras.metrics.AUC(name='auc')])
+
+        return(model)
+
+    def eval_saved_CNN(
+        self,
+        checkpoint_dir,
+        plot_hist=False,
+        fname=None,
+            pred_level='all'):
+
+        import tensorflow as tf
+
+        model = tf.keras.models.load_model(checkpoint_dir+"/my_model")
+
+        self.group_names = checkpoint_dir.split('_')[-2:]
+        self.groups = []
+        for name in self.group_names:
+            for key, value in config.group_names.items():
+                if name == value:
+                    self.groups.append(key)
+        self.groups.sort()
+
+        model.summary()
+
+        y_pred_keras = model.predict(self.test_dataset)[:, 1]
+        test_set_labels = self.test_labels
+
+        if pred_level == 'subject':
+            sub_level_preds = []
+            sub_level_labels = []
+            for j, sub in enumerate(self.subjects):
+                subject_preds = []
+                for i, (pred, inputObj) in enumerate(
+                    zip(y_pred_keras, self.data)):
+
+                    if inputObj.subject == str(sub[1]):
+                        subject_preds.append(pred)
+                        if len(sub_level_labels) == j:
+                            sub_level_labels.append(
+                                1 if inputObj.group == self.groups[1] else 0)
+                sub_level_preds.append(np.mean(subject_preds))
+            y_pred_keras = sub_level_preds
+            test_set_labels = np.array(sub_level_labels)
+
+
+        if plot_hist is True:
+            from Plots import pred_hist
+            pred_hist(
+                y_pred_keras,
+                test_set_labels,
+                fname=None if fname is None
+                    else checkpoint_dir+"/"+fname,
+                group_names=self.group_names)
+
+        return y_pred_keras
 
     def KfoldCrossVal(
         self,
-        path,
-        ref_path,
-        k=5,
-        pos_only=True,
-        filter_band="nofilter",
-            model_type='CNN'):
+        ML_function,
+        normalize=None,
+        regularizer=None,
+        regularizer_param=0.01,
+        dropout=None,
+        learning_rate=0.001,
+        lr_decay=False,
+        beta1=0.9,
+        beta2=0.999,
+        epochs=100,
+        iterations=1000,
+        plot_ROC=False,
+        plot_conf=False,
+        plot_3d_preds=False,
+        k=1,
+        plot_spec_avgs=False,
+        C=1,
+        kernel='linear',
+        plot_PR=False,
+        plot_Features=False,
+        feat_select=False,
+        num_feats=10,
+            tt_split=0.33):
         """
         Resampling procedure used to evaluate ML models
         on a limited data sample
 
         Parameters:
-            - path (required positional): str
-                path of file (spectra or contig)
-                to be loaded and stacked on the parent
-                object's 'data' attribute
-                note: objects will be loaded in as Contig or Spectra objects
-            - ref_path (required positional): str
-                parent path of reference folders listed above
             - k (default 5): int
-                number of groups that a given data sample will b e split into
-            - pos_only (default True): bool
-                if True, will only load condition positive (sub code >1) data
-                and controls will only be loaded from reference dataset
+                number of groups that a given data sample will be split into
         """
-        for fname in os.listdir(path):
-            reqs = [filter_band, ".evt", ".art"]
-            if any(ext in fname for ext in reqs):
-                if int(fname[0]) > 1:
-                    self.LoadData(path+"/"+fname)
-
-        self.Balance(ref_path)
-
-        all_y_preds = []
-        all_y_labels = []
-        all_aucs = []
-
-        from Plots import roc
-
-        f = open(self.type+"_"+os.path.basename(path)+".txt", 'w')
-
         for i in tqdm(range(k)):
-            if model_type == 'CNN':
-                hist, model, y_pred, y_labels = self.CNN(
-                    k_fold=(i, k),
-                    plot_ROC=True)
+            self.Prepare(
+                k_fold=(i, k),
+                normalize=normalize)
 
-            elif model_type == 'SVM':
-                model, y_pred, y_labels = self.SVM(
+            if self.type == 'spectra' and plot_spec_avgs is True:
+                from Standard import SpectralAverage
+                specavgObj = SpectralAverage(self, training_only=True)
+                specavgObj.plot(
+                    fig_fname="specavg_"
+                    + os.path.basename(self.trial_name)
+                    + "_train_"
+                    + str(i))
+
+                specavgObj = SpectralAverage(self, testing_only=True)
+                specavgObj.plot(
+                    fig_fname="specavg_"
+                    + os.path.basename(self.trial_name)
+                    + "_test_"
+                    + str(i))
+
+            if ML_function == self.CNN:
+
+                model, y_pred, y_labels = ML_function(
+                    regularizer=regularizer,
+                    regularizer_param=regularizer_param,
+                    dropout=dropout,
+                    learning_rate=learning_rate,
+                    lr_decay=lr_decay,
+                    beta1=beta1,
+                    beta2=beta2,
+                    epochs=epochs,
+                    plot_ROC=plot_ROC,
+                    plot_conf=plot_conf,
+                    plot_3d_preds=plot_3d_preds)
+
+                self.saveModelEvaluation('cnn', model, y_pred, y_labels, i)
+
+            elif ML_function == self.LDA:
+                model, y_pred, y_labels = ML_function(
+                    plot_data=False)
+
+                self.saveModelEvaluation('lda', model, y_pred, y_labels, i)
+
+            elif ML_function == self.SVM:
+                model, y_pred, y_labels = ML_function(
+                    C=1,
                     kernel='linear',
                     iterations=1000,
-                    normalize=None,
-                    num_feats=30,
+                    plot_PR=False,
+                    plot_Features=False,
                     feat_select=False,
-                    plot_Features=True,
-                    lowbound=0,
-                    highbound=25)
+                    num_feats=10)
 
-            elif model_type == 'LDA':
+                self.saveModelEvaluation('svm', model, y_pred, y_labels, i)
+
+            elif ML_function == 'mixed':
+                model, y_pred, y_labels = self.CNN(
+                    regularizer=regularizer,
+                    regularizer_param=regularizer_param,
+                    dropout=dropout,
+                    learning_rate=learning_rate,
+                    lr_decay=lr_decay,
+                    beta1=beta1,
+                    beta2=beta2,
+                    epochs=epochs,
+                    plot_ROC=plot_ROC,
+                    plot_conf=plot_conf,
+                    plot_3d_preds=plot_3d_preds)
+
+                self.saveModelEvaluation('cnn', model, y_pred, y_labels, i)
+
                 model, y_pred, y_labels = self.LDA(
-                    normalize=None,
-                    lowbound=0,
-                    highbound=25)
+                    plot_data=False)
 
-            for pred, label in zip(y_pred, y_labels):
-                all_y_preds.append(pred)
-                all_y_labels.append(label)
+                self.saveModelEvaluation('lda', model, y_pred, y_labels, i)
 
-            auc = roc(y_pred, y_labels, plot=False)
-            if auc < 0.5:
-                auc = 1 - auc
+                model, y_pred, y_labels = self.SVM(
+                    C=1,
+                    kernel='linear',
+                    iterations=1000,
+                    plot_PR=False,
+                    plot_Features=False,
+                    feat_select=False,
+                    num_feats=10)
 
-            all_aucs.append(auc)
-            f.write(str(auc))
+                self.saveModelEvaluation('svm', model, y_pred, y_labels, i)
+
+    def saveModelEvaluation(self, model_type, model, y_pred, y_labels, i):
+        from Plots import roc
+
+        f = open(
+            self.type
+            + "_"
+            + model_type
+            + "_"
+            + os.path.basename(self.trial_name)
+            + ".txt",
+            'a')
+
+        f.write("Subjects")
+        for sub in self.subjects:
+            f.write(str(sub[1]))
+            f.write('\n')
+        f.write('\n')
+
+        auc = roc(y_pred, y_labels, plot=False)
+        if auc < 0.5:
+            auc = 1 - auc
+
+        f.write('AUC')
+        f.write('\n')
+        f.write(str(auc))
+        f.write('\n')
+        f.write('Train ' + str(i))
+        for sub in self.train_subjects:
+            f.write(str(sub[1]))
+            f.write('\n')
+        f.write('\n')
+        f.write('Test ' + str(i))
+        for sub in self.test_subjects:
+            f.write(str(sub[1]))
             f.write('\n')
 
-            i += 1
-
         f.close()
-
-        auc = roc(all_y_preds, all_y_labels, fname=os.path.basename(
-            os.path.dirname(path))+"_"+os.path.basename(path))
-        print(all_aucs)
-
-        return roc

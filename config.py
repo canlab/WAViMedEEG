@@ -8,7 +8,7 @@ Most classes, scripts, etc., will reference it.
 INITIALIZING STUDY FILES
 ========================
 before beginning with new data, format your new study directory as follows:
-~/.../path/to/mystudies/newstudydir
+~/.../path/to/my_studies/newstudydir
 ----------> /raw
 --------------------> <subjID>_<taskID>.eeg
 --------------------> <subjID>_<taskID>.evt
@@ -26,12 +26,8 @@ participantNumLen = 4  # default length
 
 # if you are working with multiple studies at once,
 # set the parent directory where you will keep them all
-myStudies = "/wavi/EEGstudies"
-studyDirectory = 'CANlab'
-
-excludeSubs = [
-    '1004',
-    '1020']
+my_studies = "/wavi/EEGstudies"
+study_directory = 'canlab pain'
 
 group_names = {
     0: "Pilot",
@@ -40,12 +36,18 @@ group_names = {
     3: "Rehab"
 }
 
-refGroupFolders = [
-    "CANlab",
-    # "ref 24-30",
-    # "ref 31-40",
-    # "ref 41-50",
-    # "ref 51-60",
+group_colors = {
+    0: "black",
+    1: "green",
+    2: "purple",
+    3: "orange"
+}
+
+ref_folders = [
+    "ref 24-30",
+    "ref 31-40",
+    "ref 41-50",
+    "ref 51-60",
     # "ref 61-70",
     # "ref 71-80",
     # "ref 81+"
@@ -132,8 +134,32 @@ network_channels = [
     'Cz',
     'Pz']
 
+custom_art_map = [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+]
+
 frequency_bands = {
-    "delta": [0, 2],
+    "delta": [0, 4],
     "theta": [2, 6],
     "alpha": [6, 13],
+    "beta": [13, 30],
+    "gamma": [30, 45]
 }

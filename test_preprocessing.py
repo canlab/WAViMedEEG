@@ -1,6 +1,9 @@
 import Prep
 import config
 import Signals
+import Standard
+import ML
+import Clean
 import unittest
 import random
 import numpy as np
@@ -38,34 +41,34 @@ class TestPreprocessing(unittest.TestCase):
                 weighted=True).T
 
             np.savetxt(
-                taskObj.studyFolder\
-                +"/"+taskObj.task+"/"\
-                +sub\
-                +"_"\
-                +taskObj.task\
-                +"_nofilter.eeg",
+                taskObj.studyFolder
+                + "/" + taskObj.task + "/"
+                + sub
+                + "_"
+                + taskObj.task
+                + "_nofilter.eeg",
                 eeg_file,
                 delimiter=" ",
                 fmt="%2.1f")
 
             np.savetxt(
-                taskObj.studyFolder\
-                +"/"+taskObj.task+"/"\
-                +sub\
-                +"_"\
-                +taskObj.task\
-                +".art",
+                taskObj.studyFolder
+                + "/" + taskObj.task + "/"
+                + sub
+                + "_"
+                + taskObj.task
+                + ".art",
                 art_file,
                 delimiter=" ",
                 fmt="%2.1f")
 
             np.savetxt(
-                taskObj.studyFolder\
-                +"/"+taskObj.task+"/"\
-                +sub\
-                +"_"\
-                +taskObj.task\
-                +".evt",
+                taskObj.studyFolder
+                + "/" + taskObj.task + "/"
+                + sub
+                + "_"
+                + taskObj.task
+                + ".evt",
                 evt_file,
                 delimiter=" ",
                 fmt="%2.1f")
@@ -82,30 +85,29 @@ class TestPreprocessing(unittest.TestCase):
 
         taskObj.task_fnames = taskObj.get_task_fnames(taskObj.task)
 
-        length = random.randint(100, 2000)
-        # art_degrees = [0, 1, 2]
-        art_degrees = [1]
-        # erps = [True, False]
-        erps = [False]
-        channels = ""
+        length = random.randint(100, 750)
+        art_degrees = [0, 1, 2]
+        erps = [1, 2, None]
+        taskObj.channels = ""
         for val in list(Signals.rand_bin_string(
             19,
-            sample_rate=1)):
-            channels += str(val)
+                sample_rate=1)):
+            taskObj.channels += str(val)
 
         for art_degree in art_degrees:
             for erp in erps:
                 taskObj.gen_contigs(
                     length,
-                    network_channels=channels,
+                    network_channels=taskObj.channels,
                     art_degree=art_degree,
-                    erp=erp)
+                    erp_degree=erp)
                 taskObj.write_contigs()
                 taskObj.gen_spectra(
                     length,
-                    network_channels=channels,
+                    network_channels=taskObj.channels,
                     art_degree=art_degree,
-                    erp=erp)
+                    erp_degree=erp)
+                taskObj.write_spectra()
 
         self.assertEqual(
             len(os.listdir(taskObj.studyFolder+"/contigs")),
@@ -118,6 +120,36 @@ class TestPreprocessing(unittest.TestCase):
         self.assertEqual(
             len(os.listdir(taskObj.studyFolder+"/spectra")),
             len(art_degrees)*len(erps))
+
+        mytask = Standard.BandFilter(
+            taskObj.studyFolder,
+            "P300",
+            type='highpass')
+        mytask.gen_taskdata('alpha')
+        mytask.write_taskdata()
+
+        self.assertEqual(
+            len([fname for fname in os.listdir(taskObj.studyFolder+"/P300")
+                if "nofilter" in fname]),
+            len([fname for fname in os.listdir(taskObj.studyFolder+"/P300")
+                if "hialpha" in fname]))
+
+        for data_type in ['spectra', 'contigs', 'erps']:
+            options = os.listdir(taskObj.studyFolder+"/"+data_type+"/")
+            patient_path = options[random.randint(0, len(options)-1)]
+            patient_path = taskObj.studyFolder+"/"+data_type+"/"+patient_path
+
+            # Instantiate a 'Classifier' Object
+            myclf = ML.Classifier(data_type)
+
+            # ============== Load Patient (Condition-Positive) Data ==========
+            for fname in os.listdir(patient_path):
+                if "_nofilter" in fname:
+                    myclf.LoadData(patient_path+"/"+fname)
+
+            myclf.Prepare(tt_split=0.33)
+
+            myclf.CNN(epochs=10)
 
 
 if __name__ == '__main__':
@@ -152,14 +184,14 @@ if __name__ == '__main__':
     # adhering to subj-number lengths defined in config.py
     taskObj.subjects = []
 
-    lo_bound = int('1' + '0'*(1-config.participantNumLen))
-    hi_bound = int('2' + '9'*(1-config.participantNumLen))
-    for i in range(2):
+    lo_bound = int('1' + '0'*(config.participantNumLen-1))
+    hi_bound = int('2' + '9'*(config.participantNumLen-1))
+    for i in range(8):
         num = None
-        num = random.randint(1000, 3999)
+        num = random.randint(lo_bound, hi_bound)
         # no repeat subject numbers
         while num in taskObj.subjects:
-            num = random.randint(1000, 3999)
+            num = random.randint(lo_bound, hi_bound)
 
         taskObj.subjects.append(str(num))
     unittest.main()

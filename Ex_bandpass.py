@@ -15,8 +15,9 @@ def main():
     parser.add_argument('--studies_folder',
                         dest='studies_folder',
                         type=str,
-                        default=config.myStudies,
-                        help='Path to parent folder containing study folders')
+                        default=config.my_studies,
+                        help="(Default: " + config.my_studies + ") Path to "
+                        + "parent folder containing study folders")
 
     parser.add_argument('--study_name',
                         dest='study_name',
@@ -30,21 +31,23 @@ def main():
                         dest='task',
                         type=str,
                         default="P300",
-                        help="Task to use from config.py: "
+                        help="(Default: P300) Task to use from config.py: "
                         + str([val for val in config.tasks]))
 
     parser.add_argument('--type',
                         dest='type',
                         type=str,
                         default="bandpass",
-                        help="Which band filter method should be applied: "
+                        help="(Default: bandpass) Which band filter method "
+                        + "should be applied: "
                         + "lowpass, highpass, bandstop, bandpass")
 
     parser.add_argument('--band',
                         dest='band',
                         type=str,
                         default="delta",
-                        help="Frequency band used for band ranges: "
+                        help="(Default: delta) "
+                        + "Frequency band used for band ranges: "
                         + str([val for val in config.frequency_bands]))
 
     # save the variables in 'args'
