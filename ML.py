@@ -100,7 +100,7 @@ class Classifier:
                     np.genfromtxt(path, delimiter=",").T[0].T,
                     fname.split('_')[2][:-4], fname[:config.participantNumLen],
                     fname.split('_')[1],
-                    source=os.path.basename(os.path.dirname(path))))
+                    source=os.path.dirname(path)))
 
         if (self.data[-1].data.shape != self.data[0].data.shape):
 
@@ -180,7 +180,8 @@ class Classifier:
         verbosity=True,
         tt_split=0.33,
         labels=None,
-            normalize=None):
+        normalize=None,
+            multi_label=False):
         """
         Prepares data within Classifier object such that all in Classifier.data
         are contained in either self.train_dataset or self.test_dataset,
@@ -209,19 +210,18 @@ class Classifier:
         # shuffle dataset
         random.shuffle(self.data)
 
-        # total num for each class
-        totalpos = 0
-        totalneg = 0
-
-        if len(self.groups) > 2:
-            print("Warning: Not correct for # groups > 2 yet. Coming soon.")
-
         if labels is None:
             self.groups.sort()
         else:
             self.groups = list(labels)
 
         self.group_names = [config.group_names[group] for group in self.groups]
+
+        # total num for each class
+        class_amounts = {}
+
+        for group in self.group_names:
+            class_amounts[group] = 0
 
         if any(
             num not in config.group_names\
@@ -238,37 +238,22 @@ class Classifier:
             raise ValueError
             sys.exit(1)
 
-        for item in self.data:
-            if item.group == self.groups[0]:
-                totalneg += 1
-            else:
-                totalpos += 1
-
-        if verbosity:
-            print("Number of negative outcomes:", totalneg)
-            print("Number of positive outcomes:", totalpos)
-
         # make list of subjects in this dataset
         self.subjects = list(set([
             (item.source, item.subject)
             for item in self.data]))
 
+        random.shuffle(self.subjects)
+
         if verbosity:
             print("Total number of subjects:", len(self.subjects))
 
-        # get num condition positive
-        j = 0
-        for sub in self.subjects:
-            if int(sub[1][0]) != self.groups[0]:
-                j += 1
+        for item in self.data:
+            class_amounts[config.group_names[item.group]] += 1
 
         if verbosity:
-            print(
-                "% Positive in all subjects:",
-                j / len(self.subjects))
-            print(
-                "% Negative in all subjects:",
-                (len(self.subjects) - j) / len(self.subjects))
+            for key, value in class_amounts.items():
+                print("Number of", key, "outcomes:", int(value))
 
         self.train_subjects = []
         self.test_subjects = []
@@ -276,136 +261,109 @@ class Classifier:
         # shuffle subject list randomly and then
         # split data into train and test spectra (no overlapping subjects)
         # "subject-stratified" train-test split
-        if k_fold is None and tt_split > 0:
-            random.shuffle(self.subjects)
+        if (k_fold is None) and (tt_split > 0) and (tt_split < 1):
 
             split = math.floor(len(self.subjects)*tt_split)
 
-            # TODO
-            # not sure if this will work correctly with extremely low
-            # val for tt_split, e.g. 0, or 0.001
-            pos_subjects = [
-                sub for sub in self.subjects if int(sub[1][0]) != self.groups[0]]
-            pos_split = math.floor(len(pos_subjects)*tt_split)
-
-            neg_subjects = [
-                sub for sub in self.subjects if int(sub[1][0]) == self.groups[0]]
-            neg_split = math.floor(len(neg_subjects)*tt_split)
-
-            self.train_subjects = pos_subjects[:pos_split*-1]
-            for sub in neg_subjects[:neg_split*-1]:
-                self.train_subjects.append(sub)
-
-            self.test_subjects = pos_subjects[pos_split*-1:]
-            for sub in neg_subjects[neg_split*-1:]:
-                self.test_subjects.append(sub)
-
-        elif k_fold is None and tt_split == 0:
-            random.shuffle(self.subjects)
-
-            pos_subjects = [
-                sub for sub in self.subjects if int(sub[1][0]) != self.groups[0]]
-
-            neg_subjects = [
-                sub for sub in self.subjects if int(sub[1][0]) == self.groups[0]]
-
-            self.train_subjects = pos_subjects
-            for sub in neg_subjects:
-                self.train_subjects.append(sub)
-
+            self.train_subjects = []
             self.test_subjects = []
 
-        elif k_fold is None and tt_split == 1:
-            random.shuffle(self.subjects)
+            for group in self.groups:
 
-            pos_subjects = [
-                sub for sub in self.subjects if int(sub[1][0]) != self.groups[0]]
+                group_subjects = [sub for sub in self.subjects
+                    if int(sub[1][0]) == group]
 
-            neg_subjects = [
-                sub for sub in self.subjects if int(sub[1][0]) == self.groups[0]]
+                pos_split = math.floor(len(group_subjects)*tt_split)
+                self.train_subjects += group_subjects[:(pos_split*-1)]
+                self.test_subjects += group_subjects[(pos_split*-1):]
 
-            self.test_subjects = pos_subjects
-            for sub in neg_subjects:
-                self.test_subjects.append(sub)
+            if (len(self.train_subjects)\
+                + len(self.test_subjects))\
+                    != len(self.subjects):
+                print("Number of train subjects:", len(self.train_subjects))
+                print("Number of test subjects:", len(self.test_subjects))
+                print("Throw a fit")
+                raise ValueError
+                sys.exit(3)
+
+        elif (k_fold is None) and (tt_split == 0):
+
+            self.train_subjects = self.subjects
+            self.test_subjects = []
+
+        elif (k_fold is None) and (tt_split == 1):
 
             self.train_subjects = []
+            self.test_subjects = self.subjects
 
-        else:
+        elif (k_fold is not None):
             from sklearn.model_selection import KFold
 
             self.subjects.sort()
 
+            self.train_subjects = []
+            self.test_subjects = []
+
             # the first n_samples % n_splits folds have size:
-            # n_samples // n_splits + 1, other folds have size:
+            # n_samples // n_splits + 1
+            # other folds have size:
             # n_samples // n_splits
             kf = KFold(n_splits=k_fold[1])
 
             # first look at only subjects with subject code above 1 (cond-pos)
-            pos_subjects = [sub for sub in self.subjects if int(sub[1][0]) != self.groups[0]]
-            train_indexes, test_indexes = list(
-                kf.split(pos_subjects))[k_fold[0]]
+            for group in self.groups:
 
-            for i, sub in enumerate(pos_subjects):
-                if i in train_indexes:
-                    self.train_subjects.append(sub)
-                elif i in test_indexes:
-                    self.test_subjects.append(sub)
-                else:
-                    print("There was an error in the k-fold algorithm.")
-                    print("Exiting.")
-                    sys.exit(1)
+                group_subjects = [sub for sub in self.subjects
+                    if int(sub[1][0]) == group]
 
-            # then look at subjects with subject code "1" (condition-neg)
-            neg_subjects = [
-                sub for sub in self.subjects if int(sub[1][0]) == self.groups[0]]
-            train_indexes, test_indexes = list(
-                kf.split(neg_subjects))[k_fold[0]]
+                train_indexes, test_indexes = list(
+                    kf.split(group_subjects))[k_fold[0]]
 
-            for i, sub in enumerate(neg_subjects):
-                if i in train_indexes:
-                    self.train_subjects.append(sub)
-                elif i in test_indexes:
-                    self.test_subjects.append(sub)
-                else:
-                    print("There was an error in the k-fold algorithm.")
-                    print("Exiting.")
-                    sys.exit(1)
+                for i, sub in enumerate(group_subjects):
+                    if i in train_indexes:
+                        self.train_subjects.append(sub)
+                    elif i in test_indexes:
+                        self.test_subjects.append(sub)
+                    else:
+                        print("There was an error in the k-fold algorithm.")
+                        print("Exiting.")
+                        sys.exit(1)
 
-        if tt_split != 1:
+        if len(self.train_subjects) > 0:
             self.train_dataset = np.expand_dims(np.stack(
-                [ContigObj.data
-                    for ContigObj in self.data
-                    if (ContigObj.source, ContigObj.subject)
+                [dataObj.data
+                    for dataObj in self.data
+                    if (dataObj.source, dataObj.subject)
                     in self.train_subjects]),
                 -1)
 
             self.train_labels = np.array(
-                [int(1) if (ContigObj.group != self.groups[0]) else int(0)
-                    for ContigObj in self.data
-                    if (ContigObj.source, ContigObj.subject)
+                [self.group_names.index(config.group_names[dataObj.group])
+                    for dataObj in self.data
+                    if (dataObj.source, dataObj.subject)
                     in self.train_subjects])
 
-        if tt_split != 0:
+            if tt_split == 0:
+                self.test_dataset = np.ndarray(self.train_dataset.shape)
+                self.test_labels = np.ndarray(self.train_labels.shape)
+
+        if len(self.test_subjects) > 0:
             self.test_dataset = np.expand_dims(np.stack(
-                [ContigObj.data
-                    for ContigObj in self.data
-                    if (ContigObj.source, ContigObj.subject)
+                [dataObj.data
+                    for dataObj in self.data
+                    if (dataObj.source, dataObj.subject)
                     in self.test_subjects]),
                 -1)
 
             self.test_labels = np.array(
-                [int(1) if (ContigObj.group != self.groups[0]) else int(0)
-                    for ContigObj in self.data
-                    if (ContigObj.source, ContigObj.subject)
+                [self.group_names.index(config.group_names[dataObj.group])
+                    for dataObj in self.data
+                    if (dataObj.source, dataObj.subject)
                     in self.test_subjects])
 
-        if tt_split == 0:
-            self.test_dataset = np.ndarray(self.train_dataset.shape)
-            self.test_labels = np.ndarray(self.train_labels.shape)
-
-        if tt_split == 1:
-            self.train_dataset = np.ndarray(self.test_dataset.shape)
-            self.train_labels = np.ndarray(self.test_labels.shape)
+            if tt_split == 1:
+                self.train_dataset = np.ndarray(self.test_dataset.shape)
+                self.train_labels = np.ndarray(self.test_dataset.shape)
 
         if k_fold is None:
             print("Number of samples in train:", self.train_dataset.shape[0])
@@ -469,12 +427,20 @@ class Classifier:
                 num_pos_test_samps += 1
 
         if verbosity:
-            print(
-                "% Positive samples in train:",
-                num_pos_train_samps / len(self.train_labels))
-            print(
-                "% Positive samples in test:",
-                num_pos_test_samps / len(self.test_labels))
+            for group in self.group_names:
+                print(
+                    "% {} samples in train: {}".format(
+                        group,
+                        len([label for label in self.train_labels
+                            if label==self.group_names.index(group)]) \
+                            / len(self.train_labels)))
+                print(
+                    "% {} samples in test: {}".format(
+                        group,
+                        len([label for label in self.test_labels
+                            if label==self.group_names.index(group)]) \
+                            / len(self.test_labels)))
+
 
     def LDA(
         self,
@@ -672,13 +638,16 @@ class Classifier:
         beta1=0.9,
         beta2=0.999,
         epochs=100,
-        plot_ROC=False,
         verbosity=True,
         eval=None,
         depth=5,
         regularizer=None,
         regularizer_param=0.01,
-            dropout=None):
+        initial_bias=None,
+        dropout=None,
+        plot_ROC=False,
+        plot_conf=False,
+            plot_3d_preds=False):
         """
         Convolutional Neural Network classifier, using Tensorflow base
 
@@ -712,6 +681,18 @@ class Classifier:
         from tensorflow.keras.layers import BatchNormalization
         import datetime
         import kerastuner as kt
+        from Plots import plot_history
+
+        if initial_bias == 'auto':
+            initial_bias = []
+            for i, group in enumerate(self.groups):
+                initial_bias.append(
+                    np.log([
+                        len([label for label in self.train_labels
+                            if label == i])\
+                        / len([label for label in self.train_labels
+                            if label != i])]))
+            initial_bias = tf.keras.initializers.Constant(initial_bias)
 
         # introduce sequential set
         model = tf.keras.models.Sequential()
@@ -744,10 +725,14 @@ class Classifier:
         #     3,
         #     activation='softmax'))
 
-        # model.add(Dense(10, activation='softmax'))
+        model.add(Dense(10, activation='softmax'))
         model.add(Dense(
-            2,
+            len(self.groups),
             activation='softmax',
+            use_bias=True if initial_bias is not None else False,
+            bias_initializer=initial_bias
+            if initial_bias is not None
+            else None,
             kernel_regularizer=tf.keras.regularizers.l1_l2(
                 l1=regularizer_param,
                 l2=regularizer_param)))
@@ -804,7 +789,7 @@ class Classifier:
             validation_data=(self.test_dataset, self.test_labels) if
             any(val in [1, 2, 3] for val in self.test_labels)
             else None,
-            batch_size=32,
+            batch_size=64,
             callbacks=[
                 tensorboard_callback,
                 csv_logger],
@@ -816,53 +801,38 @@ class Classifier:
 
         model.save(checkpoint_dir+"/my_model")
 
-        # save accuracy curve to log dir
-        plt.plot(
-            history.history['accuracy'],
-            label='train: '\
-                + "Subs: " + str(len(self.train_subjects)) + " "\
-                + "Data: " + str(len(self.train_dataset)))
-        if all(val in config.group_names for val in self.test_labels):
-            plt.plot(
-                history.history['val_accuracy'],
-                label='test: '\
-                    + "Subs: " + str(len(self.test_subjects)) + " "\
-                    + "Data: " + str(len(self.test_dataset)))
-        plt.title('Epoch Accuracy')
-        plt.ylabel('accuracy')
-        plt.xlabel('epoch')
-        plt.legend(loc='upper left')
-        plt.grid(True)
-        plt.savefig(checkpoint_dir+"/epoch_accuracy")
-        plt.clf()
+        # plot and save accuracy and loss to checkpoint dir
+        plot_history(self, history, checkpoint_dir, 'accuracy')
+        plot_history(self, history, checkpoint_dir, 'loss')
 
-        # save loss curve to log dir
-        plt.plot(
-            history.history['loss'],
-            label='train: '\
-                + "Subs: " + str(len(self.train_subjects)) + " "\
-                + "Data: " + str(len(self.train_dataset)))
-        if all(val in config.group_names for val in self.test_labels):
-            plt.plot(
-                history.history['val_loss'],
-                label='test: '\
-                    + "Subs: " + str(len(self.test_subjects)) + " "\
-                    + "Data: " + str(len(self.test_dataset)))
+        y_pred_keras = model.predict(self.test_dataset)
 
-        plt.title('Epoch Loss')
-        plt.ylabel('loss')
-        plt.xlabel('epoch')
-        plt.legend(loc='upper left')
-        plt.grid(True)
-        plt.savefig(checkpoint_dir+"/epoch_loss")
-        plt.clf()
+        if plot_conf is True:
+            from sklearn.metrics import confusion_matrix
+            from Plots import plot_confusion_matrix
 
-        y_pred_keras = model.predict(self.test_dataset)[:, 1]
+            y_pred = np.argmax(y_pred_keras, axis=1)
 
+            # calculate confusion matrix
+            cm = confusion_matrix(self.test_labels, y_pred)
+            plot_confusion_matrix(cm, checkpoint_dir, self.group_names)
+
+        if plot_3d_preds is True:
+            from Plots import plot_3d_scatter
+
+            plot_3d_scatter(
+                y_pred_keras,
+                self.test_labels,
+                self.group_names,
+                checkpoint_dir,
+                "validation_3d_preds")
+
+        # TODO:
+        # not working for multi-label atm
         if plot_ROC is True:
             from Plots import roc
             roc(
-                y_pred_keras,
+                y_pred_keras[:, 1],
                 self.test_labels,
                 fname=checkpoint_dir+"/ROC")
 
@@ -1054,8 +1024,16 @@ class Classifier:
                 initial_accumulator_value=0.1,
                 epsilon=1e-07,
                 name='Adagrad'),
-            loss='sparse_categorical_crossentropy',
-            metrics=['accuracy'])
+            loss=tf.keras.losses.BinaryCrossentropy(),
+            metrics=[
+                tf.keras.metrics.TruePositives(name='tp'),
+                tf.keras.metrics.FalsePositives(name='fp'),
+                tf.keras.metrics.TrueNegatives(name='tn'),
+                tf.keras.metrics.FalseNegatives(name='fn'),
+                tf.keras.metrics.BinaryAccuracy(name='accuracy'),
+                tf.keras.metrics.Precision(name='precision'),
+                tf.keras.metrics.Recall(name='recall'),
+                tf.keras.metrics.AUC(name='auc')])
 
         return(model)
 
@@ -1126,6 +1104,8 @@ class Classifier:
         epochs=100,
         iterations=1000,
         plot_ROC=False,
+        plot_conf=False,
+        plot_3d_preds=False,
         k=1,
         plot_spec_avgs=False,
         C=1,
@@ -1175,7 +1155,9 @@ class Classifier:
                     beta1=beta1,
                     beta2=beta2,
                     epochs=epochs,
-                    plot_ROC=plot_ROC)
+                    plot_ROC=plot_ROC,
+                    plot_conf=plot_conf,
+                    plot_3d_preds=plot_3d_preds)
 
                 self.saveModelEvaluation('cnn', model, y_pred, y_labels, i)
 
@@ -1207,7 +1189,9 @@ class Classifier:
                     beta1=beta1,
                     beta2=beta2,
                     epochs=epochs,
-                    plot_ROC=plot_ROC)
+                    plot_ROC=plot_ROC,
+                    plot_conf=plot_conf,
+                    plot_3d_preds=plot_3d_preds)
 
                 self.saveModelEvaluation('cnn', model, y_pred, y_labels, i)
 

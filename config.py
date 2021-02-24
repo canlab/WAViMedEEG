@@ -157,7 +157,7 @@ custom_art_map = [
 ]
 
 frequency_bands = {
-    "delta": [0, 2],
+    "delta": [0, 4],
     "theta": [2, 6],
     "alpha": [6, 13],
     "beta": [13, 30],

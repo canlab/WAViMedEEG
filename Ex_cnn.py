@@ -32,6 +32,13 @@ def main():
                         help="(Default: " + config.study_directory + ") "
                         + "Study folder containing dataset")
 
+    parser.add_argument('--balance',
+                        dest='balance',
+                        type=bool,
+                        default=False,
+                        help="(Default: False) If True, then will pop data "
+                        + "from the smaller class datasets until balanced.")
+
     parser.add_argument('--task',
                         dest='task',
                         type=str,
@@ -99,6 +106,13 @@ def main():
                         + "to use. One of "
                         + "the following: standard, minmax, None")
 
+    parser.add_argument('--bias',
+                        dest='bias',
+                        type=str,
+                        default=None,
+                        help="(Default: None) If 'auto', uses bias "
+                        + "initializer to try to resolve class imbalances")
+
     parser.add_argument('--plot_ROC',
                         dest='plot_ROC',
                         type=bool,
@@ -106,11 +120,25 @@ def main():
                         help="(Default: False) Plot sensitivity-specificity "
                         + "curve on validation dataset")
 
+    parser.add_argument('--plot_conf',
+                        dest='plot_conf',
+                        type=bool,
+                        default=False,
+                        help="(Default: False) Plot confusion matrix "
+                        + "on validation dataset")
+
+    parser.add_argument('--plot_3d_preds',
+                        dest='plot_3d_preds',
+                        type=bool,
+                        default=False,
+                        help="(Default: False) Plot 3-dimensional scatter "
+                        + "plot of validation dataset predictions")
+
     parser.add_argument('--plot_spectra',
                         dest='plot_spectra',
                         type=bool,
-                        default=True,
-                        help="(Default: True) Plot spectra by group for "
+                        default=False,
+                        help="(Default: False) Plot spectra by group for "
                         + "training data")
 
     parser.add_argument('--tt_split',
@@ -140,6 +168,13 @@ def main():
                         default=1,
                         help="(Default: 1) If you want to perform "
                         + "cross evaluation, set equal to number of k-folds.")
+
+    parser.add_argument('--repetitions',
+                        dest='repetitions',
+                        type=int,
+                        default=1,
+                        help="(Default: 1) Unlike k-fold, will train the "
+                        + "model n times without mixing around subjects.")
 
     parser.add_argument('--depth',
                         dest='depth',
@@ -188,17 +223,22 @@ def main():
     filter_band = args.filter_band
     epochs = args.epochs
     normalize = args.normalize
+    bias = args.bias
     plot_ROC = args.plot_ROC
+    plot_conf = args.plot_conf
+    plot_3d_preds = args.plot_3d_preds
     plot_spectra = args.plot_spectra
     tt_split = args.tt_split
     learning_rate = args.learning_rate
     lr_decay = args.lr_decay
     k_folds = args.k_folds
+    repetitions = args.repetitions
     depth = args.depth
     regularizer = args.regularizer
     regularizer_param = args.regularizer_param
     dropout = args.dropout
     hypertune = args.hypertune
+    balance = args.balance
 
     # ERROR HANDLING
     if data_type not in ["erps", "spectra", "contigs"]:
@@ -413,68 +453,73 @@ def main():
     # ============== Balance Class Data Sizes ==============
     # pops data off from the larger class until class sizes are equal
     # found in the reference folders
-    myclf.Balance()
+    # if balance is True:
+    #     myclf.Balance()
 
     if k_folds == 1:
         myclf.Prepare(tt_split=tt_split, normalize=normalize)
 
-        if hypertune is False:
-            myclf.CNN(
-                learning_rate=learning_rate,
-                lr_decay=lr_decay,
-                epochs=epochs,
-                plot_ROC=plot_ROC,
-                depth=depth,
-                regularizer=regularizer,
-                regularizer_param=regularizer_param,
-                dropout=dropout)
+        for i in range(repetitions):
+            if hypertune is False:
+                myclf.CNN(
+                    learning_rate=learning_rate,
+                    lr_decay=lr_decay,
+                    epochs=epochs,
+                    plot_ROC=plot_ROC,
+                    plot_conf=plot_conf,
+                    plot_3d_preds=plot_3d_preds,
+                    depth=depth,
+                    regularizer=regularizer,
+                    regularizer_param=regularizer_param,
+                    initial_bias=bias,
+                    dropout=dropout)
 
-            if data_type == 'spectra':
-                if plot_spectra is True:
-                    specavgObj = SpectralAverage(myclf)
-                    specavgObj.plot(
-                        fig_fname=myclf.checkpoint_dir
-                        + "/specavg_"
-                        + os.path.basename(myclf.trial_name)
-                        + "_train_"
-                        + str(datetime.now().strftime("%H-%M-%S")))
+                if data_type == 'spectra':
+                    if plot_spectra is True:
+                        specavgObj = SpectralAverage(myclf)
+                        specavgObj.plot(
+                            fig_fname=myclf.checkpoint_dir
+                            + "/specavg_"
+                            + os.path.basename(myclf.trial_name)
+                            + "_train_"
+                            + str(datetime.now().strftime("%H-%M-%S")))
 
-        else:
-            import tensorflow as tf
-            from kerastuner.tuners import Hyperband
+            else:
+                import tensorflow as tf
+                from kerastuner.tuners import Hyperband
 
-            tuner = Hyperband(
-                myclf.hypertune_CNN,
-                objective='val_accuracy',
-                max_epochs=100,
-                directory='logs/fit/',
-                project_name='1second-spectra')
+                tuner = Hyperband(
+                    myclf.hypertune_CNN,
+                    objective='val_accuracy',
+                    max_epochs=100,
+                    directory='logs/fit/',
+                    project_name='1second-spectra')
 
-            tuner.search_space_summary()
+                tuner.search_space_summary()
 
-            stop_early = tf.keras.callbacks.EarlyStopping(
-                monitor='val_loss',
-                patience=10)
+                stop_early = tf.keras.callbacks.EarlyStopping(
+                    monitor='val_loss',
+                    patience=10)
 
-            tuner.search(
-                myclf.train_dataset,
-                myclf.train_labels,
-                epochs=100,
-                validation_data=(myclf.test_dataset, myclf.test_labels),
-                callbacks=[stop_early])
+                tuner.search(
+                    myclf.train_dataset,
+                    myclf.train_labels,
+                    epochs=100,
+                    validation_data=(myclf.test_dataset, myclf.test_labels),
+                    callbacks=[stop_early])
 
-            models = tuner.get_best_models(num_models=10)
+                models = tuner.get_best_models(num_models=10)
 
-            for i, model in enumerate(models):
-                try:
-                    os.mkdir('logs/fit/'+str(i))
+                for i, model in enumerate(models):
+                    try:
+                        os.mkdir('logs/fit/'+str(i))
 
-                    model.save('logs/fit/'+str(i)+"/my_model")
+                        model.save('logs/fit/'+str(i)+"/my_model")
 
-                except:
-                    print("Can't save models. :(")
+                    except:
+                        print("Can't save models. :(")
 
-            tuner.results_summary()
+                tuner.results_summary()
 
     if k_folds > 1:
         myclf.KfoldCrossVal(
@@ -487,6 +532,8 @@ def main():
             lr_decay=lr_decay,
             epochs=epochs,
             plot_ROC=plot_ROC,
+            plot_conf=plot_conf,
+            plot_3d_preds=plot_3d_preds,
             k=k_folds,
             plot_spec_avgs=plot_spectra)
 

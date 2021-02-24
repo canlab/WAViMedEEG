@@ -301,3 +301,90 @@ def plot_layer_size_covariance(sizes=[], values=[], metric=""):
     if metric != "":
         plt.ylabel(metric)
     plt.show()
+
+
+def plot_confusion_matrix(cm, checkpoint_dir, class_names):
+    """
+    Returns a matplotlib figure containing the plotted confusion matrix.
+
+    Args:
+    cm (array, shape = [n, n]): a confusion matrix of integer classes
+    class_names (array, shape = [n]): String names of the integer classes
+    """
+    import itertools
+    figure = plt.figure(figsize=(8, 8))
+    plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+    plt.title("Confusion matrix")
+    plt.colorbar()
+    tick_marks = np.arange(len(class_names))
+    plt.xticks(tick_marks, class_names, rotation=45)
+    plt.yticks(tick_marks, class_names)
+
+    # Compute the labels from the normalized confusion matrix.
+    labels = np.around(
+        cm.astype('float') / cm.sum(axis=1)[:, np.newaxis],
+        decimals=2)
+
+    # Use white text if squares are dark; otherwise black.
+    threshold = cm.max() / 2.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        color = "white" if cm[i, j] > threshold else "black"
+        plt.text(j, i, labels[i, j], horizontalalignment="center", color=color)
+
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+
+    plt.savefig(checkpoint_dir+"/confusion_matrix")
+    plt.clf()
+
+    return figure
+
+
+def plot_history(clf, history, checkpoint_dir, metric):
+    # save accuracy curve to log dir
+    plt.plot(
+     history.history[metric],
+     label='train: '\
+         + "Subs: " + str(len(clf.train_subjects)) + " "\
+         + "Data: " + str(len(clf.train_dataset)))
+    if all(val in config.group_names for val in clf.test_labels):
+     plt.plot(
+         history.history['val_'+metric],
+         label='test: '\
+             + "Subs: " + str(len(clf.test_subjects)) + " "\
+             + "Data: " + str(len(clf.test_dataset)))
+    plt.title('Epoch Accuracy')
+    plt.ylabel('accuracy')
+    plt.xlabel('epoch')
+    plt.legend(loc='upper left')
+    plt.grid(True)
+    plt.savefig(checkpoint_dir+"/epoch_"+metric)
+    plt.clf()
+
+
+def plot_3d_scatter(y_preds, y_labels, label_names, checkpoint_dir, fig_fname):
+    from mpl_toolkits.mplot3d import Axes3D
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # For each set of style and range settings, plot n random points in the box
+    # defined by x in [23, 32], y in [0, 100], z in [zlow, zhigh].
+    for class_label in list(set(y_labels)):
+        preds = []
+        for pred, label in zip(y_preds, y_labels):
+            if label == class_label:
+                preds.append(pred)
+        ax.scatter(
+            [pred[0] for pred in preds],
+            [pred[1] for pred in preds],
+            [pred[2] for pred in preds],
+            label=label_names[class_label])
+
+    ax.set_xlabel(label_names[0])
+    ax.set_ylabel(label_names[1])
+    ax.set_zlabel(label_names[2])
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(checkpoint_dir+"/"+fig_fname)
+    plt.clf()
