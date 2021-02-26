@@ -180,8 +180,7 @@ class Classifier:
         verbosity=True,
         tt_split=0.33,
         labels=None,
-        normalize=None,
-            multi_label=False):
+            normalize=None):
         """
         Prepares data within Classifier object such that all in Classifier.data
         are contained in either self.train_dataset or self.test_dataset,
@@ -337,11 +336,23 @@ class Classifier:
                     in self.train_subjects]),
                 -1)
 
-            self.train_labels = np.array(
-                [self.group_names.index(config.group_names[dataObj.group])
-                    for dataObj in self.data
-                    if (dataObj.source, dataObj.subject)
-                    in self.train_subjects])
+            # self.train_labels = np.array(
+            #     [self.group_names.index(config.group_names[dataObj.group])
+            #         for dataObj in self.data
+            #         if (dataObj.source, dataObj.subject)
+            #         in self.train_subjects])
+
+            self.train_labels = []
+            for dataObj in self.data:
+                if (dataObj.source, dataObj.subject) in self.train_subjects:
+                    label = []
+                    for i, class_label in enumerate(self.groups):
+                        if self.groups.index(dataObj.group) == i:
+                            label.append(1)
+                        else:
+                            label.append(0)
+                    self.train_labels.append(label)
+            self.train_labels = np.array(self.train_labels)
 
             if tt_split == 0:
                 self.test_dataset = np.ndarray(self.train_dataset.shape)
@@ -355,11 +366,23 @@ class Classifier:
                     in self.test_subjects]),
                 -1)
 
-            self.test_labels = np.array(
-                [self.group_names.index(config.group_names[dataObj.group])
-                    for dataObj in self.data
-                    if (dataObj.source, dataObj.subject)
-                    in self.test_subjects])
+            # self.test_labels = np.array(
+            #     [self.group_names.index(config.group_names[dataObj.group])
+            #         for dataObj in self.data
+            #         if (dataObj.source, dataObj.subject)
+            #         in self.test_subjects])
+
+            self.test_labels = []
+            for dataObj in self.data:
+                if (dataObj.source, dataObj.subject) in self.test_subjects:
+                    label = []
+                    for i, class_label in enumerate(self.groups):
+                        if self.groups.index(dataObj.group) == i:
+                            label.append(1)
+                        else:
+                            label.append(0)
+                    self.test_labels.append(label)
+            self.test_labels = np.array(self.test_labels)
 
             if tt_split == 1:
                 self.train_dataset = np.ndarray(self.test_dataset.shape)
@@ -416,31 +439,28 @@ class Classifier:
                     self.test_dataset.shape[2])))
             self.test_dataset = np.reshape(self.test_dataset, og_shape)
 
-        num_pos_train_samps = 0
-        for label in self.train_labels:
-            if label == 1:
-                num_pos_train_samps += 1
-
-        num_pos_test_samps = 0
-        for label in self.test_labels:
-            if label == 1:
-                num_pos_test_samps += 1
-
         if verbosity:
             for group in self.group_names:
                 print(
                     "% {} samples in train: {}".format(
                         group,
-                        len([label for label in self.train_labels
-                            if label==self.group_names.index(group)]) \
-                            / len(self.train_labels)))
+                        # len([label for label in self.train_labels
+                        #     if label==self.group_names.index(group)]) \
+                        #     / len(self.train_labels)))
+                        np.sum([
+                            self.train_labels[
+                                :, self.group_names.index(group)]])\
+                        / len(self.train_labels)))
                 print(
                     "% {} samples in test: {}".format(
                         group,
-                        len([label for label in self.test_labels
-                            if label==self.group_names.index(group)]) \
-                            / len(self.test_labels)))
-
+                        # len([label for label in self.test_labels
+                        #     if label==self.group_names.index(group)]) \
+                        #     / len(self.test_labels)))
+                        np.sum([
+                            self.test_labels[
+                                :, self.group_names.index(group)]])\
+                        / len(self.test_labels)))
 
     def LDA(
         self,
@@ -643,10 +663,11 @@ class Classifier:
         depth=5,
         regularizer=None,
         regularizer_param=0.01,
-        initial_bias=None,
+        focal_loss_gamma=0,
         dropout=None,
         plot_ROC=False,
         plot_conf=False,
+        decode=True,
             plot_3d_preds=False):
         """
         Convolutional Neural Network classifier, using Tensorflow base
@@ -679,20 +700,26 @@ class Classifier:
         from tensorflow.keras.layers import MaxPooling2D
         from tensorflow.keras.layers import Dropout
         from tensorflow.keras.layers import BatchNormalization
+        # import tensorflow_addons as tfa
+        from focal_loss import SparseCategoricalFocalLoss
         import datetime
         import kerastuner as kt
         from Plots import plot_history
 
-        if initial_bias == 'auto':
-            initial_bias = []
-            for i, group in enumerate(self.groups):
-                initial_bias.append(
-                    np.log([
-                        len([label for label in self.train_labels
-                            if label == i])\
-                        / len([label for label in self.train_labels
-                            if label != i])]))
-            initial_bias = tf.keras.initializers.Constant(initial_bias)
+        # if initial_bias == 'auto':
+        #     initial_bias = {}
+        #     for i, group in enumerate(self.groups):
+        #         initial_bias[group] =\
+        #             (np.sum(self.train_labels[:, i])\
+        #             / len(self.train_labels))
+        #
+        #     # initial_bias = tf.keras.initializers.Constant(initial_bias)
+        #     initial_bias = None
+
+        # decode labels (they arrive as one-hot vectors)
+        if decode is True:
+            self.train_labels_ohe = np.argmax(self.train_labels, axis=1)
+            self.test_labels_ohe = np.argmax(self.test_labels, axis=1)
 
         # introduce sequential set
         model = tf.keras.models.Sequential()
@@ -729,10 +756,10 @@ class Classifier:
         model.add(Dense(
             len(self.groups),
             activation='softmax',
-            use_bias=True if initial_bias is not None else False,
-            bias_initializer=initial_bias
-            if initial_bias is not None
-            else None,
+            # use_bias=True if initial_bias is not None else False,
+            # bias_initializer=initial_bias
+            # if initial_bias is not None
+            # else None,
             kernel_regularizer=tf.keras.regularizers.l1_l2(
                 l1=regularizer_param,
                 l2=regularizer_param)))
@@ -743,7 +770,10 @@ class Classifier:
         # print model summary at buildtime
         if verbosity:
             model.summary()
-            print("Input shape:", self.train_dataset.shape)
+            print("Train data shape:", self.train_dataset.shape)
+            print("Train label shape:", self.train_labels.shape)
+            print("Test data shape:", self.test_dataset.shape)
+            print("Test label shape:", self.test_labels.shape)
 
         # adaptive learning rate
         if lr_decay is True:
@@ -759,7 +789,10 @@ class Classifier:
                 initial_accumulator_value=0.1,
                 epsilon=1e-07,
                 name='Adagrad'),
-            loss='sparse_categorical_crossentropy',
+            # loss='categorical_crossentropy',
+            # loss=tf.keras.losses.BinaryCrossentropy(),
+            # loss=tfa.losses.SigmoidFocalCrossEntropy(),
+            loss=SparseCategoricalFocalLoss(gamma=focal_loss_gamma),
             metrics=['accuracy'])
 
         # tensorboard setup
@@ -784,10 +817,10 @@ class Classifier:
 
         history = model.fit(
             self.train_dataset,
-            self.train_labels,
+            self.train_labels_ohe,
             epochs=epochs,
-            validation_data=(self.test_dataset, self.test_labels) if
-            any(val in [1, 2, 3] for val in self.test_labels)
+            validation_data=(self.test_dataset, self.test_labels_ohe) if
+            (len(self.test_labels_ohe) > 0)
             else None,
             batch_size=64,
             callbacks=[
@@ -795,9 +828,9 @@ class Classifier:
                 csv_logger],
             verbose=verbosity)
 
-        f = open(checkpoint_dir+"/summary.txt", 'w')
-        f.write(str(model.summary()))
-        f.close()
+        with open(checkpoint_dir+"/summary.txt", 'w') as fh:
+            # Pass the file handle in as a lambda function to make it callable
+            model.summary(print_fn=lambda x: fh.write(x + '\n'))
 
         model.save(checkpoint_dir+"/my_model")
 
@@ -807,14 +840,15 @@ class Classifier:
 
         y_pred_keras = model.predict(self.test_dataset)
 
+        y_pred = np.argmax(y_pred_keras, axis=1)
+        labels = np.argmax(self.test_labels, axis=1)
+
         if plot_conf is True:
             from sklearn.metrics import confusion_matrix
             from Plots import plot_confusion_matrix
 
-            y_pred = np.argmax(y_pred_keras, axis=1)
-
             # calculate confusion matrix
-            cm = confusion_matrix(self.test_labels, y_pred)
+            cm = confusion_matrix(labels, y_pred)
             plot_confusion_matrix(cm, checkpoint_dir, self.group_names)
 
         if plot_3d_preds is True:
@@ -822,7 +856,7 @@ class Classifier:
 
             plot_3d_scatter(
                 y_pred_keras,
-                self.test_labels,
+                labels,
                 self.group_names,
                 checkpoint_dir,
                 "validation_3d_preds")

@@ -348,14 +348,14 @@ def plot_history(clf, history, checkpoint_dir, metric):
      label='train: '\
          + "Subs: " + str(len(clf.train_subjects)) + " "\
          + "Data: " + str(len(clf.train_dataset)))
-    if all(val in config.group_names for val in clf.test_labels):
-     plt.plot(
-         history.history['val_'+metric],
-         label='test: '\
-             + "Subs: " + str(len(clf.test_subjects)) + " "\
-             + "Data: " + str(len(clf.test_dataset)))
+
+    plt.plot(
+     history.history['val_'+metric],
+     label='test: '\
+         + "Subs: " + str(len(clf.test_subjects)) + " "\
+         + "Data: " + str(len(clf.test_dataset)))
     plt.title('Epoch Accuracy')
-    plt.ylabel('accuracy')
+    plt.ylabel(metric)
     plt.xlabel('epoch')
     plt.legend(loc='upper left')
     plt.grid(True)
@@ -365,6 +365,10 @@ def plot_history(clf, history, checkpoint_dir, metric):
 
 def plot_3d_scatter(y_preds, y_labels, label_names, checkpoint_dir, fig_fname):
     from mpl_toolkits.mplot3d import Axes3D
+    from matplotlib import animation
+    def rotate(angle):
+        ax.view_init(azim=angle)
+
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
@@ -386,5 +390,16 @@ def plot_3d_scatter(y_preds, y_labels, label_names, checkpoint_dir, fig_fname):
     ax.set_zlabel(label_names[2])
     plt.legend()
     plt.grid(True)
-    plt.savefig(checkpoint_dir+"/"+fig_fname)
+
+    rot_animation = animation.FuncAnimation(
+        fig,
+        rotate,
+        frames=np.arange(0, 362, 2),
+        interval=100)
+    rot_animation.save(
+        checkpoint_dir+"/"+fig_fname+".gif",
+        dpi=80,
+        writer='imagemagick')
+
+    # plt.savefig(checkpoint_dir+"/"+fig_fname)
     plt.clf()

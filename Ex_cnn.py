@@ -37,7 +37,7 @@ def main():
                         type=bool,
                         default=False,
                         help="(Default: False) If True, then will pop data "
-                        + "from the smaller class datasets until balanced.")
+                        + "from the larger class datasets until balanced.")
 
     parser.add_argument('--task',
                         dest='task',
@@ -106,12 +106,12 @@ def main():
                         + "to use. One of "
                         + "the following: standard, minmax, None")
 
-    parser.add_argument('--bias',
-                        dest='bias',
-                        type=str,
-                        default=None,
-                        help="(Default: None) If 'auto', uses bias "
-                        + "initializer to try to resolve class imbalances")
+    # parser.add_argument('--bias',
+    #                     dest='bias',
+    #                     type=str,
+    #                     default=None,
+    #                     help="(Default: None) If 'auto', uses bias "
+    #                     + "initializer to try to resolve class imbalances")
 
     parser.add_argument('--plot_ROC',
                         dest='plot_ROC',
@@ -196,6 +196,15 @@ def main():
                         default=0.01,
                         help="(Default: 0.01) Regularization parameter ")
 
+    parser.add_argument('--focal_gamma',
+                        dest='focal_loss_gamma',
+                        type=float,
+                        default=0,
+                        help="(Default: 0) At zero, focal loss is exactly "
+                        + "cross-entropy. At higher values, easier data "
+                        + "contributes more weakly to loss function, and "
+                        + "difficult classifications are stronger.")
+
     parser.add_argument('--dropout',
                         dest='dropout',
                         type=float,
@@ -223,7 +232,7 @@ def main():
     filter_band = args.filter_band
     epochs = args.epochs
     normalize = args.normalize
-    bias = args.bias
+    # bias = args.bias
     plot_ROC = args.plot_ROC
     plot_conf = args.plot_conf
     plot_3d_preds = args.plot_3d_preds
@@ -236,6 +245,7 @@ def main():
     depth = args.depth
     regularizer = args.regularizer
     regularizer_param = args.regularizer_param
+    focal_loss_gamma = args.focal_loss_gamma
     dropout = args.dropout
     hypertune = args.hypertune
     balance = args.balance
@@ -387,6 +397,11 @@ def main():
         raise ValueError
         sys.exit(3)
 
+    if (focal_loss_gamma < 0):
+        print("Invalid entry for focal gamma. Must be float >= 0.")
+        raise ValueError
+        sys.exit(3)
+
     if dropout is not None:
         if (dropout <= 0) or (dropout >= 1):
             print(
@@ -471,7 +486,8 @@ def main():
                     depth=depth,
                     regularizer=regularizer,
                     regularizer_param=regularizer_param,
-                    initial_bias=bias,
+                    focal_loss_gamma=focal_loss_gamma,
+                    # initial_bias=bias,
                     dropout=dropout)
 
                 if data_type == 'spectra':
@@ -527,6 +543,7 @@ def main():
             normalize=normalize,
             regularizer=regularizer,
             regularizer_param=regularizer_param,
+            focal_loss_gamma=focal_loss_gamma,
             dropout=dropout,
             learning_rate=learning_rate,
             lr_decay=lr_decay,
