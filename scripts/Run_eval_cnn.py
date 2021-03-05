@@ -1,15 +1,20 @@
-import ML
 import sys
+sys.path.append('..')
+import src.ML
+import src.config
+from src.Standard import SpectralAverage
 import os
 from tqdm import tqdm
-import config
 import argparse
+from datetime import datetime
+import numpy as np
 
 
 def main():
 
     parser = argparse.ArgumentParser(
-        description="Options for Mixed Model: LDA, SVM, and CNN ")
+        description="Options for CNN "
+        + "(convoluional neural network) method of ML.Classifier")
 
     parser.add_argument('data_type',
                         type=str,
@@ -22,22 +27,34 @@ def main():
                         help="(Default: " + config.my_studies + ") Path to "
                         + "parent folder containing study folders")
 
-    parser.add_argument('--study_name',
-                        dest='study_name',
-                        type=str,
+    parser.add_argument('--study_names',
+                        dest='study_names',
+                        nargs='+',
                         default=config.study_directory,
                         help="(Default: " + config.study_directory + ") "
                         + "Study folder containing dataset")
 
-    parser.add_argument('--balance',
-                        dest='balance',
-                        nargs='+',
-                        default=config.ref_folders,
-                        help="(Default: " + str(config.ref_folders) + ") "
-                        + "List of study folders against which to "
-                        + "evenly balance the dataset (iterates over folders) "
-                        + "such that there are an equal number of data "
-                        + "in each class.")
+    parser.add_argument('--log_dir',
+                        dest='log_dir',
+                        type=str,
+                        default="logs/fit",
+                        help="(Default: logs/fit) Parent directory for "
+                        + "checkpoints.")
+
+    parser.add_argument('--checkpoint_dir',
+                        dest='checkpoint_dir',
+                        type=str,
+                        default=None,
+                        help="(Default: None) Checkpoint directory (most "
+                        + "likely found in logs/fit) containing saved model.")
+
+    parser.add_argument('--pred_level',
+                        dest='pred_level',
+                        type=str,
+                        default='all',
+                        help="(Default: 'all') If 'all', returns a prediction "
+                        + "for every individual piece of data. If 'subject', "
+                        + "then returns 1 averaged prediction per subject.")
 
     parser.add_argument('--task',
                         dest='task',
@@ -91,13 +108,6 @@ def main():
 
     # ============== CNN args ==============
 
-    parser.add_argument('--epochs',
-                        dest='epochs',
-                        type=int,
-                        default=100,
-                        help="(Default: 100) Number of training "
-                        + " iterations to be run")
-
     parser.add_argument('--normalize',
                         dest='normalize',
                         type=str,
@@ -106,52 +116,39 @@ def main():
                         + "to use. One of "
                         + "the following: standard, minmax, None")
 
-    parser.add_argument('--plot_ROC',
-                        dest='plot_ROC',
+    parser.add_argument('--plot_hist',
+                        dest='plot_hist',
                         type=bool,
                         default=False,
-                        help="(Default: False) Plot sensitivity-specificity "
-                        + "curve on validation dataset")
+                        help="(Default: False) Plot histogram of predictions.")
 
-    parser.add_argument('--learning_rate',
-                        dest='learning_rate',
-                        type=float,
-                        default=0.01,
-                        help="(Default: 0.01) CNN step size")
-
-    parser.add_argument('--lr_decay',
-                        dest='lr_decay',
+    parser.add_argument('--plot_spectra',
+                        dest='plot_spectra',
                         type=bool,
-                        default=False,
-                        help="(Default: False) Whether learning rate should "
-                        + "decay adhering to a 0.96 decay rate schedule")
-
-    parser.add_argument('--k_folds',
-                        dest='k_folds',
-                        type=int,
-                        default=1,
-                        help="(Default: 1) If you want to perform "
-                        + "cross evaluation, set equal to number of k-folds.")
+                        default=True,
+                        help="(Default: True) Plot spectra by group for "
+                        + "training data")
 
     # save the variables in 'args'
     args = parser.parse_args()
 
     data_type = args.data_type
     studies_folder = args.studies_folder
-    study_name = args.study_name
+    study_names = args.study_names
+    log_dir = args.log_dir
+    checkpoint_dir = args.checkpoint_dir
     task = args.task
     length = args.length
     channels = args.channels
     artifact = args.artifact
     erp_degree = args.erp_degree
     filter_band = args.filter_band
-    balance = args.balance
-    epochs = args.epochs
     normalize = args.normalize
-    plot_ROC = args.plot_ROC
-    learning_rate = args.learning_rate
-    lr_decay = args.lr_decay
-    k_folds = args.k_folds
+    plot_spectra = args.plot_spectra
+    plot_hist = args.plot_hist
+    plot_conf = args.plot_conf
+    plot_3d_preds = args.plot_3d_preds
+    pred_level = args.pred_level
 
     # ERROR HANDLING
     if data_type not in ["erps", "spectra", "contigs"]:
@@ -168,12 +165,24 @@ def main():
         raise FileNotFoundError
         sys.exit(3)
 
-    if not os.path.isdir(os.path.join(studies_folder, study_name)):
-        print(
-            "Invalid entry for study_name, "
-            + "path does not exist as directory.")
-        raise FileNotFoundError
-        sys.exit(3)
+    for study_name in study_names:
+        if not os.path.isdir(os.path.join(studies_folder, study_name)):
+            print(
+                "Invalid entry for study_name, "
+                + "path does not exist as directory.")
+            raise FileNotFoundError
+            sys.exit(3)
+
+    if checkpoint_dir is not None:
+        if not os.path.isdir(checkpoint_dir):
+            if not os.path.isdir(log_dir+checkpoint_dir):
+                print(
+                    "Invalid entry for checkpoint directory, "
+                    + "path does not exist as directory.")
+                raise FileNotFoundError
+                sys.exit(3)
+            else:
+                checkpoint_dir = log_dir+checkpoint_dir
 
     if task not in config.tasks:
         print(
@@ -223,32 +232,12 @@ def main():
             raise ValueError
             sys.exit(3)
 
-    try:
-        if (epochs <= 0) or (epochs > 10000):
-            print("Invalid entry for epochs, must be between 0 and 10000.")
-            sys.exit(3)
-            raise ValueError
-            sys.exit(3)
-    except TypeError:
-        print(
-            "Invalid entry for epochs, "
-            + "must be integer value between 0 and 10000.")
-        raise ValueError
-        sys.exit(3)
-
     if normalize not in ["standard", "minmax", None]:
         print(
             "Invalid entry for normalize. "
             + "Must be one of ['standard', 'minmax', 'None'].")
         raise ValueError
         sys.exit(3)
-
-    if learning_rate < 0.00001 or learning_rate > 0.99999:
-        print(
-            "Invalid entry for learning_rate. Must be float between "
-            + "0.00001 and 0.99999.")
-        raise ValueError
-        sy.exit(3)
 
     try:
         if len(str(artifact)) == 19:
@@ -274,11 +263,6 @@ def main():
         raise ValueError
         sys.exit(3)
 
-    if k_folds <= 1:
-        print("Invalid entry for k_folds. Must be int 2 or greater.")
-        raise ValueError
-        sys.exit(3)
-
     if filter_band == "nofilter":
         pass
     elif any(band == filter_band for band in config.frequency_bands):
@@ -294,73 +278,106 @@ def main():
         raise ValueError
         sys.exit(3)
 
+    if pred_level not in ["all", "subject"]:
+        print(
+            "Invalid entry for pred_level. Must be either "
+            + "'all' or 'subject'")
+        raise ValueError
+        sys.exit(3)
+
     # patient_path points to our 'condition-positive' dataset
     # ex. patient_path =
     # "/wavi/EEGstudies/CANlab/spectra/P300_250_1111111111111111111_0_1"
-    patient_path = studies_folder\
-        + '/'\
-        + study_name\
-        + '/'\
-        + data_type\
-        + '/'\
-        + task\
-        + '_'\
-        + str(length)\
-        + '_'\
-        + channels\
-        + '_'\
-        + str(artifact)
+    if checkpoint_dir is None:
+        checkpoint_dirs = [
+            log_dir + folder
+            for folder in os.listdir(log_dir)
+            if "_"+data_type in folder]
+    else:
+        checkpoint_dirs = [checkpoint_dir]
 
-    if erp_degree is not None:
-        patient_path += ("_" + str(erp_degree))
+    patient_paths = []
+    for study_name in study_names:
 
-    if not os.path.isdir(patient_path):
-        print("Configuration supplied was not found in study folder data.")
-        print("Failed:", patient_path)
-        raise FileNotFoundError
-        sys.exit(3)
+        patient_path = studies_folder\
+            + '/'\
+            + study_name\
+            + '/'\
+            + data_type\
+            + '/'\
+            + task\
+            + '_'\
+            + str(length)\
+            + '_'\
+            + channels\
+            + '_'\
+            + str(artifact)
 
-    for folder in balance:
-        if not os.path.isdir(studies_folder + "/" + folder):
-            print(
-                "Invalid path in balance. ",
-                studies_folder + "/" + folder + "  does not exist.")
+        if erp_degree is not None:
+            patient_path += ("_" + str(erp_degree))
+
+        if not os.path.isdir(patient_path):
+            print("Configuration supplied was not found in study folder data.")
+            print("Failed:", patient_path)
             raise FileNotFoundError
             sys.exit(3)
 
-        if not os.path.isdir(patient_path.replace(study_name, folder)):
-            print(
-                "Invalid path in balance. "
-                + patient_path.replace(study_name, folder)
-                + "does not exist.")
-            raise FileNotFoundError
-            sys.exit(3)
+        patient_paths.append(patient_path)
 
-    # Instantiate a 'Classifier' Object
-    myclf = ML.Classifier(data_type)
+    for checkpoint_dir in checkpoint_dirs:
 
-    # ============== Load Patient (Condition-Positive) Data ==============
+        # ============== Load All Studies' Data ==============
+        for study_name, patient_path in zip(study_names, patient_paths):
 
-    for fname in os.listdir(patient_path):
-        if fname[:config.participantNumLen] not in config.exclude_subs:
-            if "_"+filter_band in fname:
-                myclf.LoadData(patient_path+"/"+fname)
+            # Instantiate a 'Classifier' Object
+            myclf = ML.Classifier(data_type)
 
-    # ============== Load Control (Condition-Negative) Data ==============
-    # the dataset will automatically add healthy control data
-    # found in the reference folders
-    myclf.Balance(studies_folder, filter_band=filter_band, ref_folders=balance)
+            for fname in os.listdir(patient_path):
+                if "_"+filter_band in fname:
+                    myclf.LoadData(patient_path+"/"+fname)
 
-    myclf.KfoldCrossVal(
-        'mixed',
-        normalize=normalize,
-        learning_rate=learning_rate,
-        lr_decay=lr_decay,
-        epochs=epochs,
-        plot_ROC=plot_ROC,
-        k=k_folds,
-        plot_spec_avgs=True)
+            label_names=checkpoint_dir.split('_')[7:]
+            label_values=[]
+            for group in label_names:
+                for key, value in config.group_names.items():
+                    if group == value:
+                        label_values.append(key)
 
+            myclf.Prepare(
+                tt_split=1,
+                labels=label_values,
+                normalize=normalize)
+
+            if data_type == 'spectra':
+                if plot_spectra is True:
+                    specavgObj = SpectralAverage(myclf)
+                    specavgObj.plot(
+                        fig_fname=checkpoint_dir+"/"
+                        + study_name
+                        + "_true_"
+                        + str(datetime.now().strftime("%H-%M-%S")))
+
+            y_preds = myclf.eval_saved_CNN(
+                checkpoint_dir,
+                plot_hist=plot_hist,
+                plot_conf=plot_conf,
+                plot_3d_preds=plot_3d_preds,
+                fname=study_name,
+                pred_level=pred_level)
+
+            for i, (pred, inputObj) in enumerate(
+                zip(np.rint(y_preds), myclf.data)):
+
+                inputObj.group = myclf.groups[int(pred)]
+
+            if data_type == 'spectra':
+                if plot_spectra is True:
+                    specavgObj = SpectralAverage(myclf)
+                    specavgObj.plot(
+                        fig_fname=checkpoint_dir+"/"
+                        + study_name
+                        + "_pred_"
+                        + str(datetime.now().strftime("%H-%M-%S")))
 
 if __name__ == '__main__':
     main()

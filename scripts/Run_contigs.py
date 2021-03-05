@@ -8,11 +8,12 @@ Requires installation of "mne", "tqdm", and "argparse"
 # and TQDM, which is a handy pip-installable package
 # that gives us nice loading bars.
 
-import Prep
+import sys
+sys.path.append('..')
+import src.Prep
+import src.config
 import os
 import argparse
-import config
-import sys
 from tqdm import tqdm
 
 

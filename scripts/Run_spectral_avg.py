@@ -1,20 +1,17 @@
-import ML
 import sys
+sys.path.append('..')
+import src.ML
+import src.config
+from src.Standard import SpectralAverage
 import os
 from tqdm import tqdm
 import config
-import argparse
 
 
 def main():
 
     parser = argparse.ArgumentParser(
-        description="Options for CNN "
-        + "(convoluional neural network) method of ML.Classifier")
-
-    parser.add_argument('data_type',
-                        type=str,
-                        help="Input data type: contigs, erps, or spectra")
+        description="Options for Spectral Average Plotting ")
 
     parser.add_argument('--studies_folder',
                         dest='studies_folder',
@@ -23,22 +20,12 @@ def main():
                         help="(Default: " + config.my_studies + ") Path to "
                         + "parent folder containing study folders")
 
-    parser.add_argument('--study_name',
-                        dest='study_name',
-                        type=str,
+    parser.add_argument('--study_names',
+                        dest='study_names',
+                        nargs='+',
                         default=config.study_directory,
                         help="(Default: " + config.study_directory + ") "
                         + "Study folder containing dataset")
-
-    parser.add_argument('--balance',
-                        dest='balance',
-                        nargs='+',
-                        default=config.ref_folders,
-                        help="(Default: " + str(config.ref_folders) + ") "
-                        + "List of study folders against which to "
-                        + "evenly balance the dataset (iterates over folders) "
-                        + "such that there are an equal number of data "
-                        + "in each class.")
 
     parser.add_argument('--task',
                         dest='task',
@@ -90,64 +77,27 @@ def main():
                         + "analysis steps, such "
                         + "as: 'noalpha', 'delta', or 'nofilter'")
 
-    # ============== LDA args ==============
-
-    parser.add_argument('--normalize',
-                        dest='normalize',
+    parser.add_argument('--fig_fname',
+                        dest='fig_fname',
                         type=str,
                         default=None,
-                        help="(Default: None) Which normalization technique "
-                        + "to use. One of "
-                        + "the following: standard, minmax, None")
-
-    parser.add_argument('--tt_split',
-                        dest='tt_split',
-                        type=float,
-                        default=0.33,
-                        help="(Default: 0.33) Ratio of test samples "
-                        + "to train samples. Note: not applicable if using "
-                        + "k_folds.")
-
-    parser.add_argument('--k_folds',
-                        dest='k_folds',
-                        type=int,
-                        default=1,
-                        help="(Default: 1) If you want to perform "
-                        + "cross evaluation, set equal to number of k-folds.")
-
-    parser.add_argument('--plot',
-                        dest='plot',
-                        type=bool,
-                        default=False,
-                        help="(Default: False) Plots decision boundary.")
-
+                        help="If supplied, will save figure instead of "
+                        + "showing it, and save to file at this path.")
 
     # save the variables in 'args'
     args = parser.parse_args()
 
-    data_type = args.data_type
     studies_folder = args.studies_folder
-    study_name = args.study_name
+    study_names = args.study_names
     task = args.task
     length = args.length
     channels = args.channels
     artifact = args.artifact
     erp_degree = args.erp_degree
     filter_band = args.filter_band
-    balance = args.balance
-    normalize = args.normalize
-    tt_split = args.tt_split
-    k_folds = args.k_folds
-    plot = args.plot
+    fig_fname = args.fig_fname
 
     # ERROR HANDLING
-    if data_type not in ["erps", "spectra", "contigs"]:
-        print(
-            "Invalid entry for data_type. "
-            + "Must be one of ['erps', 'contigs', 'spectra']")
-        raise ValueError
-        sys.exit(3)
-
     if not os.path.isdir(studies_folder):
         print(
             "Invalid entry for studies_folder, "
@@ -155,12 +105,13 @@ def main():
         raise FileNotFoundError
         sys.exit(3)
 
-    if not os.path.isdir(os.path.join(studies_folder, study_name)):
-        print(
-            "Invalid entry for study_name, "
-            + "path does not exist as directory.")
-        raise FileNotFoundError
-        sys.exit(3)
+    for study_name in study_names:
+        if not os.path.isdir(os.path.join(studies_folder, study_name)):
+            print(
+                "Invalid entry for study_name, "
+                + "path does not exist as directory.")
+            raise FileNotFoundError
+            sys.exit(3)
 
     if task not in config.tasks:
         print(
@@ -169,8 +120,8 @@ def main():
         raise ValueError
         sys.exit(3)
 
-    if type(length) is int is False:
-        print("Length must be an integer (in Hz).")
+    if not isinstance(length, int):
+        print("Length must be an integer.")
         raise ValueError
         sys.exit(3)
 
@@ -210,20 +161,6 @@ def main():
             raise ValueError
             sys.exit(3)
 
-    if normalize not in ["standard", "minmax", None]:
-        print(
-            "Invalid entry for normalize. "
-            + "Must be one of ['standard', 'minmax', 'None'].")
-        raise ValueError
-        sys.exit(3)
-
-    if tt_split < 0 or tt_split > 0.999:
-        print(
-            "Invalid entry for tt_split. Must be float between "
-            + "0.1 and 0.9.")
-        raise ValueError
-        sys.exit(3)
-
     try:
         if len(str(artifact)) == 19:
             for char in artifact:
@@ -248,11 +185,6 @@ def main():
         raise ValueError
         sys.exit(3)
 
-    if k_folds <= 0:
-        print("Invalid entry for k_folds. Must be int 1 or greater.")
-        raise ValueError
-        sys.exit(3)
-
     if filter_band == "nofilter":
         pass
     elif any(band == filter_band for band in config.frequency_bands):
@@ -271,73 +203,58 @@ def main():
     # patient_path points to our 'condition-positive' dataset
     # ex. patient_path =
     # "/wavi/EEGstudies/CANlab/spectra/P300_250_1111111111111111111_0_1"
-    patient_path = studies_folder\
-        + '/'\
-        + study_name\
-        + '/'\
-        + data_type\
-        + '/'\
-        + task\
-        + '_'\
-        + str(length)\
-        + '_'\
-        + channels\
-        + '_'\
-        + str(artifact)
+    patient_paths = []
+    # patient_path points to our 'condition-positive' dataset
+    # ex. patient_path =
+    # "/wavi/EEGstudies/CANlab/spectra/P300_250_1111111111111111111_0_1"
+    for study_name in study_names:
 
-    if erp_degree is not None:
-        patient_path += ("_" + str(erp_degree))
+        patient_path = studies_folder\
+            + '/'\
+            + study_name\
+            + '/'\
+            + 'spectra'\
+            + '/'\
+            + task\
+            + '_'\
+            + str(length)\
+            + '_'\
+            + channels\
+            + '_'\
+            + str(artifact)
 
-    if not os.path.isdir(patient_path):
-        print("Configuration supplied was not found in study folder data.")
-        print("Failed:", patient_path)
+        if erp_degree is not None:
+            patient_path += ("_" + str(erp_degree))
+
+        if not os.path.isdir(patient_path):
+            print("Configuration supplied was not found in study folder data.")
+            print("Failed:", patient_path)
+            raise FileNotFoundError
+            sys.exit(3)
+
+        patient_paths.append(patient_path)
+
+    if any(
+        ["_"+filter_band in fname
+            for fname in os.listdir(patient_path)]):
+        pass
+    else:
+        print(
+            "No files with " + filter_band + " were found in " + patient_path)
         raise FileNotFoundError
         sys.exit(3)
 
-    for folder in balance:
-        if not os.path.isdir(studies_folder + "/" + folder):
-            print(
-                "Invalid path in balance. ",
-                studies_folder + "/" + folder + "  does not exist.")
-            raise FileNotFoundError
-            sys.exit(3)
-
-        if not os.path.isdir(patient_path.replace(study_name, folder)):
-            print(
-                "Invalid path in balance. "
-                + patient_path.replace(study_name, folder)
-                + "does not exist.")
-            raise FileNotFoundError
-            sys.exit(3)
-
     # Instantiate a 'Classifier' Object
-    myclf = ML.Classifier(data_type)
+    myclf = ML.Classifier('spectra')
 
-    # ============== Load Patient (Condition-Positive) Data ==============
-
-    for fname in os.listdir(patient_path):
-        if fname[:config.participantNumLen] not in config.exclude_subs:
+    # ============== Load All Studies' Data ==============
+    for patient_path in patient_paths:
+        for fname in os.listdir(patient_path):
             if "_"+filter_band in fname:
                 myclf.LoadData(patient_path+"/"+fname)
 
-    # ============== Load Control (Condition-Negative) Data ==============
-    # the dataset will automatically add healthy control data
-    # found in the reference folders
-    myclf.Balance(studies_folder, filter_band=filter_band, ref_folders=balance)
-
-    if k_folds == 1:
-        myclf.Prepare(tt_split=tt_split)
-
-        myclf.LDA(
-            normalize='standard',
-            plot_data=plot)
-
-    if k_folds > 1:
-        myclf.KfoldCrossVal(
-            myclf.LDA,
-            normalize='standard',
-            k=k_folds,
-            plot_data=plot)
+    specavgObj = SpectralAverage(myclf)
+    specavgObj.plot(fig_fname=fig_fname)
 
 
 if __name__ == '__main__':

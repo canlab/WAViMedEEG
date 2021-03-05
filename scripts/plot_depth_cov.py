@@ -1,5 +1,5 @@
-import Plots
-import config
+from src import Plots
+from src import config
 import numpy as np
 from sklearn.metrics import auc
 import matplotlib.pyplot as plt

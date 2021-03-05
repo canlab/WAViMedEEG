@@ -1,8 +1,9 @@
-import Clean
 import sys
+sys.path.append('..')
+import src.Clean
+import src.config
 import os
 from tqdm import tqdm
-import config
 import argparse
 
 
