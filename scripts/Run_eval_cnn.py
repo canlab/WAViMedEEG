@@ -56,6 +56,13 @@ def main():
                         + "for every individual piece of data. If 'subject', "
                         + "then returns 1 averaged prediction per subject.")
 
+    parser.add_argument('--combine',
+                        dest='combine',
+                        type=bool,
+                        default=False,
+                        help="(Default: False) If True, will load all of the "
+                        + "data at one time for a combined set of predictions.")
+
     parser.add_argument('--task',
                         dest='task',
                         type=str,
@@ -122,11 +129,25 @@ def main():
                         default=False,
                         help="(Default: False) Plot histogram of predictions.")
 
+    parser.add_argument('--plot_conf',
+                        dest='plot_conf',
+                        type=bool,
+                        default=False,
+                        help="(Default: False) Plot confusion matrix "
+                        + "on validation dataset")
+
+    parser.add_argument('--plot_3d_preds',
+                        dest='plot_3d_preds',
+                        type=bool,
+                        default=False,
+                        help="(Default: False) Plot 3-dimensional scatter "
+                        + "plot of validation dataset predictions")
+
     parser.add_argument('--plot_spectra',
                         dest='plot_spectra',
                         type=bool,
-                        default=True,
-                        help="(Default: True) Plot spectra by group for "
+                        default=False,
+                        help="(Default: False) Plot spectra by group for "
                         + "training data")
 
     # save the variables in 'args'
@@ -149,6 +170,7 @@ def main():
     plot_conf = args.plot_conf
     plot_3d_preds = args.plot_3d_preds
     pred_level = args.pred_level
+    combine = args.combine
 
     # ERROR HANDLING
     if data_type not in ["erps", "spectra", "contigs"]:
@@ -293,6 +315,7 @@ def main():
             log_dir + folder
             for folder in os.listdir(log_dir)
             if "_"+data_type in folder]
+        checkpoint_dirs.sort()
     else:
         checkpoint_dirs = [checkpoint_dir]
 
@@ -324,17 +347,70 @@ def main():
 
         patient_paths.append(patient_path)
 
-    for checkpoint_dir in checkpoint_dirs:
+    if combine is True:
+        # Instantiate a 'Classifier' object
+        myclf = ML.Classifier(data_type)
 
-        # ============== Load All Studies' Data ==============
-        for study_name, patient_path in zip(study_names, patient_paths):
+    # ============== Load All Studies' Data ==============
+    for study_name, patient_path in zip(study_names, patient_paths):
 
-            # Instantiate a 'Classifier' Object
+        if combine is not True:
+            # Instantiate a 'Classifier' object
             myclf = ML.Classifier(data_type)
 
-            for fname in os.listdir(patient_path):
-                if "_"+filter_band in fname:
-                    myclf.LoadData(patient_path+"/"+fname)
+        for fname in os.listdir(patient_path):
+            if "_"+filter_band in fname:
+                myclf.LoadData(patient_path+"/"+fname)
+
+        if combine is not True:
+
+            for checkpoint_dir in checkpoint_dirs:
+
+                label_names=checkpoint_dir.split('_')[7:]
+                label_values=[]
+                for group in label_names:
+                    for key, value in config.group_names.items():
+                        if group == value:
+                            label_values.append(key)
+
+                myclf.Prepare(
+                    tt_split=1,
+                    labels=label_values,
+                    normalize=normalize)
+
+                if data_type == 'spectra':
+                    if plot_spectra is True:
+                        specavgObj = SpectralAverage(myclf)
+                        specavgObj.plot(
+                            fig_fname=checkpoint_dir+"/"
+                            + study_name
+                            + "_true_"
+                            + str(datetime.now().strftime("%H-%M-%S")))
+
+                y_preds = myclf.eval_saved_CNN(
+                    checkpoint_dir,
+                    plot_hist=plot_hist,
+                    plot_conf=plot_conf,
+                    plot_3d_preds=plot_3d_preds,
+                    fname=study_name,
+                    pred_level=pred_level)
+
+                for i, (pred, inputObj) in enumerate(
+                    zip(np.rint(y_preds), myclf.data)):
+
+                    inputObj.group = myclf.groups[int(np.argmax(pred))]
+
+                if data_type == 'spectra':
+                    if plot_spectra is True:
+                        specavgObj = SpectralAverage(myclf)
+                        specavgObj.plot(
+                            fig_fname=checkpoint_dir+"/"
+                            + study_name
+                            + "_pred_"
+                            + str(datetime.now().strftime("%H-%M-%S")))
+
+    if combine is True:
+        for checkpoint_dir in checkpoint_dirs:
 
             label_names=checkpoint_dir.split('_')[7:]
             label_values=[]
@@ -365,19 +441,21 @@ def main():
                 fname=study_name,
                 pred_level=pred_level)
 
-            for i, (pred, inputObj) in enumerate(
-                zip(np.rint(y_preds), myclf.data)):
+            # TODO:
+            # broken, can't change label here for combination runs
+            # for i, (pred, inputObj) in enumerate(
+            #     zip(np.rint(y_preds), myclf.data)):
+            #
+            #     inputObj.group = myclf.groups[int(np.argmax(pred))]
 
-                inputObj.group = myclf.groups[int(pred)]
-
-            if data_type == 'spectra':
-                if plot_spectra is True:
-                    specavgObj = SpectralAverage(myclf)
-                    specavgObj.plot(
-                        fig_fname=checkpoint_dir+"/"
-                        + study_name
-                        + "_pred_"
-                        + str(datetime.now().strftime("%H-%M-%S")))
+            # if data_type == 'spectra':
+            #     if plot_spectra is True:
+            #         specavgObj = SpectralAverage(myclf)
+            #         specavgObj.plot(
+            #             fig_fname=checkpoint_dir+"/"
+            #             + study_name
+            #             + "_pred_"
+            #             + str(datetime.now().strftime("%H-%M-%S")))
 
 if __name__ == '__main__':
     main()
