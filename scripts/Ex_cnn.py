@@ -173,8 +173,9 @@ def main():
                         dest='repetitions',
                         type=int,
                         default=1,
-                        help="(Default: 1) Unlike k-fold, will train the "
-                        + "model n times without mixing around subjects.")
+                        help="(Default: 1) Unlike k-fold, trains the "
+                        + "model n times without mixing around subjects. "
+                        + "Can still be used within each k-fold.")
 
     parser.add_argument('--depth',
                         dest='depth',
@@ -544,6 +545,7 @@ def main():
             regularizer=regularizer,
             regularizer_param=regularizer_param,
             focal_loss_gamma=focal_loss_gamma,
+            repetitions=repetitions,
             dropout=dropout,
             learning_rate=learning_rate,
             lr_decay=lr_decay,

@@ -55,13 +55,6 @@ def main():
                         + "for every individual piece of data. If 'subject', "
                         + "then returns 1 averaged prediction per subject.")
 
-    parser.add_argument('--combine',
-                        dest='combine',
-                        type=bool,
-                        default=False,
-                        help="(Default: False) If True, will load all of the "
-                        + "data at one time for a combined prediction hist.")
-
     parser.add_argument('--task',
                         dest='task',
                         type=str,
@@ -152,8 +145,9 @@ def main():
     normalize = args.normalize
     plot_spectra = args.plot_spectra
     plot_hist = args.plot_hist
+    plot_conf = args.plot_conf
+    plot_3d_preds = args.plot_3d_preds
     pred_level = args.pred_level
-    combine = args.combine
 
     # ERROR HANDLING
     if data_type not in ["erps", "spectra", "contigs"]:
@@ -298,7 +292,6 @@ def main():
             log_dir + folder
             for folder in os.listdir(log_dir)
             if "_"+data_type in folder]
-        checkpoint_dirs.sort()
     else:
         checkpoint_dirs = [checkpoint_dir]
 
@@ -330,36 +323,24 @@ def main():
 
         patient_paths.append(patient_path)
 
-    if combine is True:
-        # Instantiate a 'Classifier' object
-        myclf = ML.Classifier(data_type)
+    for checkpoint_dir in checkpoint_dirs:
 
-    # ============== Load All Studies' Data ==============
-    for study_name, patient_path in zip(study_names, patient_paths):
+        # ============== Load All Studies' Data ==============
+        for study_name, patient_path in zip(study_names, patient_paths):
 
-        if combine is not True:
-            # Instantiate a 'Classifier' object
+            # Instantiate a 'Classifier' Object
             myclf = ML.Classifier(data_type)
 
-        for fname in os.listdir(patient_path):
-            if "_"+filter_band in fname:
-                myclf.LoadData(patient_path+"/"+fname)
+            for fname in os.listdir(patient_path):
+                if "_"+filter_band in fname:
+                    myclf.LoadData(patient_path+"/"+fname)
 
-        for checkpoint_dir in checkpoint_dirs:
-
-            label_names=checkpoint_dir.split('_')[-2:]
+            label_names=checkpoint_dir.split('_')[7:]
             label_values=[]
             for group in label_names:
                 for key, value in config.group_names.items():
                     if group == value:
                         label_values.append(key)
-
-            if len(label_values) != 2:
-                print(
-                    "Warning: supplying program with " + str(len(label_values))
-                    + " labels. This is not permitted yet.")
-                raise ValueError
-                sys.exit(3)
 
             myclf.Prepare(
                 tt_split=1,
@@ -378,6 +359,8 @@ def main():
             y_preds = myclf.eval_saved_CNN(
                 checkpoint_dir,
                 plot_hist=plot_hist,
+                plot_conf=plot_conf,
+                plot_3d_preds=plot_3d_preds,
                 fname=study_name,
                 pred_level=pred_level)
 

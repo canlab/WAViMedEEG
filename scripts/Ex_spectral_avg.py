@@ -19,22 +19,12 @@ def main():
                         help="(Default: " + config.my_studies + ") Path to "
                         + "parent folder containing study folders")
 
-    parser.add_argument('--study_name',
-                        dest='study_name',
-                        type=str,
+    parser.add_argument('--study_names',
+                        dest='study_names',
+                        nargs='+',
                         default=config.study_directory,
                         help="(Default: " + config.study_directory + ") "
                         + "Study folder containing dataset")
-
-    parser.add_argument('--balance',
-                        dest='balance',
-                        nargs='+',
-                        default=None,
-                        help="(Default: None) "
-                        + "List of study folders against which to "
-                        + "evenly balance the dataset (iterates over folders) "
-                        + "such that there are an equal number of data "
-                        + "in each class.")
 
     parser.add_argument('--task',
                         dest='task',
@@ -97,14 +87,13 @@ def main():
     args = parser.parse_args()
 
     studies_folder = args.studies_folder
-    study_name = args.study_name
+    study_names = args.study_names
     task = args.task
     length = args.length
     channels = args.channels
     artifact = args.artifact
     erp_degree = args.erp_degree
     filter_band = args.filter_band
-    balance = args.balance
     fig_fname = args.fig_fname
 
     # ERROR HANDLING
@@ -115,12 +104,13 @@ def main():
         raise FileNotFoundError
         sys.exit(3)
 
-    if not os.path.isdir(os.path.join(studies_folder, study_name)):
-        print(
-            "Invalid entry for study_name, "
-            + "path does not exist as directory.")
-        raise FileNotFoundError
-        sys.exit(3)
+    for study_name in study_names:
+        if not os.path.isdir(os.path.join(studies_folder, study_name)):
+            print(
+                "Invalid entry for study_name, "
+                + "path does not exist as directory.")
+            raise FileNotFoundError
+            sys.exit(3)
 
     if task not in config.tasks:
         print(
@@ -212,57 +202,36 @@ def main():
     # patient_path points to our 'condition-positive' dataset
     # ex. patient_path =
     # "/wavi/EEGstudies/CANlab/spectra/P300_250_1111111111111111111_0_1"
-    patient_path = studies_folder\
-        + '/'\
-        + study_name\
-        + '/'\
-        + 'spectra'\
-        + '/'\
-        + task\
-        + '_'\
-        + str(length)\
-        + '_'\
-        + channels\
-        + '_'\
-        + str(artifact)
+    patient_paths = []
+    # patient_path points to our 'condition-positive' dataset
+    # ex. patient_path =
+    # "/wavi/EEGstudies/CANlab/spectra/P300_250_1111111111111111111_0_1"
+    for study_name in study_names:
 
-    if erp_degree is not None:
-        patient_path += ("_" + str(erp_degree))
+        patient_path = studies_folder\
+            + '/'\
+            + study_name\
+            + '/'\
+            + 'spectra'\
+            + '/'\
+            + task\
+            + '_'\
+            + str(length)\
+            + '_'\
+            + channels\
+            + '_'\
+            + str(artifact)
 
-    if not os.path.isdir(patient_path):
-        print("Configuration supplied was not found in study folder data.")
-        print("Failed:", patient_path)
-        raise FileNotFoundError
-        sys.exit(3)
+        if erp_degree is not None:
+            patient_path += ("_" + str(erp_degree))
 
-    if balance is not None:
-        for folder in balance:
-            if not os.path.isdir(studies_folder + "/" + folder):
-                print(
-                    "Invalid path in balance. ",
-                    studies_folder + "/" + folder + "  does not exist.")
-                raise FileNotFoundError
-                sys.exit(3)
+        if not os.path.isdir(patient_path):
+            print("Configuration supplied was not found in study folder data.")
+            print("Failed:", patient_path)
+            raise FileNotFoundError
+            sys.exit(3)
 
-            if not os.path.isdir(patient_path.replace(study_name, folder)):
-                print(
-                    "Invalid path in balance. "
-                    + patient_path.replace(study_name, folder)
-                    + "does not exist.")
-                raise FileNotFoundError
-                sys.exit(3)
-
-            if any(
-                ["_"+filter_band in fname for fname in os.listdir(
-                    patient_path.replace(study_name, folder))]):
-
-                pass
-            else:
-                print(
-                    "No files with " + filter_band + " were found in the "
-                    + "balance folder: " + folder)
-                raise FileNotFoundError
-                sys.exit(3)
+        patient_paths.append(patient_path)
 
     if any(
         ["_"+filter_band in fname
@@ -277,21 +246,11 @@ def main():
     # Instantiate a 'Classifier' Object
     myclf = ML.Classifier('spectra')
 
-    # ============== Load Patient (Condition-Positive) Data ==============
-
-    for fname in os.listdir(patient_path):
-        if fname[:config.participantNumLen] not in config.exclude_subs:
-            if "_" + filter_band in fname:
+    # ============== Load All Studies' Data ==============
+    for patient_path in patient_paths:
+        for fname in os.listdir(patient_path):
+            if "_"+filter_band in fname:
                 myclf.LoadData(patient_path+"/"+fname)
-
-    # ============== Load Control (Condition-Negative) Data ==============
-    # the dataset will automatically add healthy control data
-    # found in the reference folders
-    if balance is not None:
-        myclf.Balance(
-            studies_folder,
-            filter_band=filter_band,
-            ref_folders=balance)
 
     specavgObj = SpectralAverage(myclf)
     specavgObj.plot(fig_fname=fig_fname)

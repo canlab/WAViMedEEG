@@ -724,7 +724,7 @@ class Classifier:
         # introduce sequential set
         model = tf.keras.models.Sequential()
 
-        for i in range(depth+1):
+        for i in range(depth):
             # 1
             model.add(BatchNormalization())
 
@@ -733,7 +733,7 @@ class Classifier:
                 kernel_size=(3, 3),
                 strides=1,
                 padding='same',
-                activation='swish',
+                activation='relu',
                 data_format='channels_last'))
 
             model.add(MaxPooling2D(
@@ -752,10 +752,10 @@ class Classifier:
         #     3,
         #     activation='softmax'))
 
-        model.add(Dense(10, activation='softmax'))
+        # model.add(Dense(10, activation='relu'))
         model.add(Dense(
             len(self.groups),
-            activation='softmax',
+            activation='relu',
             # use_bias=True if initial_bias is not None else False,
             # bias_initializer=initial_bias
             # if initial_bias is not None
@@ -792,7 +792,8 @@ class Classifier:
             # loss='categorical_crossentropy',
             # loss=tf.keras.losses.BinaryCrossentropy(),
             # loss=tfa.losses.SigmoidFocalCrossEntropy(),
-            loss=SparseCategoricalFocalLoss(gamma=focal_loss_gamma),
+            loss='sparse_categorical_crossentropy',
+            # loss=SparseCategoricalFocalLoss(gamma=focal_loss_gamma),
             metrics=['accuracy'])
 
         # tensorboard setup
@@ -1075,24 +1076,22 @@ class Classifier:
         self,
         checkpoint_dir,
         plot_hist=False,
+        plot_conf=False,
+        plot_3d_preds=False,
         fname=None,
             pred_level='all'):
 
         import tensorflow as tf
+        from focal_loss import SparseCategoricalFocalLoss
 
         model = tf.keras.models.load_model(checkpoint_dir+"/my_model")
 
-        self.group_names = checkpoint_dir.split('_')[-2:]
-        self.groups = []
-        for name in self.group_names:
-            for key, value in config.group_names.items():
-                if name == value:
-                    self.groups.append(key)
-        self.groups.sort()
+        if fname is not None:
+            fname = fname + "_" + pred_level
 
         model.summary()
 
-        y_pred_keras = model.predict(self.test_dataset)[:, 1]
+        y_pred_keras = model.predict(self.test_dataset)
         test_set_labels = self.test_labels
 
         if pred_level == 'subject':
@@ -1106,17 +1105,50 @@ class Classifier:
                     if inputObj.subject == str(sub[1]):
                         subject_preds.append(pred)
                         if len(sub_level_labels) == j:
-                            sub_level_labels.append(
-                                1 if inputObj.group == self.groups[1] else 0)
-                sub_level_preds.append(np.mean(subject_preds))
+                            label = []
+                            for i in enumerate(self.groups):
+                                if self.groups.index(inputObj.group) == i:
+                                    label.append(1)
+                                else:
+                                    label.append(0)
+                            sub_level_labels.append(label)
+                            print("True group:", inputObj.group)
+                            print("Label:", label)
+                sub_level_preds.append(np.mean(subject_preds, axis=0))
             y_pred_keras = sub_level_preds
             test_set_labels = np.array(sub_level_labels)
 
+        y_pred = np.argmax(y_pred_keras, axis=1)
+        labels = np.argmax(test_set_labels, axis=1)
 
+        if plot_conf is True:
+            from sklearn.metrics import confusion_matrix
+            from Plots import plot_confusion_matrix
+
+            # calculate confusion matrix
+            cm = confusion_matrix(labels, y_pred)
+            plot_confusion_matrix(
+                cm,
+                checkpoint_dir,
+                self.group_names,
+                fname="_"+fname)
+
+        if plot_3d_preds is True:
+            from Plots import plot_3d_scatter
+
+            plot_3d_scatter(
+                y_pred_keras,
+                labels,
+                self.group_names,
+                checkpoint_dir,
+                "evaluation_3d_preds"+"_"+fname)
+
+        # TODO:
+        # not working for multi-label atm
         if plot_hist is True:
             from Plots import pred_hist
             pred_hist(
-                y_pred_keras,
+                y_pred_keras[:,1],
                 test_set_labels,
                 fname=None if fname is None
                     else checkpoint_dir+"/"+fname,
@@ -1130,6 +1162,7 @@ class Classifier:
         normalize=None,
         regularizer=None,
         regularizer_param=0.01,
+        focal_loss_gamma=0, # sparse categorical
         dropout=None,
         learning_rate=0.001,
         lr_decay=False,
@@ -1137,6 +1170,7 @@ class Classifier:
         beta2=0.999,
         epochs=100,
         iterations=1000,
+        repetitions=1,
         plot_ROC=False,
         plot_conf=False,
         plot_3d_preds=False,
@@ -1180,81 +1214,85 @@ class Classifier:
 
             if ML_function == self.CNN:
 
-                model, y_pred, y_labels = ML_function(
-                    regularizer=regularizer,
-                    regularizer_param=regularizer_param,
-                    dropout=dropout,
-                    learning_rate=learning_rate,
-                    lr_decay=lr_decay,
-                    beta1=beta1,
-                    beta2=beta2,
-                    epochs=epochs,
-                    plot_ROC=plot_ROC,
-                    plot_conf=plot_conf,
-                    plot_3d_preds=plot_3d_preds)
+                for j in range(repetitions):
+                    model, y_pred, y_labels = ML_function(
+                        regularizer=regularizer,
+                        regularizer_param=regularizer_param,
+                        focal_loss_gamma=focal_loss_gamma,
+                        dropout=dropout,
+                        learning_rate=learning_rate,
+                        lr_decay=lr_decay,
+                        beta1=beta1,
+                        beta2=beta2,
+                        epochs=epochs,
+                        plot_ROC=plot_ROC,
+                        plot_conf=plot_conf,
+                        plot_3d_preds=plot_3d_preds)
 
-                self.saveModelEvaluation('cnn', model, y_pred, y_labels, i)
+                    self.saveModelEvaluation('cnn', model, y_pred, y_labels, i)
 
             elif ML_function == self.LDA:
-                model, y_pred, y_labels = ML_function(
-                    plot_data=False)
+                for j in range(repetitions):
+                    model, y_pred, y_labels = ML_function(
+                        plot_data=False)
 
-                self.saveModelEvaluation('lda', model, y_pred, y_labels, i)
+                    self.saveModelEvaluation('lda', model, y_pred, y_labels, i)
 
             elif ML_function == self.SVM:
-                model, y_pred, y_labels = ML_function(
-                    C=1,
-                    kernel='linear',
-                    iterations=1000,
-                    plot_PR=False,
-                    plot_Features=False,
-                    feat_select=False,
-                    num_feats=10)
+                for j in range(repetitions):
+                    model, y_pred, y_labels = ML_function(
+                        C=1,
+                        kernel='linear',
+                        iterations=1000,
+                        plot_PR=False,
+                        plot_Features=False,
+                        feat_select=False,
+                        num_feats=10)
 
-                self.saveModelEvaluation('svm', model, y_pred, y_labels, i)
+                    self.saveModelEvaluation('svm', model, y_pred, y_labels, i)
 
             elif ML_function == 'mixed':
-                model, y_pred, y_labels = self.CNN(
-                    regularizer=regularizer,
-                    regularizer_param=regularizer_param,
-                    dropout=dropout,
-                    learning_rate=learning_rate,
-                    lr_decay=lr_decay,
-                    beta1=beta1,
-                    beta2=beta2,
-                    epochs=epochs,
-                    plot_ROC=plot_ROC,
-                    plot_conf=plot_conf,
-                    plot_3d_preds=plot_3d_preds)
+                for j in range(repetitions):
+                    model, y_pred, y_labels = self.CNN(
+                        regularizer=regularizer,
+                        regularizer_param=regularizer_param,
+                        focal_loss_gamma=focal_loss_gamma,
+                        dropout=dropout,
+                        learning_rate=learning_rate,
+                        lr_decay=lr_decay,
+                        beta1=beta1,
+                        beta2=beta2,
+                        epochs=epochs,
+                        plot_ROC=plot_ROC,
+                        plot_conf=plot_conf,
+                        plot_3d_preds=plot_3d_preds)
 
-                self.saveModelEvaluation('cnn', model, y_pred, y_labels, i)
+                    self.saveModelEvaluation('cnn', model, y_pred, y_labels, i)
 
-                model, y_pred, y_labels = self.LDA(
-                    plot_data=False)
+                    model, y_pred, y_labels = self.LDA(
+                        plot_data=False)
 
-                self.saveModelEvaluation('lda', model, y_pred, y_labels, i)
+                    self.saveModelEvaluation('lda', model, y_pred, y_labels, i)
 
-                model, y_pred, y_labels = self.SVM(
-                    C=1,
-                    kernel='linear',
-                    iterations=1000,
-                    plot_PR=False,
-                    plot_Features=False,
-                    feat_select=False,
-                    num_feats=10)
+                    model, y_pred, y_labels = self.SVM(
+                        C=1,
+                        kernel='linear',
+                        iterations=1000,
+                        plot_PR=False,
+                        plot_Features=False,
+                        feat_select=False,
+                        num_feats=10)
 
-                self.saveModelEvaluation('svm', model, y_pred, y_labels, i)
+                    self.saveModelEvaluation('svm', model, y_pred, y_labels, i)
 
     def saveModelEvaluation(self, model_type, model, y_pred, y_labels, i):
-        from Plots import roc
 
         f = open(
-            self.type
+            self.checkpoint_dir
+            + "/"
             + "_"
             + model_type
-            + "_"
-            + os.path.basename(self.trial_name)
-            + ".txt",
+            + "_subjects.txt",
             'a')
 
         f.write("Subjects")
@@ -1263,14 +1301,18 @@ class Classifier:
             f.write('\n')
         f.write('\n')
 
-        auc = roc(y_pred, y_labels, plot=False)
-        if auc < 0.5:
-            auc = 1 - auc
+        if len(self.groups) == 2:
+            from Plots import roc
 
-        f.write('AUC')
-        f.write('\n')
-        f.write(str(auc))
-        f.write('\n')
+            auc = roc(y_pred, y_labels, plot=False)
+            if auc < 0.5:
+                auc = 1 - auc
+
+            f.write('AUC')
+            f.write('\n')
+            f.write(str(auc))
+            f.write('\n')
+
         f.write('Train ' + str(i))
         for sub in self.train_subjects:
             f.write(str(sub[1]))

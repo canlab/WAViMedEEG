@@ -303,7 +303,7 @@ def plot_layer_size_covariance(sizes=[], values=[], metric=""):
     plt.show()
 
 
-def plot_confusion_matrix(cm, checkpoint_dir, class_names):
+def plot_confusion_matrix(cm, checkpoint_dir, class_names, fname=""):
     """
     Returns a matplotlib figure containing the plotted confusion matrix.
 
@@ -335,7 +335,7 @@ def plot_confusion_matrix(cm, checkpoint_dir, class_names):
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
 
-    plt.savefig(checkpoint_dir+"/confusion_matrix")
+    plt.savefig(checkpoint_dir+"/confusion_matrix"+fname)
     plt.clf()
 
     return figure
@@ -398,8 +398,9 @@ def plot_3d_scatter(y_preds, y_labels, label_names, checkpoint_dir, fig_fname):
         interval=100)
     rot_animation.save(
         checkpoint_dir+"/"+fig_fname+".gif",
-        dpi=80,
+        dpi=100,
         writer='imagemagick')
 
     # plt.savefig(checkpoint_dir+"/"+fig_fname)
     plt.clf()
+    plt.close()
