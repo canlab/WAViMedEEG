@@ -1,6 +1,6 @@
+from src import config
 import os
 import shutil
-import config
 from tqdm import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
@@ -129,6 +129,7 @@ class TaskData:
         else:
 
             print("The path supplied is not a valid directory.")
+            print(path)
 
             raise ValueError
 

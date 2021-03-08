@@ -1,6 +1,7 @@
+from src import config
+from src.Prep import Contig, Spectra
 import os
 import numpy as np
-import config
 import random
 import math
 from tqdm import tqdm
@@ -16,8 +17,6 @@ from sklearn.metrics import plot_precision_recall_curve
 from sklearn.feature_selection import SelectKBest, f_classif
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
-
-from Prep import Contig, Spectra
 
 
 class MidpointNormalize(Normalize):
@@ -343,6 +342,7 @@ class Classifier:
             #         in self.train_subjects])
 
             self.train_labels = []
+            self.train_labels_subs = []
             for dataObj in self.data:
                 if (dataObj.source, dataObj.subject) in self.train_subjects:
                     label = []
@@ -352,6 +352,8 @@ class Classifier:
                         else:
                             label.append(0)
                     self.train_labels.append(label)
+                    self.train_labels_subs.append(dataObj.subject)
+
             self.train_labels = np.array(self.train_labels)
 
             if tt_split == 0:
@@ -373,6 +375,7 @@ class Classifier:
             #         in self.test_subjects])
 
             self.test_labels = []
+            self.test_labels_subs = []
             for dataObj in self.data:
                 if (dataObj.source, dataObj.subject) in self.test_subjects:
                     label = []
@@ -382,6 +385,8 @@ class Classifier:
                         else:
                             label.append(0)
                     self.test_labels.append(label)
+                    self.test_labels_subs.append(dataObj.subject)
+
             self.test_labels = np.array(self.test_labels)
 
             if tt_split == 1:
@@ -462,6 +467,19 @@ class Classifier:
                                 :, self.group_names.index(group)]])\
                         / len(self.test_labels)))
 
+        # shuffle all of the data together
+        self.train_dataset, self.train_labels, self.train_labels_subs =
+            zip(*random.shuffle(list(zip(
+                self.train_dataset,
+                self.train_labels,
+                self.train_labels_subs))))
+
+        self.test_dataset, self.test_labels, self.test_labels_subs =
+            zip(*random.shuffle(list(zip(
+                self.test_dataset,
+                self.test_labels,
+                self.test_labels_subs))))
+
     def LDA(
         self,
             plot_data=False):
@@ -500,7 +518,7 @@ class Classifier:
         y_pred = clf.predict(rs_test_dataset)
 
         if plot_data is True:
-            import Plots
+            from src import Plots
             Plots.plot_LDA(
                 clf,
                 rs_train_dataset,
@@ -633,7 +651,7 @@ class Classifier:
                 svm_weights_selected /= svm_weights_selected.sum()
 
         if plot_Features is True:
-            import Plots
+            from src import Plots
 
             if kernel == 'linear':
                 if feat_select is False:
@@ -704,7 +722,7 @@ class Classifier:
         from focal_loss import SparseCategoricalFocalLoss
         import datetime
         import kerastuner as kt
-        from Plots import plot_history
+        from src.Plots import plot_history
 
         # if initial_bias == 'auto':
         #     initial_bias = {}
@@ -715,6 +733,14 @@ class Classifier:
         #
         #     # initial_bias = tf.keras.initializers.Constant(initial_bias)
         #     initial_bias = None
+
+        def subject_level_acc(y_true, y_pred, y_subs):
+            accs = {}
+            for true, pred, sub in zip(y_true, y_pred, y_subs):
+                if sub not in accs:
+                    accs[sub] = []
+                accs[sub].append(tf.square(y_true - y_pred))
+            return [np.mean(accs[sub]) for sub in y_subs]
 
         # decode labels (they arrive as one-hot vectors)
         if decode is True:
@@ -746,16 +772,12 @@ class Classifier:
             model.add(Dropout(dropout))
 
         # flatten
-        model.add(Flatten(data_format='channels_last'))
+        # model.add(Flatten(data_format='channels_last'))
+        model.add(Flatten())
 
-        # model.add(Dense(
-        #     3,
-        #     activation='softmax'))
-
-        # model.add(Dense(10, activation='relu'))
+        model.add(Dense(8, activation='relu'))
         model.add(Dense(
             len(self.groups),
-            activation='relu',
             # use_bias=True if initial_bias is not None else False,
             # bias_initializer=initial_bias
             # if initial_bias is not None
@@ -763,6 +785,7 @@ class Classifier:
             kernel_regularizer=tf.keras.regularizers.l1_l2(
                 l1=regularizer_param,
                 l2=regularizer_param)))
+        # model.add(Dense(len(self.groups)))
 
         # build model
         model.build(self.train_dataset.shape)
@@ -778,8 +801,8 @@ class Classifier:
         # adaptive learning rate
         if lr_decay is True:
             learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(
-                initial_learning_rate=learning_rate,
-                decay_steps=100,
+                learning_rate,
+                decay_steps=10000,
                 decay_rate=0.96)
 
         # model compilation
@@ -789,15 +812,11 @@ class Classifier:
                 initial_accumulator_value=0.1,
                 epsilon=1e-07,
                 name='Adagrad'),
-            # loss='categorical_crossentropy',
-            # loss=tf.keras.losses.BinaryCrossentropy(),
-            # loss=tfa.losses.SigmoidFocalCrossEntropy(),
-            loss='sparse_categorical_crossentropy',
-            # loss=SparseCategoricalFocalLoss(gamma=focal_loss_gamma),
+            loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
             metrics=['accuracy'])
 
         # tensorboard setup
-        checkpoint_dir = 'logs/fit/'\
+        checkpoint_dir = '../logs/fit/'\
             + datetime.datetime.now().strftime('%Y%m%d-%H%M%S')\
             + "_"\
             + self.trial_name.replace("/", "_")\
@@ -818,12 +837,13 @@ class Classifier:
 
         history = model.fit(
             self.train_dataset,
-            self.train_labels_ohe,
+            self.train_labels_ohe if decode is True else self.train_labels,
             epochs=epochs,
-            validation_data=(self.test_dataset, self.test_labels_ohe) if
-            (len(self.test_labels_ohe) > 0)
-            else None,
-            batch_size=64,
+            validation_data=(
+                self.test_dataset,
+                self.test_labels_ohe if decode is True else self.test_labels
+            ) if (len(self.test_labels_ohe) > 0) else None,
+            batch_size=32,
             callbacks=[
                 tensorboard_callback,
                 csv_logger],
@@ -846,14 +866,14 @@ class Classifier:
 
         if plot_conf is True:
             from sklearn.metrics import confusion_matrix
-            from Plots import plot_confusion_matrix
+            from src.Plots import plot_confusion_matrix
 
             # calculate confusion matrix
             cm = confusion_matrix(labels, y_pred)
             plot_confusion_matrix(cm, checkpoint_dir, self.group_names)
 
         if plot_3d_preds is True:
-            from Plots import plot_3d_scatter
+            from src.Plots import plot_3d_scatter
 
             plot_3d_scatter(
                 y_pred_keras,
@@ -865,11 +885,13 @@ class Classifier:
         # TODO:
         # not working for multi-label atm
         if plot_ROC is True:
-            from Plots import roc
+            from src.Plots import roc
             roc(
-                y_pred_keras[:, 1],
-                self.test_labels,
+                y_pred,
+                labels,
                 fname=checkpoint_dir+"/ROC")
+
+        self.saveModelConfig('cnn', model)
 
         return(model, y_pred_keras, self.test_labels)
 
@@ -1123,7 +1145,7 @@ class Classifier:
 
         if plot_conf is True:
             from sklearn.metrics import confusion_matrix
-            from Plots import plot_confusion_matrix
+            from src.Plots import plot_confusion_matrix
 
             # calculate confusion matrix
             cm = confusion_matrix(labels, y_pred)
@@ -1134,7 +1156,7 @@ class Classifier:
                 fname="_"+fname)
 
         if plot_3d_preds is True:
-            from Plots import plot_3d_scatter
+            from src.Plots import plot_3d_scatter
 
             plot_3d_scatter(
                 y_pred_keras,
@@ -1146,7 +1168,7 @@ class Classifier:
         # TODO:
         # not working for multi-label atm
         if plot_hist is True:
-            from Plots import pred_hist
+            from src.Plots import pred_hist
             pred_hist(
                 y_pred_keras[:,1],
                 test_set_labels,
@@ -1229,14 +1251,14 @@ class Classifier:
                         plot_conf=plot_conf,
                         plot_3d_preds=plot_3d_preds)
 
-                    self.saveModelEvaluation('cnn', model, y_pred, y_labels, i)
+                    # self.saveModelConfig('cnn', model)
 
             elif ML_function == self.LDA:
                 for j in range(repetitions):
                     model, y_pred, y_labels = ML_function(
                         plot_data=False)
 
-                    self.saveModelEvaluation('lda', model, y_pred, y_labels, i)
+                    self.saveModelConfig('lda', model)
 
             elif ML_function == self.SVM:
                 for j in range(repetitions):
@@ -1249,7 +1271,7 @@ class Classifier:
                         feat_select=False,
                         num_feats=10)
 
-                    self.saveModelEvaluation('svm', model, y_pred, y_labels, i)
+                    self.saveModelConfig('svm', model)
 
             elif ML_function == 'mixed':
                 for j in range(repetitions):
@@ -1267,12 +1289,12 @@ class Classifier:
                         plot_conf=plot_conf,
                         plot_3d_preds=plot_3d_preds)
 
-                    self.saveModelEvaluation('cnn', model, y_pred, y_labels, i)
+                    # self.saveModelConfig('cnn', model)
 
                     model, y_pred, y_labels = self.LDA(
                         plot_data=False)
 
-                    self.saveModelEvaluation('lda', model, y_pred, y_labels, i)
+                    self.saveModelConfig('lda', model)
 
                     model, y_pred, y_labels = self.SVM(
                         C=1,
@@ -1283,42 +1305,61 @@ class Classifier:
                         feat_select=False,
                         num_feats=10)
 
-                    self.saveModelEvaluation('svm', model, y_pred, y_labels, i)
+                    self.saveModelConfig('svm', model)
 
-    def saveModelEvaluation(self, model_type, model, y_pred, y_labels, i):
+    def saveModelConfig(self, model_type, model, i=""):
 
         f = open(
             self.checkpoint_dir
-            + "/"
-            + "_"
-            + model_type
-            + "_subjects.txt",
+            + "/subjects.txt",
             'a')
 
+        f.write(model_type)
+        f.write('\n')
+        f.write('\n')
+
         f.write("Subjects")
+        f.write('\n')
         for sub in self.subjects:
             f.write(str(sub[1]))
+            f.write(': # of data: ')
+            f.write(str(len([data for data in self.data if data.subject == sub[1]])))
             f.write('\n')
         f.write('\n')
 
-        if len(self.groups) == 2:
-            from Plots import roc
-
-            auc = roc(y_pred, y_labels, plot=False)
-            if auc < 0.5:
-                auc = 1 - auc
-
-            f.write('AUC')
+        for group in self.group_names:
+            f.write(
+                "% {} samples in train: {}".format(
+                    group,
+                    # len([label for label in self.train_labels
+                    #     if label==self.group_names.index(group)]) \
+                    #     / len(self.train_labels)))
+                    np.sum([
+                        self.train_labels[
+                            :, self.group_names.index(group)]])\
+                    / len(self.train_labels)))
             f.write('\n')
-            f.write(str(auc))
+            f.write(
+                "% {} samples in test: {}".format(
+                    group,
+                    # len([label for label in self.test_labels
+                    #     if label==self.group_names.index(group)]) \
+                    #     / len(self.test_labels)))
+                    np.sum([
+                        self.test_labels[
+                            :, self.group_names.index(group)]])\
+                    / len(self.test_labels)))
             f.write('\n')
+        f.write('\n')
 
-        f.write('Train ' + str(i))
+        f.write('Train')
+        f.write('\n')
         for sub in self.train_subjects:
             f.write(str(sub[1]))
             f.write('\n')
         f.write('\n')
-        f.write('Test ' + str(i))
+
+        f.write('Test')
         for sub in self.test_subjects:
             f.write(str(sub[1]))
             f.write('\n')

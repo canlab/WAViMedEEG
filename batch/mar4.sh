@@ -1,0 +1,4 @@
+# python3 ../scripts/Run_contigs.py 250 --channels 0011001111000000111 --erp_degree 1 --filter_band hidelta --force True
+python3 ../scripts/Run_cnn.py erps --balance True --epochs 50 --repetitions 5 --study_names "CU_pain" "CU_control" --erp_degree 1 --filter_band hidelta --plot_conf True --depth 5 --regularizer l1_l2 --depth 3 --normalize standard
+python3 ../scripts/Run_cnn.py erps --balance True --epochs 50 --repetitions 5 --study_names "CU_pain" "CU_control" --erp_degree 1 --filter_band hidelta --plot_conf True --depth 5 --regularizer l1_l2 --depth 3 --normalize standard --channels 0011001111000000111 --length 1250
+python3 ../scripts/Run_cnn.py erps --balance True --epochs 50 --repetitions 5 --study_names "CU_pain" "CU_control" --erp_degree 1 --filter_band hidelta --plot_conf True --depth 5 --regularizer l1_l2 --depth 3 --normalize standard --channels 0011001111000000111 --length 250

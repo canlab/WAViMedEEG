@@ -1,6 +1,6 @@
+from src import config
 import os
 import shutil
-import config
 from tqdm import tqdm
 
 

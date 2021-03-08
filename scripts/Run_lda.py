@@ -1,7 +1,7 @@
 import sys
 sys.path.append('..')
-import src.ML
-import src.config
+from src import ML
+from src import config
 import os
 from tqdm import tqdm
 import argparse

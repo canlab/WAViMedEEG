@@ -1,7 +1,7 @@
 import sys
 sys.path.append('..')
-import src.ML
-import src.config
+from src import ML
+from src import config
 from src.Standard import SpectralAverage
 import os
 from tqdm import tqdm

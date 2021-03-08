@@ -10,8 +10,8 @@ Requires installation of "mne", "tqdm", and "argparse"
 
 import sys
 sys.path.append('..')
-import src.Prep
-import src.config
+from src import Prep
+from src import config
 import os
 import argparse
 from tqdm import tqdm
@@ -247,6 +247,9 @@ def main():
         study_names = [study_name]
 
     for study_name in study_names:
+
+        if not os.path.isdir(studies_folder+"/"+study_name+"/"+task):
+            continue
 
         myp300 = Prep.TaskData(studies_folder+"/"+study_name+"/"+task)
 

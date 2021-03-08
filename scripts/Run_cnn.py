@@ -1,7 +1,7 @@
 import sys
 sys.path.append('..')
-import src.ML
-import src.config
+from src import ML
+from src import config
 from src.Standard import SpectralAverage
 import os
 from tqdm import tqdm
@@ -189,7 +189,7 @@ def main():
                         dest='regularizer',
                         type=str,
                         default=None,
-                        help="(Default: l2) Regularizer to be used in dense "
+                        help="(Default: l1_l2) Regularizer to be used in dense "
                         + "layers. One of: ['l1', 'l2', 'l1_l2']")
 
     parser.add_argument('--regularizer_param',
@@ -478,7 +478,7 @@ def main():
 
         for i in range(repetitions):
             if hypertune is False:
-                myclf.CNN(
+                model, _, _, = myclf.CNN(
                     learning_rate=learning_rate,
                     lr_decay=lr_decay,
                     epochs=epochs,

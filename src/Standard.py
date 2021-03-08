@@ -1,6 +1,6 @@
-import Prep
+from src import Prep
+from src import config
 import os
-import config
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy

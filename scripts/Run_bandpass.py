@@ -1,8 +1,8 @@
 import sys
 sys.path.append('..')
-import src.Prep
-import src.Standard
-import src.config
+from src import Prep
+from src import Standard
+from src import config
 import os
 from tqdm import tqdm
 import argparse
