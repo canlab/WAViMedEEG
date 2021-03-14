@@ -253,6 +253,12 @@ class Classifier:
             for key, value in class_amounts.items():
                 print("Number of", key, "outcomes:", int(value))
 
+        # pop subjects who have too few data loaded in
+        for subject in self.subjects:
+            if len([dataObj for dataObj in self.data if
+                dataObj.subject == subject[1]]) < 5:
+                self.subjects.pop(self.subjects.index(subject))
+
         self.train_subjects = []
         self.test_subjects = []
 
@@ -468,17 +474,24 @@ class Classifier:
                         / len(self.test_labels)))
 
         # shuffle all of the data together
-        self.train_dataset, self.train_labels, self.train_labels_subs =
-            zip(*random.shuffle(list(zip(
+        self.train_dataset, self.train_labels, self.train_labels_subs = \
+            zip(*random.sample(list(zip(
                 self.train_dataset,
                 self.train_labels,
-                self.train_labels_subs))))
+                self.train_labels_subs)), k=len(self.train_dataset)))
 
-        self.test_dataset, self.test_labels, self.test_labels_subs =
-            zip(*random.shuffle(list(zip(
+        self.test_dataset, self.test_labels, self.test_labels_subs = \
+            zip(*random.sample(list(zip(
                 self.test_dataset,
                 self.test_labels,
-                self.test_labels_subs))))
+                self.test_labels_subs)), k=len(self.test_dataset)))
+
+        self.train_dataset = np.array(self.train_dataset)
+        self.train_labels = np.array(self.train_labels)
+        self.train_labels_subs = np.array(self.train_labels_subs)
+        self.test_dataset = np.array(self.test_dataset)
+        self.test_labels = np.array(self.test_labels)
+        self.test_labels_subs = np.array(self.test_labels_subs)
 
     def LDA(
         self,
@@ -734,13 +747,15 @@ class Classifier:
         #     # initial_bias = tf.keras.initializers.Constant(initial_bias)
         #     initial_bias = None
 
-        def subject_level_acc(y_true, y_pred, y_subs):
-            accs = {}
-            for true, pred, sub in zip(y_true, y_pred, y_subs):
-                if sub not in accs:
-                    accs[sub] = []
-                accs[sub].append(tf.square(y_true - y_pred))
-            return [np.mean(accs[sub]) for sub in y_subs]
+        sample_weights = np.ndarray(shape=self.train_labels.shape)
+        for i, element in enumerate(self.train_labels_subs):
+            sample_weights[i] = (
+                (1 -
+                (
+                len([tag for tag in self.train_labels_subs if tag == element]) /
+                len(self.train_labels_subs)
+                )) / len([tag for tag in self.train_labels_subs if tag == element])
+            )
 
         # decode labels (they arrive as one-hot vectors)
         if decode is True:
@@ -775,16 +790,23 @@ class Classifier:
         # model.add(Flatten(data_format='channels_last'))
         model.add(Flatten())
 
-        model.add(Dense(8, activation='relu'))
+        model.add(Dense(
+            10,
+            activation='relu',
+            kernel_regularizer=tf.keras.regularizers.l1_l2(
+                l1=regularizer_param,
+                l2=regularizer_param)))
+
         model.add(Dense(
             len(self.groups),
             # use_bias=True if initial_bias is not None else False,
             # bias_initializer=initial_bias
             # if initial_bias is not None
             # else None,
-            kernel_regularizer=tf.keras.regularizers.l1_l2(
-                l1=regularizer_param,
-                l2=regularizer_param)))
+            # kernel_regularizer=tf.keras.regularizers.l1_l2(
+                # l1=regularizer_param,
+                # l2=regularizer_param)
+            ))
         # model.add(Dense(len(self.groups)))
 
         # build model
@@ -838,12 +860,13 @@ class Classifier:
         history = model.fit(
             self.train_dataset,
             self.train_labels_ohe if decode is True else self.train_labels,
+            # sample_weight=sample_weights,
             epochs=epochs,
             validation_data=(
                 self.test_dataset,
                 self.test_labels_ohe if decode is True else self.test_labels
             ) if (len(self.test_labels_ohe) > 0) else None,
-            batch_size=32,
+            batch_size=128,
             callbacks=[
                 tensorboard_callback,
                 csv_logger],
