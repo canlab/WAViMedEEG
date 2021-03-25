@@ -3,6 +3,7 @@ sys.path.append('..')
 from src import Clean
 from src import config
 import os
+import shutil
 from tqdm import tqdm
 import argparse
 
@@ -33,12 +34,22 @@ def main():
                         help='(Default: 1) Group number to be '
                         + 'assigned to dataset')
 
+    parser.add_argument('--force',
+                        dest='force',
+                        type=bool,
+                        default=False,
+                        help='(Default: False) If True, will still run given '
+                        + 'that some resultant folders already exist. Warning: '
+                        + 'using this option will result in the overwriting '
+                        + 'of files with matching filenames. Use carefully.')
+
     # save the variables in 'args'
     args = parser.parse_args()
 
     studies_folder = args.studies_folder
     study_name = args.study_name
     group_num = args.group_num
+    force = args.force
 
     # ERROR HANDLING
     if not os.path.isdir(studies_folder):
@@ -55,23 +66,41 @@ def main():
         raise FileNotFoundError
         sys.exit(3)
 
-    if not os.path.isdir(os.path.join(studies_folder, study_name, 'raw')):
+    if len(os.listdir(os.path.join(studies_folder, study_name))) == 0:
         print(
-            "No 'raw' folder found in the supplied directory. See the README. "
-            + "Data should be stored in studies_folder/study_name/raw before "
-            + "data cleaning can be run automatically."
-        )
+            "No files or folders were found in the directory supplied. Are "
+            + "you sure that this is the correct path? "
+            + str(os.path.join(studies_folder, study_name)))
         raise FileNotFoundError
         sys.exit(3)
 
-    if len(os.listdir(os.path.join(studies_folder, study_name))) > 2:
+    if os.path.isdir(os.path.join(studies_folder, study_name, 'raw')):
+        if len(
+            os.listdir(os.path.join(studies_folder, study_name, 'raw'))) == 0:
+            os.rmdir(os.path.join(studies_folder, study_name, 'raw'))
+
+    if not os.path.isdir(os.path.join(studies_folder, study_name, 'raw')):
         print(
-            "Looks like this folder has already been cleaned. "
-            "Should probably move other study folders to avoid overwrite."
-        )
-        raise FileExistsError
-        sys.exit(3)
-        # TODO avoid overwrites here, / add force option
+            "Warning: the expected 'raw' folder was not found, and so it will "
+            "be created automatically for you - including any files that were "
+            "in the directory supplied.")
+
+        os.mkdir(os.path.join(studies_folder, study_name, 'raw'))
+        for file_folder in [file for file in
+            os.listdir(os.path.join(studies_folder, study_name))]:
+            if not os.path.isdir(file_folder) and file_folder != 'raw':
+                shutil.move(
+                    os.path.join(studies_folder, study_name, file_folder),
+                    os.path.join(studies_folder, study_name, 'raw', file_folder))
+
+    if force is not True:
+        if len(os.listdir(os.path.join(studies_folder, study_name))) > 2:
+            print(
+                "Looks like this folder has already been cleaned. "
+                "Should probably move other study folders to avoid overwrite."
+            )
+            raise FileExistsError
+            sys.exit(3)
 
     if group_num not in range(0, 9):
         print("group_num must be an int, between 0 and 9.")
