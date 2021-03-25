@@ -463,15 +463,15 @@ def main():
 
     # ============== Load All Studies' Data ==============
     for patient_path in patient_paths:
-        for fname in os.listdir(patient_path):
+        for fname in sorted(os.listdir(patient_path)):
             if "_"+filter_band in fname:
                 myclf.LoadData(patient_path+"/"+fname)
 
     # ============== Balance Class Data Sizes ==============
     # pops data off from the larger class until class sizes are equal
     # found in the reference folders
-    # if balance is True:
-    #     myclf.Balance()
+    if balance is True:
+        myclf.Balance()
 
     if k_folds == 1:
         myclf.Prepare(tt_split=tt_split, normalize=normalize)

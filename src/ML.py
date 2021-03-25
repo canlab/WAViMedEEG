@@ -179,7 +179,8 @@ class Classifier:
         verbosity=True,
         tt_split=0.33,
         labels=None,
-            normalize=None):
+        normalize=None,
+            data_minimum=2):
         """
         Prepares data within Classifier object such that all in Classifier.data
         are contained in either self.train_dataset or self.test_dataset,
@@ -203,6 +204,9 @@ class Classifier:
             - normalize: 'standard', 'minmax', or None
                 method with which contig data will be normalized
                 note: within itself, not relative to baseline or other
+            - data_minimum: (int, default 5) if a subject has fewer data than
+                the number specified, they will not be loaded into the
+                train nor test datasets (though they remain in self.data)
         """
 
         # shuffle dataset
@@ -256,7 +260,7 @@ class Classifier:
         # pop subjects who have too few data loaded in
         for subject in self.subjects:
             if len([dataObj for dataObj in self.data if
-                dataObj.subject == subject[1]]) < 5:
+                dataObj.subject == subject[1]]) < data_minimum:
                 self.subjects.pop(self.subjects.index(subject))
 
         self.train_subjects = []
@@ -699,7 +703,8 @@ class Classifier:
         plot_ROC=False,
         plot_conf=False,
         decode=True,
-            plot_3d_preds=False):
+        plot_3d_preds=False,
+            initial_bias=None):
         """
         Convolutional Neural Network classifier, using Tensorflow base
 
@@ -737,15 +742,15 @@ class Classifier:
         import kerastuner as kt
         from src.Plots import plot_history
 
-        # if initial_bias == 'auto':
-        #     initial_bias = {}
-        #     for i, group in enumerate(self.groups):
-        #         initial_bias[group] =\
-        #             (np.sum(self.train_labels[:, i])\
-        #             / len(self.train_labels))
-        #
-        #     # initial_bias = tf.keras.initializers.Constant(initial_bias)
-        #     initial_bias = None
+        if initial_bias == 'auto':
+            initial_bias = {}
+            for i, group in enumerate(self.groups):
+                initial_bias[group] =\
+                    (np.sum(self.train_labels[:, i])\
+                    / len(self.train_labels))
+
+            initial_bias = tf.keras.initializers.Constant(initial_bias)
+            # initial_bias = None
 
         sample_weights = np.ndarray(shape=self.train_labels.shape)
         for i, element in enumerate(self.train_labels_subs):
@@ -767,15 +772,22 @@ class Classifier:
 
         for i in range(depth):
             # 1
-            model.add(BatchNormalization())
-
             model.add(Conv2D(
                 5,
                 kernel_size=(3, 3),
                 strides=1,
                 padding='same',
                 activation='relu',
-                data_format='channels_last'))
+                data_format='channels_last',
+                kernel_regularizer=tf.keras.regularizers.l1_l2(
+                    l1=regularizer_param,
+                    l2=regularizer_param)
+                ))
+
+            model.add(BatchNormalization())
+
+            # if dropout is not None:
+            #     model.add(Dropout(dropout))
 
             model.add(MaxPooling2D(
                 pool_size=(3, 3),
@@ -790,24 +802,23 @@ class Classifier:
         # model.add(Flatten(data_format='channels_last'))
         model.add(Flatten())
 
-        model.add(Dense(
-            10,
-            activation='relu',
-            kernel_regularizer=tf.keras.regularizers.l1_l2(
-                l1=regularizer_param,
-                l2=regularizer_param)))
+        # model.add(Dense(
+        #     10,
+        #     activation='relu',
+        #     kernel_regularizer=tf.keras.regularizers.l1_l2(
+        #         l1=regularizer_param,
+        #         l2=regularizer_param)))
 
         model.add(Dense(
             len(self.groups),
-            # use_bias=True if initial_bias is not None else False,
-            # bias_initializer=initial_bias
-            # if initial_bias is not None
-            # else None,
-            # kernel_regularizer=tf.keras.regularizers.l1_l2(
-                # l1=regularizer_param,
-                # l2=regularizer_param)
+            use_bias=True if initial_bias is not None else False,
+            bias_initializer=initial_bias
+            if initial_bias is not None
+            else None,
+            kernel_regularizer=tf.keras.regularizers.l1_l2(
+                l1=regularizer_param,
+                l2=regularizer_param)
             ))
-        # model.add(Dense(len(self.groups)))
 
         # build model
         model.build(self.train_dataset.shape)
@@ -824,8 +835,19 @@ class Classifier:
         if lr_decay is True:
             learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(
                 learning_rate,
-                decay_steps=10000,
-                decay_rate=0.96)
+                decay_steps=100000,
+                decay_rate=0.96,
+                staircase=True)
+
+        # early stopping callback
+        early_stop = tf.keras.callbacks.EarlyStopping(
+            monitor='val_loss',
+            min_delta=0,
+            patience=5,
+            verbose=0,
+            mode='auto',
+            baseline=None,
+            restore_best_weights=True)
 
         # model compilation
         model.compile(
@@ -866,11 +888,13 @@ class Classifier:
                 self.test_dataset,
                 self.test_labels_ohe if decode is True else self.test_labels
             ) if (len(self.test_labels_ohe) > 0) else None,
-            batch_size=128,
+            batch_size=256,
             callbacks=[
                 tensorboard_callback,
-                csv_logger],
-            verbose=verbosity)
+                csv_logger,
+                early_stop],
+            verbose=verbosity,
+            shuffle=True)
 
         with open(checkpoint_dir+"/summary.txt", 'w') as fh:
             # Pass the file handle in as a lambda function to make it callable
