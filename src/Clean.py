@@ -144,7 +144,7 @@ class StudyFolder:
         try:
             f = open(self.path + "/translator_" + task + ".txt", "r")
 
-            highest_sub_found = int(f.readlines()[-1].split('\t')[-1][1:])
+            highest_sub_found = int(f.readlines()[-1].split('\t')[-1][1:]) + 1
 
         except FileNotFoundError:
             highest_sub_found = 0
@@ -152,7 +152,7 @@ class StudyFolder:
         f = open(self.path + "/translator_" + task + ".txt", "a")
 
         for i, lead in enumerate(subject_leads):
-            ii = i + highest_sub_found + 1
+            ii = i + highest_sub_found
 
             translator[lead] = str(group_num)\
                 + "0"\

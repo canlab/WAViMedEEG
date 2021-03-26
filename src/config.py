@@ -26,7 +26,7 @@ participantNumLen = 4  # default length
 
 # if you are working with multiple studies at once,
 # set the parent directory where you will keep them all
-my_studies = "/wavi/EEGstudies"
+my_studies = "/home/clayton/wavi/EEGstudies"
 study_directory = 'canlab pain'
 
 group_names = {
@@ -63,22 +63,29 @@ tasks = {
         "P300_Eye_Closed",
         "P300s",
         "P300-2",
-        "P300_EC_4_Min"],
+        "P300_EC_4_Min",
+        "P300"],
     "FLNK": [
+        "FLNK",
         "Flanker",
         "flanker"],
     "CLSD": [
+        "CLSD",
         "Eyes_Closed_Resting",
         "CLSD-2"],
     "OPEN": [
+        "OPEN",
         "Eyes_Open_Focused"],
     "REST": [
+        "REST",
         "Rest",
         "rest"],
     "CRNC": [
+        "CRNC",
         "Chronic",
         "chronic"],
     "SOMA": [
+        "SOMA",
         "SMS"]}
 
 
