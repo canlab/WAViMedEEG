@@ -4,6 +4,34 @@ import shutil
 from tqdm import tqdm
 
 
+def is_anonymous(fname, task):
+    """
+    Check to determine if a given filename is already anonymized,
+    in accordance with the current filename convention and task name.
+
+    Parameters:
+        - fname: filename to be checked
+        - task: task name that should be used in check
+    """
+    fname = fname[:-4]
+    try:
+        subject_num = int(fname[:config.participantNumLen])
+    except:
+        return False
+
+    try:
+        remainder = fname.replace(str(subject_num)+"_", "")
+    except:
+        return False
+
+    remainder = remainder.replace("_nofilter", "")
+
+    if remainder == task:
+        return True
+    else:
+        return False
+
+
 # takes one positional argument, path of study folder
 class StudyFolder:
     """
@@ -64,7 +92,9 @@ class StudyFolder:
             print(
                 "Some raw files couldn't be automatically standardized. "
                 + "You should review them in /raw before "
-                + "moving forward with analysis.")
+                + "moving forward with analysis. You can repeat this script "
+                + "after adding task names and they will be handled "
+                + "appropriately.")
 
     def set_raw_fnames(self):
 
@@ -108,16 +138,26 @@ class StudyFolder:
 
         subject_leads = set([
             fname.replace(task, '')[:-4]
-            for fname in self.get_task_fnames(task)])
+            for fname in self.get_task_fnames(task)
+            if (is_anonymous(fname, task) == False)])
+
+        try:
+            f = open(self.path + "/translator_" + task + ".txt", "r")
+
+            highest_sub_found = int(f.readlines()[-1].split('\t')[-1][1:])
+
+        except FileNotFoundError:
+            highest_sub_found = 0
 
         f = open(self.path + "/translator_" + task + ".txt", "a")
 
         for i, lead in enumerate(subject_leads):
+            ii = i + highest_sub_found + 1
 
             translator[lead] = str(group_num)\
                 + "0"\
-                * (config.participantNumLen - len(str(i)) - 1)\
-                + str(i)
+                * (config.participantNumLen - len(str(ii)) - 1)\
+                + str(ii)
 
             f.write(lead)
 
@@ -149,7 +189,8 @@ class StudyFolder:
         """
 
         for fname in self.get_task_fnames(task):
-            if fname[-4:] not in [".art", ".evt"]:
+            if fname[-4:] not in [".art", ".evt"] and\
+            ("nofilter" not in fname):
                 shutil.move(
                     self.path + "/" + task + "/" + fname,
                     self.path + "/" + task + "/"
