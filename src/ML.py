@@ -369,6 +369,7 @@ class Classifier:
             if tt_split == 0:
                 self.test_dataset = np.ndarray(self.train_dataset.shape)
                 self.test_labels = np.ndarray(self.train_labels.shape)
+                self.test_labels_subs = []
 
         if len(self.test_subjects) > 0:
             self.test_dataset = np.expand_dims(np.stack(
@@ -402,6 +403,7 @@ class Classifier:
             if tt_split == 1:
                 self.train_dataset = np.ndarray(self.test_dataset.shape)
                 self.train_labels = np.ndarray(self.test_dataset.shape)
+                self.train_labels_subs = []
 
         if k_fold is None:
             print("Number of samples in train:", self.train_dataset.shape[0])
@@ -478,24 +480,27 @@ class Classifier:
                         / len(self.test_labels)))
 
         # shuffle all of the data together
-        self.train_dataset, self.train_labels, self.train_labels_subs = \
-            zip(*random.sample(list(zip(
-                self.train_dataset,
-                self.train_labels,
-                self.train_labels_subs)), k=len(self.train_dataset)))
+        if len(self.train_labels_subs) > 0:
+            self.train_dataset, self.train_labels, self.train_labels_subs = \
+                zip(*random.sample(list(zip(
+                    self.train_dataset,
+                    self.train_labels,
+                    self.train_labels_subs)), k=len(self.train_dataset)))
 
-        self.test_dataset, self.test_labels, self.test_labels_subs = \
-            zip(*random.sample(list(zip(
-                self.test_dataset,
-                self.test_labels,
-                self.test_labels_subs)), k=len(self.test_dataset)))
+            self.train_dataset = np.array(self.train_dataset)
+            self.train_labels = np.array(self.train_labels)
+            self.train_labels_subs = np.array(self.train_labels_subs)
 
-        self.train_dataset = np.array(self.train_dataset)
-        self.train_labels = np.array(self.train_labels)
-        self.train_labels_subs = np.array(self.train_labels_subs)
-        self.test_dataset = np.array(self.test_dataset)
-        self.test_labels = np.array(self.test_labels)
-        self.test_labels_subs = np.array(self.test_labels_subs)
+        if len(self.test_labels_subs) > 0:
+            self.test_dataset, self.test_labels, self.test_labels_subs = \
+                zip(*random.sample(list(zip(
+                    self.test_dataset,
+                    self.test_labels,
+                    self.test_labels_subs)), k=len(self.test_dataset)))
+
+            self.test_dataset = np.array(self.test_dataset)
+            self.test_labels = np.array(self.test_labels)
+            self.test_labels_subs = np.array(self.test_labels_subs)
 
     def LDA(
         self,
@@ -752,15 +757,25 @@ class Classifier:
             initial_bias = tf.keras.initializers.Constant(initial_bias)
             # initial_bias = None
 
-        sample_weights = np.ndarray(shape=self.train_labels.shape)
-        for i, element in enumerate(self.train_labels_subs):
-            sample_weights[i] = (
-                (1 -
-                (
-                len([tag for tag in self.train_labels_subs if tag == element]) /
-                len(self.train_labels_subs)
-                )) / len([tag for tag in self.train_labels_subs if tag == element])
-            )
+        # TODO: redo sample weight calculation
+        # check: 5:4:1 / 10
+        # -> {2, 2.5, 10} -> sum = 1
+        # sample_weights = np.ndarray(shape=self.train_labels.shape)
+        # for i, element in enumerate(self.train_labels_subs):
+        #     sample_weights[i] = (
+        #         (1 -
+        #         (
+        #         len([tag for tag in self.train_labels_subs if tag == element]) /
+        #         len(self.train_labels_subs)
+        #         )) / len([tag for tag in self.train_labels_subs if tag == element])
+        #     )
+
+        sample_weights = [
+            (len(self.train_labels) /
+            len([label for label in self.train_labels if label == thislabel]))
+            for thislabel in self.train_labels
+        ]
+        sample_weights = np.array(sample_weights)
 
         # decode labels (they arrive as one-hot vectors)
         if decode is True:
@@ -773,8 +788,8 @@ class Classifier:
         for i in range(depth):
             # 1
             model.add(Conv2D(
-                5,
-                kernel_size=(3, 3),
+                15,
+                kernel_size=(10, 3),
                 strides=1,
                 padding='same',
                 activation='relu',
@@ -784,16 +799,13 @@ class Classifier:
                     l2=regularizer_param)
                 ))
 
-            model.add(BatchNormalization())
-
-            # if dropout is not None:
-            #     model.add(Dropout(dropout))
-
             model.add(MaxPooling2D(
                 pool_size=(3, 3),
                 strides=1,
                 padding='valid',
                 data_format='channels_last'))
+
+        model.add(BatchNormalization())
 
         if dropout is not None:
             model.add(Dropout(dropout))
@@ -835,8 +847,8 @@ class Classifier:
         if lr_decay is True:
             learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(
                 learning_rate,
-                decay_steps=100000,
-                decay_rate=0.96,
+                decay_steps=10000,
+                decay_rate=0.98,
                 staircase=True)
 
         # early stopping callback
@@ -882,7 +894,7 @@ class Classifier:
         history = model.fit(
             self.train_dataset,
             self.train_labels_ohe if decode is True else self.train_labels,
-            # sample_weight=sample_weights,
+            sample_weight=sample_weights,
             epochs=epochs,
             validation_data=(
                 self.test_dataset,
@@ -892,7 +904,8 @@ class Classifier:
             callbacks=[
                 tensorboard_callback,
                 csv_logger,
-                early_stop],
+                # early_stop,
+                ],
             verbose=verbosity,
             shuffle=True)
 
