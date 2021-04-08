@@ -772,9 +772,8 @@ class Classifier:
 
         sample_weights = [
             (len(self.train_labels) /
-            len([label for label in self.train_labels if label == thislabel]))
-            for thislabel in self.train_labels
-        ]
+            len([label for label in self.train_labels if (np.argmax(label) == np.argmax(thislabel))]))
+            for thislabel in self.train_labels]
         sample_weights = np.array(sample_weights)
 
         # decode labels (they arrive as one-hot vectors)

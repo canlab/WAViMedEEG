@@ -26,7 +26,7 @@ participantNumLen = 4  # default length
 
 # if you are working with multiple studies at once,
 # set the parent directory where you will keep them all
-my_studies = "/home/clayton/wavi/EEGstudies"
+my_studies = "/wavi/EEGstudies"
 study_directory = 'canlab pain'
 
 group_names = {
