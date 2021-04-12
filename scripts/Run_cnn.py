@@ -1,10 +1,11 @@
-import ML
 import sys
+sys.path.append('..')
+from src import ML
+from src import config
+from src.Standard import SpectralAverage
 import os
 from tqdm import tqdm
-import config
 import argparse
-from Standard import SpectralAverage
 from datetime import datetime
 
 
@@ -37,7 +38,7 @@ def main():
                         type=bool,
                         default=False,
                         help="(Default: False) If True, then will pop data "
-                        + "from the smaller class datasets until balanced.")
+                        + "from the larger class datasets until balanced.")
 
     parser.add_argument('--task',
                         dest='task',
@@ -106,12 +107,12 @@ def main():
                         + "to use. One of "
                         + "the following: standard, minmax, None")
 
-    parser.add_argument('--bias',
-                        dest='bias',
-                        type=str,
-                        default=None,
-                        help="(Default: None) If 'auto', uses bias "
-                        + "initializer to try to resolve class imbalances")
+    # parser.add_argument('--bias',
+    #                     dest='bias',
+    #                     type=str,
+    #                     default=None,
+    #                     help="(Default: None) If 'auto', uses bias "
+    #                     + "initializer to try to resolve class imbalances")
 
     parser.add_argument('--plot_ROC',
                         dest='plot_ROC',
@@ -173,8 +174,9 @@ def main():
                         dest='repetitions',
                         type=int,
                         default=1,
-                        help="(Default: 1) Unlike k-fold, will train the "
-                        + "model n times without mixing around subjects.")
+                        help="(Default: 1) Unlike k-fold, trains the "
+                        + "model n times without mixing around subjects. "
+                        + "Can still be used within each k-fold.")
 
     parser.add_argument('--depth',
                         dest='depth',
@@ -187,7 +189,7 @@ def main():
                         dest='regularizer',
                         type=str,
                         default=None,
-                        help="(Default: l2) Regularizer to be used in dense "
+                        help="(Default: l1_l2) Regularizer to be used in dense "
                         + "layers. One of: ['l1', 'l2', 'l1_l2']")
 
     parser.add_argument('--regularizer_param',
@@ -195,6 +197,15 @@ def main():
                         type=float,
                         default=0.01,
                         help="(Default: 0.01) Regularization parameter ")
+
+    parser.add_argument('--focal_gamma',
+                        dest='focal_loss_gamma',
+                        type=float,
+                        default=0,
+                        help="(Default: 0) At zero, focal loss is exactly "
+                        + "cross-entropy. At higher values, easier data "
+                        + "contributes more weakly to loss function, and "
+                        + "difficult classifications are stronger.")
 
     parser.add_argument('--dropout',
                         dest='dropout',
@@ -223,7 +234,7 @@ def main():
     filter_band = args.filter_band
     epochs = args.epochs
     normalize = args.normalize
-    bias = args.bias
+    # bias = args.bias
     plot_ROC = args.plot_ROC
     plot_conf = args.plot_conf
     plot_3d_preds = args.plot_3d_preds
@@ -236,6 +247,7 @@ def main():
     depth = args.depth
     regularizer = args.regularizer
     regularizer_param = args.regularizer_param
+    focal_loss_gamma = args.focal_loss_gamma
     dropout = args.dropout
     hypertune = args.hypertune
     balance = args.balance
@@ -387,6 +399,11 @@ def main():
         raise ValueError
         sys.exit(3)
 
+    if (focal_loss_gamma < 0):
+        print("Invalid entry for focal gamma. Must be float >= 0.")
+        raise ValueError
+        sys.exit(3)
+
     if dropout is not None:
         if (dropout <= 0) or (dropout >= 1):
             print(
@@ -446,22 +463,22 @@ def main():
 
     # ============== Load All Studies' Data ==============
     for patient_path in patient_paths:
-        for fname in os.listdir(patient_path):
+        for fname in sorted(os.listdir(patient_path)):
             if "_"+filter_band in fname:
                 myclf.LoadData(patient_path+"/"+fname)
 
     # ============== Balance Class Data Sizes ==============
     # pops data off from the larger class until class sizes are equal
     # found in the reference folders
-    # if balance is True:
-    #     myclf.Balance()
+    if balance is True:
+        myclf.Balance()
 
     if k_folds == 1:
         myclf.Prepare(tt_split=tt_split, normalize=normalize)
 
         for i in range(repetitions):
             if hypertune is False:
-                myclf.CNN(
+                model, _, _, = myclf.CNN(
                     learning_rate=learning_rate,
                     lr_decay=lr_decay,
                     epochs=epochs,
@@ -471,7 +488,8 @@ def main():
                     depth=depth,
                     regularizer=regularizer,
                     regularizer_param=regularizer_param,
-                    initial_bias=bias,
+                    focal_loss_gamma=focal_loss_gamma,
+                    # initial_bias=bias,
                     dropout=dropout)
 
                 if data_type == 'spectra':
@@ -527,6 +545,8 @@ def main():
             normalize=normalize,
             regularizer=regularizer,
             regularizer_param=regularizer_param,
+            focal_loss_gamma=focal_loss_gamma,
+            repetitions=repetitions,
             dropout=dropout,
             learning_rate=learning_rate,
             lr_decay=lr_decay,

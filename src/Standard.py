@@ -1,6 +1,6 @@
-import Prep
+from src import Prep
+from src import config
 import os
-import config
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy
@@ -227,3 +227,43 @@ class BandFilter:
             np.savetxt(
                 self.study_folder+"/"+self.task+"/"+file[0], file[1],
                 delimiter=" ", fmt="%2.1f")
+
+
+class CoherenceMap:
+    def __init__(self, study_folder, task):
+
+        self.study_folder = study_folder
+        self.task = task
+        self.new_data = []
+
+        fnames = [
+            fname for fname in os.listdir(self.study_folder+"/"+self.task)
+            if "_nofilter" in fname]
+
+        print("Generating filtered trials:")
+        for fname in tqdm(fnames):
+            try:
+                arr = np.genfromtxt(
+                    self.study_folder+"/"+self.task+"/"+fname,
+                    delimiter=" ")
+            except Exception:
+                print(fname, " FAILED")
+                print("Couldn't load data. Needs delim fix probably.")
+                sys.exit(3)
+
+            if arr.size == 0:
+                print(
+                    "Most likely an empty text file was "
+                    + "encountered. Skipping: " + fname)
+                continue
+
+            post = []
+
+            for i, sig in enumerate(arr.T[:-2]):
+                post[i] = []
+                for j, sig2 in enumerate(arr.T[i+1:]):
+                    # j + i + 1
+                    f, Cxy = scipy.signal.coherence(sig, sig2, fs, nperseg=1024)
+                post.append(filtered)
+
+            post = np.stack(post)

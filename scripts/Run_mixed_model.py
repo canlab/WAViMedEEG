@@ -1,16 +1,16 @@
-import ML
 import sys
+sys.path.append('..')
+from src import ML
+from src import config
 import os
 from tqdm import tqdm
-import config
 import argparse
 
 
 def main():
 
     parser = argparse.ArgumentParser(
-        description="Options for CNN "
-        + "(convoluional neural network) method of ML.Classifier")
+        description="Options for Mixed Model: LDA, SVM, and CNN ")
 
     parser.add_argument('data_type',
                         type=str,
@@ -90,7 +90,14 @@ def main():
                         + "analysis steps, such "
                         + "as: 'noalpha', 'delta', or 'nofilter'")
 
-    # ============== LDA args ==============
+    # ============== CNN args ==============
+
+    parser.add_argument('--epochs',
+                        dest='epochs',
+                        type=int,
+                        default=100,
+                        help="(Default: 100) Number of training "
+                        + " iterations to be run")
 
     parser.add_argument('--normalize',
                         dest='normalize',
@@ -100,13 +107,25 @@ def main():
                         + "to use. One of "
                         + "the following: standard, minmax, None")
 
-    parser.add_argument('--tt_split',
-                        dest='tt_split',
+    parser.add_argument('--plot_ROC',
+                        dest='plot_ROC',
+                        type=bool,
+                        default=False,
+                        help="(Default: False) Plot sensitivity-specificity "
+                        + "curve on validation dataset")
+
+    parser.add_argument('--learning_rate',
+                        dest='learning_rate',
                         type=float,
-                        default=0.33,
-                        help="(Default: 0.33) Ratio of test samples "
-                        + "to train samples. Note: not applicable if using "
-                        + "k_folds.")
+                        default=0.01,
+                        help="(Default: 0.01) CNN step size")
+
+    parser.add_argument('--lr_decay',
+                        dest='lr_decay',
+                        type=bool,
+                        default=False,
+                        help="(Default: False) Whether learning rate should "
+                        + "decay adhering to a 0.96 decay rate schedule")
 
     parser.add_argument('--k_folds',
                         dest='k_folds',
@@ -114,13 +133,6 @@ def main():
                         default=1,
                         help="(Default: 1) If you want to perform "
                         + "cross evaluation, set equal to number of k-folds.")
-
-    parser.add_argument('--plot',
-                        dest='plot',
-                        type=bool,
-                        default=False,
-                        help="(Default: False) Plots decision boundary.")
-
 
     # save the variables in 'args'
     args = parser.parse_args()
@@ -135,10 +147,12 @@ def main():
     erp_degree = args.erp_degree
     filter_band = args.filter_band
     balance = args.balance
+    epochs = args.epochs
     normalize = args.normalize
-    tt_split = args.tt_split
+    plot_ROC = args.plot_ROC
+    learning_rate = args.learning_rate
+    lr_decay = args.lr_decay
     k_folds = args.k_folds
-    plot = args.plot
 
     # ERROR HANDLING
     if data_type not in ["erps", "spectra", "contigs"]:
@@ -210,6 +224,19 @@ def main():
             raise ValueError
             sys.exit(3)
 
+    try:
+        if (epochs <= 0) or (epochs > 10000):
+            print("Invalid entry for epochs, must be between 0 and 10000.")
+            sys.exit(3)
+            raise ValueError
+            sys.exit(3)
+    except TypeError:
+        print(
+            "Invalid entry for epochs, "
+            + "must be integer value between 0 and 10000.")
+        raise ValueError
+        sys.exit(3)
+
     if normalize not in ["standard", "minmax", None]:
         print(
             "Invalid entry for normalize. "
@@ -217,12 +244,12 @@ def main():
         raise ValueError
         sys.exit(3)
 
-    if tt_split < 0 or tt_split > 0.999:
+    if learning_rate < 0.00001 or learning_rate > 0.99999:
         print(
-            "Invalid entry for tt_split. Must be float between "
-            + "0.1 and 0.9.")
+            "Invalid entry for learning_rate. Must be float between "
+            + "0.00001 and 0.99999.")
         raise ValueError
-        sys.exit(3)
+        sy.exit(3)
 
     try:
         if len(str(artifact)) == 19:
@@ -248,8 +275,8 @@ def main():
         raise ValueError
         sys.exit(3)
 
-    if k_folds <= 0:
-        print("Invalid entry for k_folds. Must be int 1 or greater.")
+    if k_folds <= 1:
+        print("Invalid entry for k_folds. Must be int 2 or greater.")
         raise ValueError
         sys.exit(3)
 
@@ -325,19 +352,15 @@ def main():
     # found in the reference folders
     myclf.Balance(studies_folder, filter_band=filter_band, ref_folders=balance)
 
-    if k_folds == 1:
-        myclf.Prepare(tt_split=tt_split)
-
-        myclf.LDA(
-            normalize='standard',
-            plot_data=plot)
-
-    if k_folds > 1:
-        myclf.KfoldCrossVal(
-            myclf.LDA,
-            normalize='standard',
-            k=k_folds,
-            plot_data=plot)
+    myclf.KfoldCrossVal(
+        'mixed',
+        normalize=normalize,
+        learning_rate=learning_rate,
+        lr_decay=lr_decay,
+        epochs=epochs,
+        plot_ROC=plot_ROC,
+        k=k_folds,
+        plot_spec_avgs=True)
 
 
 if __name__ == '__main__':

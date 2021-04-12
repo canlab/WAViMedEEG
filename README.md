@@ -46,6 +46,8 @@ This should help you get the WAVi toolbox set up on your machine. To get a local
    * [Scikitlearn](https://scikit-learn.org)
    * [MNE](https://mne.tools)
    * [TQDM](https://github.com/tqdm/tqdm)
+   * [Focal Loss](https://github.com/artemmavrin/focal-loss/blob/master/src/focal_loss/_categorical_focal_loss.py)
+   * [Keras-Tuner](https://keras-team.github.io/keras-tuner/)
 
 
 ## Installation

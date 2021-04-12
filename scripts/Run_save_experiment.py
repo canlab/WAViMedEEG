@@ -1,10 +1,11 @@
-import ML
 import sys
+sys.path.append('..')
+from src import ML
+from src import config
+from src.Standard import SpectralAverage
 import os
 from tqdm import tqdm
-import config
 import argparse
-from Standard import SpectralAverage
 from datetime import datetime
 import numpy as np
 import xlsxwriter

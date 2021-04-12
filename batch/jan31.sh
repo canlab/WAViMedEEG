@@ -1,0 +1,1 @@
+python3 ../scripts/Run_eval_cnn.py spectra --log_dir "logs/fit/" --checkpoint_dir 20210218-182257_spectra_P300_250_1111111111111111111_0000000000110000000_1_Control_Pain --pred_level subject --normalize standard --erp_degree 1 --filter_band hidelta --plot_hist True --study_names "ref 51-60"

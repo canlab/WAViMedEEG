@@ -1,1 +1,0 @@
-python3 Ex_save_experiment.py --log_dirs d5-crosseval_erps d5-crosseval_spectra d6-crosseval_erps d6-crosseval_spectra d7-crosseval_erps d7-crosseval_spectra dropout_erp dropout_spectra l1_erps l1_l2_dropout_erps l1_l2_dropout_spectra l1_l2_dropout_stand_erps l1_l2_dropout_stand_spectra l1_l2_erps l1_l2_spectra l1_spectra l2_erps l2_spectra

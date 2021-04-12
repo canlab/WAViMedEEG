@@ -2,17 +2,18 @@
 Requires installation of "mne", "tqdm", and "argparse"
 """
 
-# Example Spectra Generation
+# Example Contig Generation
 
 # First, we'll import the 'Prep' module, to use its 'Trials' class, os
 # and TQDM, which is a handy pip-installable package
 # that gives us nice loading bars.
 
-import Prep
+import sys
+sys.path.append('..')
+from src import Prep
+from src import config
 import os
 import argparse
-import config
-import sys
 from tqdm import tqdm
 
 
@@ -79,6 +80,14 @@ def main():
                         default="P300",
                         help='(Default: P300) Task to use from config.py')
 
+    parser.add_argument('--spectra',
+                        dest='spectra',
+                        type=bool,
+                        default=True,
+                        help="(Default: True) Whether spectra should "
+                        + "automatically be "
+                        + "generated and written to file after making contigs")
+
     parser.add_argument('--channels',
                         dest='channels',
                         type=str,
@@ -122,6 +131,7 @@ def main():
     studies_folder = args.studies_folder
     study_name = args.study_name
     task = args.task
+    spectra = args.spectra
     channels = args.channels
     filter_band = args.filter_band
     erp_degree = args.erp_degree
@@ -186,6 +196,11 @@ def main():
         raise ValueError
         sys.exit(3)
 
+    if spectra not in [True, False]:
+        print("spectra must be boolean, True or False.")
+        raise ValueError
+        sys.exit(3)
+
     try:
         str(channels)
     except ValueError:
@@ -202,7 +217,9 @@ def main():
         raise ValueError
         sys.exit(3)
 
-    if any(band == filter_band for band in config.frequency_bands):
+    if filter_band == "nofilter":
+        pass
+    elif any(band == filter_band for band in config.frequency_bands):
         pass
     elif any("no"+band == filter_band for band in config.frequency_bands):
         pass
@@ -213,8 +230,6 @@ def main():
     else:
         print("That is not a valid filterband option. "
               + "Please an option listed here:")
-        for item in filterband_options:
-            print(item)
         raise ValueError
         sys.exit(3)
 
@@ -233,11 +248,14 @@ def main():
 
     for study_name in study_names:
 
+        if not os.path.isdir(studies_folder+"/"+study_name+"/"+task):
+            continue
+
         myp300 = Prep.TaskData(studies_folder+"/"+study_name+"/"+task)
 
         print("Processing study:", study_name)
 
-        myp300.gen_spectra(
+        myp300.gen_contigs(
             length,
             art_degree=artifact,
             network_channels=channels,
@@ -245,7 +263,18 @@ def main():
             erp_degree=erp_degree,
             force=force)
 
-        myp300.write_spectra()
+        myp300.write_contigs()
+
+        if spectra is True:
+            myp300.gen_spectra(
+                length,
+                art_degree=artifact,
+                network_channels=channels,
+                filter_band=filter_band,
+                erp_degree=erp_degree,
+                force=force)
+
+            myp300.write_spectra()
 
 
 if __name__ == '__main__':

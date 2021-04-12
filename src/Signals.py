@@ -1,6 +1,6 @@
+from src import config
 from scipy import signal
 import numpy as np
-import config
 import random
 
 
