@@ -41,7 +41,7 @@ def StringarizeChannels(input_str, reference_list=config.channel_names):
     Returns:
         - network_channels: default config.network_channels
     """
-    return([chan for bin, chan in zip(bin_str, reference_list)
+    return([chan for bin, chan in zip(input_str, reference_list)
         if bin == "1"])
 
 
