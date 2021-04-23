@@ -806,6 +806,8 @@ class Spectra:
 
     def write(self, path):
 
+        import cupy as cp
+
         np.savetxt(
             path,
             cp.asnumpy(self.data),
