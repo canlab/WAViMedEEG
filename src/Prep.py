@@ -510,7 +510,8 @@ class TaskData:
                     delimiter=","),
                 contig.split('_')[2][:-4],
                 contig[:config.participantNumLen],
-                contig.split('_')[1]).fft(use_gpu=use_gpu)
+                ### TODO: GPU spectra
+                contig.split('_')[1]).fft(use_gpu=False)
 
             if temp is not None:
                 self.spectra.append(temp)
