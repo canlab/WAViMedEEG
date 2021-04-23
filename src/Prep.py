@@ -641,9 +641,10 @@ class Contig:
 
             if channel_number == 0:
 
-                spectral = np.array(f)
-                if use_gpu is True:
-                    spectral = cp.asarray(spectral)
+                if use_gpu is False:
+                    spectral = np.array(f)
+                else:
+                    spectral = cp.asarray(f)
 
             if use_gpu is False:
                 spectral = np.column_stack((spectral, Pxx_den))
