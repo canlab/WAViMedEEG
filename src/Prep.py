@@ -76,6 +76,7 @@ def FilterChannels(
             [reference_list.index(keep) for keep in keep_channels],
             axis_num)
     else:
+        import cupy as cp
         newarray = cp.take(
             array,
             [reference_list.index(keep) for keep in keep_channels],
