@@ -123,6 +123,15 @@ def main():
                         + "Warning: potential data overwrite. "
                         + "Be careful!")
 
+    parser.add_argument('--use_gpu',
+                        dest='use_gpu',
+                        type=bool,
+                        default=False,
+                        help="(Default: False) If True, will attempt to "
+                        + "replace numpy and scipy functions with cupy "
+                        + "- requires NVIDIA GPU attached, and an existing "
+                        + "installation of CUDA, as well as cupy.")
+
     # Save the arguments in "args"
     args = parser.parse_args()
 
@@ -136,6 +145,7 @@ def main():
     filter_band = args.filter_band
     erp_degree = args.erp_degree
     force = args.force
+    use_gpu = args.use_gpu
 
     # ERROR HANDLING
     if type(length) is int is False:
@@ -261,7 +271,8 @@ def main():
             network_channels=channels,
             filter_band=filter_band,
             erp_degree=erp_degree,
-            force=force)
+            force=force,
+            use_gpu=use_gpu)
 
         myp300.write_contigs()
 
@@ -272,7 +283,8 @@ def main():
                 network_channels=channels,
                 filter_band=filter_band,
                 erp_degree=erp_degree,
-                force=force)
+                force=force,
+                use_gpu=use_gpu)
 
             myp300.write_spectra()
 
