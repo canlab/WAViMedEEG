@@ -502,6 +502,7 @@ class Classifier:
             self.test_labels = np.array(self.test_labels)
             self.test_labels_subs = np.array(self.test_labels_subs)
 
+
     def LDA(
         self,
             plot_data=False):
@@ -519,11 +520,8 @@ class Classifier:
 
         # reshape datasets
         nsamples, nx, ny, ndepth = self.train_dataset.shape
-
         rs_train_dataset = self.train_dataset.reshape((nsamples, nx*ny))
-
         nsamples, nx, ny, ndepth = self.test_dataset.shape
-
         rs_test_dataset = self.test_dataset.reshape((nsamples, nx*ny))
 
         # << Normalize features (z-score standardization) >> #
@@ -545,6 +543,33 @@ class Classifier:
                 clf,
                 rs_train_dataset,
                 self.test_labels, y_pred)
+
+        if plot_conf is True:
+            from sklearn.metrics import confusion_matrix
+            from src.Plots import plot_confusion_matrix
+
+            # calculate confusion matrix
+            cm = confusion_matrix(labels, y_pred)
+            plot_confusion_matrix(cm, checkpoint_dir, self.group_names)
+
+        if plot_3d_preds is True:
+            from src.Plots import plot_3d_scatter
+
+            plot_3d_scatter(
+                y_pred_keras,
+                labels,
+                self.group_names,
+                checkpoint_dir,
+                "validation_3d_preds")
+
+        # TODO:
+        # not working for multi-label atm
+        if plot_ROC is True:
+            from src.Plots import roc
+            roc(
+                y_pred,
+                labels,
+                fname=checkpoint_dir+"/ROC")
 
         return clf, y_pred, self.test_labels
 
@@ -699,7 +724,6 @@ class Classifier:
         beta2=0.999,
         epochs=100,
         verbosity=True,
-        eval=None,
         depth=5,
         regularizer=None,
         regularizer_param=0.01,
@@ -709,12 +733,13 @@ class Classifier:
         plot_conf=False,
         decode=True,
         plot_3d_preds=False,
-            initial_bias=None):
+        sample_weight=True,
+            logistic_regression=False):
         """
         Convolutional Neural Network classifier, using Tensorflow base
 
         Parameters:
-            - learning_rate: (float) 0.01
+            - learning_rate: (float) default 0.01
                 how quickly the weights adapt at each iteration
             - lr_decay: (bool) default True
                 whether the learning rate should decay at a rate of 0.96
@@ -724,8 +749,41 @@ class Classifier:
                 beta2 value for Adam optimizer
             - epochs: (int) default 100
                 number of training iterations
+            - verbosity: (bool) default True
+                whether or not certain output statements should be printed
+                to standard output
+            - depth: (int) default 5
+                number of *sets* of convolutional layers (including pooling
+                and batch normalization) to be provided to the model;
+                an analog for complexity
+            - regularizer: {'l1', 'l2', 'l1_l2', None} default None
+                which regularization method should be applied to weights
+                in any applicable parameterized layer
+            - regularizer_param: (float) default 0.01
+                penalization for large weights in the provided regularizer
+            - focal_loss_gama: (null)
+            - dropout: (float) default None
+                if float provided (> 0 & < 1), degree of dropout applied after
+                all convolulational sets are given
             - plot_ROC: (bool) default False
                 evaluates model on validation data and plots ROC curve
+            - plot_conf: (bool) default False
+                evaluates model on validation data and plots confusion matrix
+                of correct and incorrect rates for each class provided
+            - decode: (bool) default True
+                whether or not data labels should be one-hot-encoded, i.e.
+                a ground-truth array (0, 1, 0) -> 1, (0, 0, 1) -> 2,
+                *note* only applicable for sparse categorical loss (softmax)
+            - plot_3d_preds: (bool) default False
+                evaluates model on validation data and plots outputs from
+                logits *only to be used when 3 classes total are invovled*
+            - sample_weight: (bool) default True
+                if True, inputs are associated with a sample weight when
+                training so that imbalanced classes are given approximately
+                equal amounts of influence over the loss function
+            - logistic_regression: (bool) default False
+                if True, then the model will be simply a logistic regression
+                model, without convolutions, or other model complexities
         """
         # quiet some TF warnings
         TF_CPP_MIN_LOG_LEVEL = 2
@@ -747,34 +805,14 @@ class Classifier:
         import kerastuner as kt
         from src.Plots import plot_history
 
-        if initial_bias == 'auto':
-            initial_bias = {}
-            for i, group in enumerate(self.groups):
-                initial_bias[group] =\
-                    (np.sum(self.train_labels[:, i])\
-                    / len(self.train_labels))
-
-            initial_bias = tf.keras.initializers.Constant(initial_bias)
-            # initial_bias = None
-
-        # TODO: redo sample weight calculation
-        # check: 5:4:1 / 10
-        # -> {2, 2.5, 10} -> sum = 1
-        # sample_weights = np.ndarray(shape=self.train_labels.shape)
-        # for i, element in enumerate(self.train_labels_subs):
-        #     sample_weights[i] = (
-        #         (1 -
-        #         (
-        #         len([tag for tag in self.train_labels_subs if tag == element]) /
-        #         len(self.train_labels_subs)
-        #         )) / len([tag for tag in self.train_labels_subs if tag == element])
-        #     )
-
-        sample_weights = [
-            (len(self.train_labels) /
-            len([label for label in self.train_labels if (np.argmax(label) == np.argmax(thislabel))]))
-            for thislabel in self.train_labels]
-        sample_weights = np.array(sample_weights)
+        if sample_weight is True:
+            sample_weights = [
+                (len(self.train_labels) /
+                len([label for label in self.train_labels if (np.argmax(label) == np.argmax(thislabel))]))
+                for thislabel in self.train_labels]
+            sample_weights = np.array(sample_weights)
+        else:
+            sample_weights = [1 for label in self.train_labels]
 
         # decode labels (they arrive as one-hot vectors)
         if decode is True:
@@ -784,48 +822,41 @@ class Classifier:
         # introduce sequential set
         model = tf.keras.models.Sequential()
 
-        for i in range(depth):
-            # 1
-            model.add(Conv2D(
-                15,
-                kernel_size=(10, 3),
-                strides=1,
-                padding='same',
-                activation='relu',
-                data_format='channels_last',
-                kernel_regularizer=tf.keras.regularizers.l1_l2(
-                    l1=regularizer_param,
-                    l2=regularizer_param)
-                ))
+        if logistic_regression is not True:
+            for i in range(depth):
+                # 1
+                model.add(Conv2D(
+                    15,
+                    kernel_size=(10, 3),
+                    strides=1,
+                    padding='same',
+                    activation='relu',
+                    data_format='channels_last',
+                    kernel_regularizer=tf.keras.regularizers.l1_l2(
+                        l1=regularizer_param,
+                        l2=regularizer_param)
+                    ))
 
-            model.add(MaxPooling2D(
-                pool_size=(3, 3),
-                strides=1,
-                padding='valid',
-                data_format='channels_last'))
+                model.add(MaxPooling2D(
+                    pool_size=(3, 3),
+                    strides=1,
+                    padding='valid',
+                    data_format='channels_last'))
 
-        model.add(BatchNormalization())
+            model.add(BatchNormalization())
 
-        if dropout is not None:
-            model.add(Dropout(dropout))
+            if dropout is not None:
+                model.add(Dropout(dropout))
 
         # flatten
-        # model.add(Flatten(data_format='channels_last'))
-        model.add(Flatten())
-
-        # model.add(Dense(
-        #     10,
-        #     activation='relu',
-        #     kernel_regularizer=tf.keras.regularizers.l1_l2(
-        #         l1=regularizer_param,
-        #         l2=regularizer_param)))
+        model.add(Flatten(data_format='channels_last'))
 
         model.add(Dense(
             len(self.groups),
-            use_bias=True if initial_bias is not None else False,
-            bias_initializer=initial_bias
-            if initial_bias is not None
-            else None,
+            # use_bias=True if initial_bias is not None else False,
+            # bias_initializer=initial_bias
+            # if initial_bias is not None
+            # else None,
             kernel_regularizer=tf.keras.regularizers.l1_l2(
                 l1=regularizer_param,
                 l2=regularizer_param)
@@ -871,11 +902,13 @@ class Classifier:
             metrics=['accuracy'])
 
         # tensorboard setup
+        # and naming of checkpoint directory
         checkpoint_dir = '../logs/fit/'\
             + datetime.datetime.now().strftime('%Y%m%d-%H%M%S')\
             + "_"\
             + self.trial_name.replace("/", "_")\
 
+        # include each group name (sorted) into checkpoint directory
         for group in self.group_names:
             checkpoint_dir = checkpoint_dir + "_" + group
 
@@ -886,10 +919,12 @@ class Classifier:
             histogram_freq=1)
 
         # save model history (acc, loss) to csv file
+        # in checkpoint directory
         csv_logger = tf.keras.callbacks.CSVLogger(
             checkpoint_dir+"/training.log",
             separator=',')
 
+        # fit model to data
         history = model.fit(
             self.train_dataset,
             self.train_labels_ohe if decode is True else self.train_labels,
@@ -908,6 +943,7 @@ class Classifier:
             verbose=verbosity,
             shuffle=True)
 
+        # write model summary to output file
         with open(checkpoint_dir+"/summary.txt", 'w') as fh:
             # Pass the file handle in as a lambda function to make it callable
             model.summary(print_fn=lambda x: fh.write(x + '\n'))
@@ -1263,7 +1299,9 @@ class Classifier:
         plot_Features=False,
         feat_select=False,
         num_feats=10,
-            tt_split=0.33):
+        tt_split=0.33,
+        sample_weight=True,
+        logistic_regression=False):
         """
         Resampling procedure used to evaluate ML models
         on a limited data sample
@@ -1308,7 +1346,9 @@ class Classifier:
                         epochs=epochs,
                         plot_ROC=plot_ROC,
                         plot_conf=plot_conf,
-                        plot_3d_preds=plot_3d_preds)
+                        plot_3d_preds=plot_3d_preds,
+                        sample_weight=sample_weight,
+                        logistic_regression=logistic_regression)
 
                     # self.saveModelConfig('cnn', model)
 
@@ -1346,7 +1386,8 @@ class Classifier:
                         epochs=epochs,
                         plot_ROC=plot_ROC,
                         plot_conf=plot_conf,
-                        plot_3d_preds=plot_3d_preds)
+                        plot_3d_preds=plot_3d_preds,
+                        logistic_regression=logistic_regression)
 
                     # self.saveModelConfig('cnn', model)
 

@@ -9,57 +9,47 @@ from scipy import signal, stats
 import sys
 
 
-def BinarizeChannels(network_channels=config.network_channels):
+def BinarizeChannels(
+    input_channels=config.network_channels,
+    true_channels=config.channel_names):
     """
     Utility function to convert list of string channel names to a
     binary string corresponding to whether or not each default channel
-    in config.channel_names is found in the input list
+    in true_channels is found in the input_channels
 
     Parameters:
-        - network_channels: default config.network_channels
+        - input_channels: (default config.network_channels)
+        - true_channels: (default config.channel_names)
 
     Returns:
         - string of 0s and 1s
     """
-
-    bin_str = ""
-
-    for channel in config.channel_names:
-
-        if channel in network_channels:
-
-            bin_str = bin_str + "1"
-
-        else:
-
-            bin_str = bin_str + "0"
-
-    return(bin_str)
+    return(map(str, ["1" if channel in input_channels else "0"
+        for channel in config.channel_names]))
 
 
-def StringarizeChannels(bin_str):
+def StringarizeChannels(input_str, reference_list=config.channel_names):
     """
     Utility function to convert binary string channel names to a list of
     strings corresponding to whether or not each default channel
-    in config.channel_names is found in the input list
+    in reference_list is found in the input string
 
     Parameters:
-        - string of 0s and 1s
+        - input_str: string of 0s and 1s
+        - reference_list: list against which input_str will be validated
 
     Returns:
         - network_channels: default config.network_channels
     """
-
-    channels = []
-    for bin, chan in zip(bin_str, config.channel_names):
-        if bin == "1":
-            channels.append(chan)
-
-    return channels
+    return([chan for bin, chan in zip(bin_str, reference_list)
+        if bin == "1"])
 
 
-# just keeps subset of 19 channels as defined in network_channels
-def FilterChannels(array, keep_channels, axis_num=1):
+def FilterChannels(
+    array,
+    keep_channels,
+    axis_num=1,
+    reference_list=config.channel_names):
     """
     Returns a new array of input data containing only the channels
     provided in keep_channels; axis_num corresponds to the axis across
@@ -70,6 +60,8 @@ def FilterChannels(array, keep_channels, axis_num=1):
         - keep_channels: list of channel names to keep, should be a subset
           of config.channel_names
         - axis_num: (int) default 1
+        - reference_list: list of true channel names / columns which
+            keep_channels will be validated against
 
     Returns:
         - newarr: array with only certain channels kept in
@@ -77,19 +69,10 @@ def FilterChannels(array, keep_channels, axis_num=1):
     if isinstance(array, str):
         array = np.array([char for char in array])
 
-    filter_indeces = []
-
-    # print("Old Shape of Dataset:", dataset.shape, "\n")
-    # for each channel in my channel list
-    for keep in keep_channels:
-
-        filter_indeces.append(config.channel_names.index(keep))
-        # get the index of that channel in the master channel list
-        # add that index number to a new list filter_indeces
-
-    newarr = np.take(array, filter_indeces, axis_num)
-
-    return(newarr)
+    return(np.take(
+        array,
+        [reference_list.index(keep) for keep in keep_channels],
+        axis_num))
 
 
 def MaskChannel(channel_data, art_degree=0):
@@ -103,11 +86,7 @@ def MaskChannel(channel_data, art_degree=0):
             over and not masked
 
     """
-    channel_mxi = np.ma.masked_where(
-        channel_data > art_degree,
-        channel_data)
-
-    return channel_mxi
+    return np.ma.masked_where(channel_data > art_degree, channel_data)
 
 
 # takes one positional argument, path of TaskData folder
@@ -158,10 +137,12 @@ class TaskData:
     def gen_contigs(
         self,
         contigLength,
-        network_channels=BinarizeChannels(config.network_channels),
+        network_channels=BinarizeChannels(
+            input_channels=config.network_channels),
         art_degree=0,
         erp_degree=None,
         filter_band="nofilter",
+        use_gpu=False,
             force=False):
 
         """
@@ -176,6 +157,9 @@ class TaskData:
             - erp_degree: (int) default 1, lowest number in .evt which will be
               accepted as an erp event
         """
+
+        if use_gpu is True:
+            import cupy as np
 
         if not hasattr(self, 'subjects'):
 
@@ -363,6 +347,7 @@ class TaskData:
                                     sub,
                                     band))
 
+
     def write_contigs(self):
         """
         Writes TaskData.contigs objects to file, under TaskData.path / contigs
@@ -394,10 +379,11 @@ class TaskData:
     def gen_spectra(
         self,
         contigLength,
-        network_channels=BinarizeChannels(config.network_channels),
+        network_channels=BinarizeChannels(input_channels=config.network_channels),
         art_degree=0,
         erp_degree=None,
         filter_band="nofilter",
+        use_gpu=False,
             force=False):
 
         """
@@ -412,6 +398,8 @@ class TaskData:
             - art_degree: (int) default 0, minimum value accepted to pass as a
               "clean" contig, when reading mask from .art file
         """
+        if use_gpu is True:
+            import cupy as np
 
         if not hasattr(self, 'spectra'):
 
@@ -483,6 +471,7 @@ class TaskData:
 
             if temp is not None:
                 self.spectra.append(temp)
+
 
     def write_spectra(self):
         """
@@ -562,7 +551,7 @@ class Contig:
             delimiter=",",
             fmt="%2.1f")
 
-    def fft(self):
+    def fft(self, use_gpu=False):
         """
         Fourier transforms data
 
@@ -571,6 +560,8 @@ class Contig:
         Returns:
             - Spectra object
         """
+        if use_gpu is True:
+            import cupy as np
 
         channel_number = 0
 
@@ -580,10 +571,16 @@ class Contig:
 
             # perform pwelch routine to extract PSD estimates by channel
             try:
-                f, Pxx_den = signal.periodogram(
-                    sig,
-                    fs=float(config.sample_rate),
-                    window='hann')
+                if use_gpu is False:
+                    f, Pxx_den = signal.periodogram(
+                        sig,
+                        fs=float(config.sample_rate),
+                        window='hann')
+                else:
+                    ###
+                    f = np.fft.fftfreq(len(sig), d=(1/config.sample_rate))
+                    Pxx_den = np.scipy.fft.fft(sig)
+
             except IndexError:
                 print("Something went wrong processing the following contig:")
                 print(self.subject, self.startindex, self.source)

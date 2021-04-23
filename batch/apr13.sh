@@ -17,7 +17,9 @@
 # python3 ../scripts/Run_cnn.py erps --study_names CU_pain WD_31-40 rehab_all_new --erp_degree 1 --filter_band hidelta --plot_conf True --plot_3d_preds True --k_fold 5 --regularizer_param 0.025 --dropout 0.35 --learning_rate 0.0004832930238571752
 # python3 ../scripts/Run_cnn.py erps --study_names CU_pain WD_31-40 rehab_all_new --erp_degree 1 --filter_band hidelta --plot_conf True --plot_3d_preds True --k_fold 5 --regularizer_param 0.025 --dropout 0.35 --learning_rate 0.0006158482110660261
 # python3 ../scripts/Run_cnn.py erps --study_names CU_pain WD_31-40 rehab_all_new --erp_degree 1 --filter_band hidelta --plot_conf True --plot_3d_preds True --k_fold 5 --regularizer_param 0.025 --dropout 0.35 --learning_rate 0.0007847599703514606
-python3 ../scripts/Run_cnn.py erps --study_names CU_pain WD_31-40 rehab_all_new --erp_degree 1 --filter_band hidelta --plot_conf True --plot_3d_preds True --k_fold 5 --regularizer_param 0.025 --dropout 0.35 --learning_rate 0.001
+# python3 ../scripts/Run_cnn.py erps --study_names CU_pain WD_31-40 rehab_all_new --erp_degree 1 --filter_band hidelta --plot_conf True --plot_3d_preds True --k_fold 5 --regularizer_param 0.025 --dropout 0.35 --learning_rate 0.001
+
+python3 ../scripts/Run_eval_cnn.py erps --log_dir ../logs/fit/ --study_names CU_control CU_pain glynn_pain lyons_pain_2 WD_31-40 WD_41-50 WD_51-60 --erp_degree 1 --filter_band hidelta --plot_3d_preds True
 
 # 1e-05
 # 1.2742749857031348e-05

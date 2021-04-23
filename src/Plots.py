@@ -65,7 +65,7 @@ def pred_hist(
 
     correct = 0
     for pred, true in zip(y_preds, y_labels):
-        if np.rint(pred) == true:
+        if np.rint(pred) == True:
             correct += 1
     acc = correct / len(y_preds)
 

@@ -330,13 +330,11 @@ def main():
         myclf.Prepare(tt_split=tt_split)
 
         myclf.LDA(
-            normalize='standard',
             plot_data=plot)
 
     if k_folds > 1:
         myclf.KfoldCrossVal(
             myclf.LDA,
-            normalize='standard',
             k=k_folds,
             plot_data=plot)
 

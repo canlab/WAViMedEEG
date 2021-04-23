@@ -107,12 +107,12 @@ def main():
                         + "to use. One of "
                         + "the following: standard, minmax, None")
 
-    # parser.add_argument('--bias',
-    #                     dest='bias',
-    #                     type=str,
-    #                     default=None,
-    #                     help="(Default: None) If 'auto', uses bias "
-    #                     + "initializer to try to resolve class imbalances")
+    parser.add_argument('--sample_weight',
+                        dest='sample_weight',
+                        type=bool,
+                        default=True,
+                        help="(Default: True) If True, uses auto sample "
+                        + "weighting to try to resolve class imbalances")
 
     parser.add_argument('--plot_ROC',
                         dest='plot_ROC',
@@ -153,8 +153,8 @@ def main():
     parser.add_argument('--learning_rate',
                         dest='learning_rate',
                         type=float,
-                        default=0.001,
-                        help="(Default: 0.001) CNN step size")
+                        default=0.0001,
+                        help="(Default: 0.0001) CNN step size")
 
     parser.add_argument('--lr_decay',
                         dest='lr_decay',
@@ -220,6 +220,15 @@ def main():
                         help="(Default: False) If True, all args will be "
                         + "tuned in keras tuner and saved to logs/fit.")
 
+    parser.add_argument('--logistic_regression',
+                        dest='logistic_regression',
+                        type=bool,
+                        default=False,
+                        help="(Default: False) if True, the model will "
+                        + "consist only of logistic regression, and will "
+                        + "not be convolutional. Significantly reduced "
+                        + "complexity is implied.")
+
     # save the variables in 'args'
     args = parser.parse_args()
 
@@ -234,7 +243,7 @@ def main():
     filter_band = args.filter_band
     epochs = args.epochs
     normalize = args.normalize
-    # bias = args.bias
+    sample_weight = args.sample_weight
     plot_ROC = args.plot_ROC
     plot_conf = args.plot_conf
     plot_3d_preds = args.plot_3d_preds
@@ -251,6 +260,7 @@ def main():
     dropout = args.dropout
     hypertune = args.hypertune
     balance = args.balance
+    logistic_regression = args.logistic_regression
 
     # ERROR HANDLING
     if data_type not in ["erps", "spectra", "contigs"]:
@@ -427,6 +437,10 @@ def main():
         raise ValueError
         sys.exit(3)
 
+    # Instantiate a 'Classifier' Object
+    myclf = ML.Classifier(data_type)
+
+    # ============== Load All Studies' Data ==============
     patient_paths = []
     # patient_path points to our 'condition-positive' dataset
     # ex. patient_path =
@@ -458,12 +472,9 @@ def main():
 
         patient_paths.append(patient_path)
 
-    # Instantiate a 'Classifier' Object
-    myclf = ML.Classifier(data_type)
-
-    # ============== Load All Studies' Data ==============
-    for patient_path in patient_paths:
-        for fname in sorted(os.listdir(patient_path)):
+    for patient_path, study_name in zip(patient_paths, study_names):
+        print("Loading Data:", study_name)
+        for fname in tqdm(sorted(os.listdir(patient_path))):
             if "_"+filter_band in fname:
                 myclf.LoadData(patient_path+"/"+fname)
 
@@ -489,8 +500,9 @@ def main():
                     regularizer=regularizer,
                     regularizer_param=regularizer_param,
                     focal_loss_gamma=focal_loss_gamma,
-                    # initial_bias=bias,
-                    dropout=dropout)
+                    sample_weight=sample_weight,
+                    dropout=dropout,
+                    logistic_regression=logistic_regression)
 
                 if data_type == 'spectra':
                     if plot_spectra is True:
@@ -555,7 +567,9 @@ def main():
             plot_conf=plot_conf,
             plot_3d_preds=plot_3d_preds,
             k=k_folds,
-            plot_spec_avgs=plot_spectra)
+            plot_spec_avgs=plot_spectra,
+            sample_weight=sample_weight,
+            logistic_regression=logistic_regression)
 
 
 if __name__ == '__main__':

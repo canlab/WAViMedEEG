@@ -31,10 +31,14 @@ class SpectralAverage:
     def __init__(
         self,
         inputClf,
+        use_gpu=False,
         lowbound=0,
         highbound=25,
         training_only=False,
             testing_only=False):
+
+        if use_gpu is True:
+            import cupy as np
 
         self.Clf = inputClf
 
@@ -144,12 +148,15 @@ class SpectralAverage:
 class BandFilter:
     # removes a given frequency band's power from task data trials
 
-    def __init__(self, study_folder, task, type="bandstop"):
+    def __init__(self, study_folder, task, type="bandstop", use_gpu=False):
 
         self.study_folder = study_folder
         self.task = task
         self.type = type
         self.new_data = []
+
+        if use_gpu is True:
+            import cupy as np
 
     def gen_taskdata(self, filter_band):
 
