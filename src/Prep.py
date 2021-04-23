@@ -613,6 +613,8 @@ class Contig:
 
         for sig in self.data.T:
 
+            sig = cp.asarray(sig)
+
             electrode = config.network_channels[channel_number]
 
             # perform pwelch routine to extract PSD estimates by channel
@@ -805,6 +807,6 @@ class Spectra:
 
         np.savetxt(
             path,
-            self.data,
+            np.asnumpy(self.data),
             delimiter=",",
             fmt="%2.1f")
