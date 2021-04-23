@@ -607,6 +607,7 @@ class Contig:
         """
         if use_gpu is True:
             import cupy as cp
+            import cupyx
 
         channel_number = 0
 
@@ -623,8 +624,8 @@ class Contig:
                         window='hann')
                 else:
                     ###
-                    f = cp.fft.fftfreq(len(sig), d=(1/config.sample_rate))
-                    Pxx_den = cp.scipy.fft.fft(sig)
+                    f = cupyx.fft.fftfreq(len(sig), d=(1/config.sample_rate))
+                    Pxx_den = cupyx.scipy.fft.fft(sig)
 
             except IndexError:
                 print("Something went wrong processing the following contig:")
