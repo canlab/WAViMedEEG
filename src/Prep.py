@@ -590,7 +590,7 @@ class Contig:
 
         np.savetxt(
             path,
-            self.data,
+            cp.asnumpy(self.data),
             delimiter=",",
             fmt="%2.1f")
 
