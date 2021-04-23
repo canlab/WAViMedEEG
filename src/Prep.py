@@ -159,7 +159,7 @@ class TaskData:
         """
 
         if use_gpu is True:
-            import cupy as np
+            import cupy as cp
 
         if not hasattr(self, 'subjects'):
 
@@ -222,6 +222,9 @@ class TaskData:
                 self.path + "/" + art_fname,
                 delimiter=" ")
 
+            if use_gpu is True:
+                artifact_data = cp.asarray(artifact_data)
+
             if artifact_data.size == 0:
                 print(
                     "Most likely an empty text file was "
@@ -233,6 +236,8 @@ class TaskData:
                 events = np.genfromtxt(
                     self.path + "/" + evtfile,
                     delimiter=" ")
+                if use_gpu is True:
+                    events = cp.asarray(events)
 
                 if events.size == 0:
                     print(
@@ -249,6 +254,8 @@ class TaskData:
             # mask artifact array where numbers exceed art_degree
             if isinstance(art_degree, int):
                 art_degree = np.repeat(art_degree, network_channels.count('1'))
+                if use_gpu is True:
+                    art_degree = cp.asarray(art_degree)
 
             # if using custom artifact map
             elif isinstance(art_degree, str):
@@ -257,14 +264,23 @@ class TaskData:
                     art_degree,
                     StringarizeChannels(network_channels),
                     axis_num=0)
+                if use_gpu is True:
+                    art_degree = cp.asarray(art_degree)
 
             mxi = []
             for art, channel in zip(art_degree, artifact_data.T):
-                mxi.append(np.ma.filled(
+                mxi.append((np.ma.filled(
                     MaskChannel(channel, int(art)).astype(float),
-                    np.nan))
+                    np.nan) if use_gpu is False) else \
+                    cp.ma.filled(
+                        MaskChannel(channel, int(art)).astype(float),
+                        np.nan)
+                    )))
 
-            mxi = np.stack(mxi).T
+            if use_gpu is False:
+                mxi = np.stack(mxi).T
+            else:
+                mxi = cp.stack(mxi).T
 
             artifact_data = mxi
 
@@ -279,29 +295,42 @@ class TaskData:
 
                     stk = artifact_data[i:(i + contigLength), :]
 
-                    if not np.any(np.isnan(stk)):
-
-                        indeces.append(i)
-
-                        i += contigLength
-
+                    if use_gpu is False:
+                        if not np.any(np.isnan(stk)):
+                            indeces.append(i)
+                            i += contigLength
+                        else:
+                            # TODO
+                            # contig alg can be sped up here to jump to
+                            # last instance of NaN
+                            i += 1
                     else:
-                        # TODO
-                        # contig alg can be sped up here to jump to
-                        # last instance of NaN
-                        i += 1
+                        if not cp.any(cp.isnan(stk)):
+                            indeces.append(i)
+                            i += contigLength
+                        else:
+                            # TODO
+                            # contig alg can be sped up here to jump to
+                            # last instance of NaN
+                            i += 1
 
             else:
                 # only take oddball erp?
-                event_indeces = np.where(events >= erp_degree)[0]
+                if use_gpu is False:
+                    event_indeces = np.where(events >= erp_degree)[0]
+                else:
+                    event_indeces = cp.where(events >= erp_degree)[0]
 
                 for i in event_indeces:
 
                     stk = artifact_data[i:(i + contigLength), :]
 
-                    if not np.any(np.isnan(stk)):
-
-                        indeces.append(i)
+                    if use_gpu is False:
+                        if not np.any(np.isnan(stk)):
+                            indeces.append(i)
+                    else:
+                        if not cp.any(cp.isnan(stk)):
+                            indeces.append(i)
 
             subfiles = [
                 fname for fname in self.task_fnames
@@ -313,6 +342,8 @@ class TaskData:
             for eegfile in subfiles:
                 # print("EEG file:"+self.path+"/"+eegfile)
                 data = np.genfromtxt(self.path+"/"+eegfile, delimiter=" ")
+                if use_gpu is True:
+                    data = cp.asarray(data)
                 # data = FilterChannels(
                 #     data,
                 #     StringarizeChannels(network_channels),
@@ -399,7 +430,7 @@ class TaskData:
               "clean" contig, when reading mask from .art file
         """
         if use_gpu is True:
-            import cupy as np
+            import cupy as cp
 
         if not hasattr(self, 'spectra'):
 
@@ -467,7 +498,7 @@ class TaskData:
                     delimiter=","),
                 contig.split('_')[2][:-4],
                 contig[:config.participantNumLen],
-                contig.split('_')[1]).fft()
+                contig.split('_')[1]).fft(use_gpu=use_gpu)
 
             if temp is not None:
                 self.spectra.append(temp)
@@ -561,7 +592,7 @@ class Contig:
             - Spectra object
         """
         if use_gpu is True:
-            import cupy as np
+            import cupy as cp
 
         channel_number = 0
 
@@ -578,8 +609,8 @@ class Contig:
                         window='hann')
                 else:
                     ###
-                    f = np.fft.fftfreq(len(sig), d=(1/config.sample_rate))
-                    Pxx_den = np.scipy.fft.fft(sig)
+                    f = cp.fft.fftfreq(len(sig), d=(1/config.sample_rate))
+                    Pxx_den = cp.scipy.fft.fft(sig)
 
             except IndexError:
                 print("Something went wrong processing the following contig:")
@@ -594,8 +625,13 @@ class Contig:
             if channel_number == 0:
 
                 spectral = np.array(f)
+                if use_gpu is True:
+                    spectral = cp.asarray(spectral)
 
-            spectral = np.column_stack((spectral, Pxx_den))
+            if use_gpu is False:
+                spectral = np.column_stack((spectral, Pxx_den))
+            else:
+                spectral = cp.column_stack((spectral, Pxx_den))
 
             channel_number += 1
 
