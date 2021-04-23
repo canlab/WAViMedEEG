@@ -624,7 +624,7 @@ class Contig:
                         window='hann')
                 else:
                     ###
-                    f = cupyx.fft.fftfreq(len(sig), d=(1/config.sample_rate))
+                    f = cp.fft.fftfreq(len(sig), d=(1/config.sample_rate))
                     Pxx_den = cupyx.scipy.fft.fft(sig)
 
             except IndexError:
