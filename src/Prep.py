@@ -49,7 +49,8 @@ def FilterChannels(
     array,
     keep_channels,
     axis_num=1,
-    reference_list=config.channel_names):
+    reference_list=config.channel_names,
+    use_gpu=False):
     """
     Returns a new array of input data containing only the channels
     provided in keep_channels; axis_num corresponds to the axis across
@@ -69,10 +70,18 @@ def FilterChannels(
     if isinstance(array, str):
         array = np.array([char for char in array])
 
-    return(np.take(
-        array,
-        [reference_list.index(keep) for keep in keep_channels],
-        axis_num))
+    if use_gpu is False:
+        newarray = np.take(
+            array,
+            [reference_list.index(keep) for keep in keep_channels],
+            axis_num)
+    else:
+        newarray = cp.take(
+            array,
+            [reference_list.index(keep) for keep in keep_channels],
+            axis_num)
+
+    return(newarray)
 
 
 def MaskChannel(channel_data, art_degree=0):
@@ -249,13 +258,15 @@ class TaskData:
             artifact_data = FilterChannels(
                 artifact_data,
                 StringarizeChannels(network_channels),
-                axis_num=1)
+                axis_num=1,
+                use_gpu=use_gpu)
 
             # mask artifact array where numbers exceed art_degree
             if isinstance(art_degree, int):
-                art_degree = np.repeat(art_degree, network_channels.count('1'))
-                if use_gpu is True:
-                    art_degree = cp.asarray(art_degree)
+                if use_gpu is False:
+                    art_degree = np.repeat(art_degree, network_channels.count('1'))
+                else:
+                    art_degree = cp.repeat(art_degree, network_channels.count('1'))
 
             # if using custom artifact map
             elif isinstance(art_degree, str):
@@ -263,9 +274,8 @@ class TaskData:
                 art_degree = FilterChannels(
                     art_degree,
                     StringarizeChannels(network_channels),
-                    axis_num=0)
-                if use_gpu is True:
-                    art_degree = cp.asarray(art_degree)
+                    axis_num=0,
+                    use_gpu=use_gpu)
 
             mxi = []
             for art, channel in zip(art_degree, artifact_data.T):
