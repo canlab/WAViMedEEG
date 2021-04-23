@@ -280,14 +280,14 @@ class TaskData:
 
             mxi = []
             for art, channel in zip(art_degree, artifact_data.T):
-                if use_gpu is False:
-                    mxi.append(np.ma.filled(
-                        MaskChannel(channel, int(art)).astype(float),
-                        np.nan))
-                else:
-                    mxi.append(cp.ma.filled(
-                        MaskChannel(channel, int(art)).astype(float),
-                        cp.nan))
+                # if use_gpu is False:
+                mxi.append(np.ma.filled(
+                    MaskChannel(channel, int(art)).astype(float),
+                    np.nan))
+                # else:
+                #     mxi.append(cp.ma.filled(
+                #         MaskChannel(channel, int(art)).astype(float),
+                #         cp.nan))
 
             if use_gpu is False:
                 mxi = np.stack(mxi).T
