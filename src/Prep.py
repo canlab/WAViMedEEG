@@ -571,7 +571,8 @@ class Contig:
         subject,
         band,
         source=None,
-            event=None):
+        event=None,
+        sample_rate=config.sample_rate):
 
         self.data = data
 
@@ -586,6 +587,8 @@ class Contig:
         self.source = source
 
         self.event = event
+
+        self.sample_rate = sample_rate
 
     def write(self, path):
 
@@ -614,7 +617,8 @@ class Contig:
 
         for sig in self.data.T:
 
-            sig = cp.asarray(sig)
+            if use_gpu is True:
+                sig = cp.asarray(sig)
 
             electrode = config.network_channels[channel_number]
 
@@ -662,100 +666,26 @@ class Contig:
                 self.subject,
                 self.band))
 
-    def plot(self):
+    def plot(self, title=""):
         """
         Plots the contig
         """
 
-        fig, axs = plt.subplots(nrows=1, figsize=(16, 8))
+        fig, axs = plt.subplots(
+            nrows=self.data.shape[1],
+            figsize=(16, 8),
+            sharex=True)
 
-        trials = []
+        time = np.linspace(
+            0,
+            self.data.shape[0] / self.sample_rate,
+            num=self.data.shape[0])
 
-        plots = []
-
-        for channel in config.network_channels:
-
-            i = config.network_channels.index(channel)
-
-            trial = self.data.T[i]
-
-            trials.append(trial)
-
-            wavs = trial * 0.1
-
-            print(wavs)
-
-            t = np.arange(0, len(wavs)) / config.sample_rate
-
-            wavs = np.subtract(wavs, i * 25)
-
-            plots.append(axs.plot(t, wavs)[0])
-
-        axs.axis([
-            t[0],
-            t[-1],
-            -25 * len(config.network_channels),
-            5 * len(config.network_channels)])
-
-        leg = axs.legend(config.network_channels, loc="right", fancybox=True)
-
-        leg.get_frame().set_alpha(0.4)
-
-        axs.grid(b=True)
-
-        axs.set_title("Raw Waveforms: Subject " + self.subject)
-
-        axs.set_ylabel("Voltage [mV]")
-
-        axs.set_xlabel('Time [seconds]')
-
-        # we will set up a dict mapping legend line to orig line, and enable
-        # picking on the legend line
-        lined = dict()
-
-        for legline, origline in zip(leg.get_lines(), plots):
-
-            legline.set_picker(5)  # 5 pts tolerance
-
-            lined[legline] = origline
-
-        def onpick(event):
-            # on the pick event, find the orig line corresponding to the
-            # legend proxy line, and toggle the visibility
-            legline = event.artist
-            origline = lined[legline]
-            vis = not origline.get_visible()
-            origline.set_visible(vis)
-            # Change the alpha on the line in the legend so
-            # we can see what lines
-            # have been toggled
-            if vis:
-                legline.set_alpha(1.0)
-            else:
-                legline.set_alpha(0.2)
-            fig.canvas.draw()
-
-        fig.canvas.mpl_connect('pick_event', onpick)
-
-        def movonpick(event):
-            # on the pick event, find the orig line corresponding to the
-            # legend proxy line, and toggle the visibility
-            movlegline = event.artist
-            movorigline = movlined[movlegline]
-            vis = not movorigline.get_visible()
-            movorigline.set_visible(vis)
-            # Change the alpha on the line in the legend so
-            # we can see what lines
-            # have been toggled
-            if vis:
-                movlegline.set_alpha(1.0)
-            else:
-                movlegline.set_alpha(0.2)
-            fig.canvas.draw()
-
-        fig.canvas.mpl_connect('pick_event', movonpick)
-
-        plt.tight_layout()
+        for i, (sig, ax) in enumerate(zip(self.data.T, axs)):
+            ax.plot(time, sig)
+            ax.set_xlabel("Time (seconds)")
+            ax.set_ylabel("Voltage")
+            ax.set_title(config.channel_names[i])
 
         plt.show()
 
@@ -783,7 +713,8 @@ class Spectra:
         subject,
         band="nofilter",
         channels=config.network_channels,
-            source=None):
+        source=None,
+        sample_rate=config.sample_rate):
 
         self.data = data
 
@@ -799,11 +730,13 @@ class Spectra:
 
         self.channels = channels
 
-        self.freq_res = (config.sample_rate / 2) / (len(self.freq) - 1)
+        self.freq_res = (sample_rate / 2) / (len(self.freq) - 1)
 
         self.contig_length = config.sample_rate // self.freq_res
 
         self.source = source
+
+        self.sample_rate = sample_rate
 
     def write(self, path):
 
@@ -814,3 +747,22 @@ class Spectra:
             cp.asnumpy(self.data),
             delimiter=",",
             fmt="%2.1f")
+
+    def plot(self, title=""):
+        """
+        Plots the contig
+        """
+
+        fig, axs = plt.subplots(
+            nrows=self.data.T.shape[0]-1,
+            figsize=(16, 8),
+            sharex=True)
+
+        for i, (Pxx, ax) in enumerate(zip(self.data.T[1:], axs)):
+            ax.plot(self.freq, Pxx)
+            ax.set_xlabel("Frequency (Hz)")
+            ax.set_ylabel("Power (Log)")
+            ax.set_yscale("log")
+            ax.set_title(config.channel_names[i])
+
+        plt.show()

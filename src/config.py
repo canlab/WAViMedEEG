@@ -115,6 +115,27 @@ channel_names = [
     'Cz',
     'Pz']
 
+networkx_positions = [
+    (25, 60), # Fp1
+    (35, 60), # Fp2
+    (20, 50), # F3
+    (40, 50), # F4
+    (15, 52), # F7
+    (45, 52), # F8
+    (20, 35), # C3
+    (40, 35), # C4
+    (20, 20), # P3
+    (40, 20), # P4
+    (23, 10), # O1
+    (37, 10), # O2
+    (10, 35), # T3
+    (50, 35), # T4
+    (13, 20), # T5
+    (47, 20), # T6
+    (30, 48), # Fz
+    (30, 32), # Cz
+    (30, 17)] # Pz
+
 # channels to be used for artifacting, contigification
 # and ultimately used in neural net analyses
 # for accurate sensors in spectral analysis,
