@@ -180,7 +180,8 @@ class Classifier:
         tt_split=0.33,
         labels=None,
         normalize=None,
-            data_minimum=2):
+        data_minimum=2,
+            eval=False):
         """
         Prepares data within Classifier object such that all in Classifier.data
         are contained in either self.train_dataset or self.test_dataset,
@@ -250,12 +251,13 @@ class Classifier:
         if verbosity:
             print("Total number of subjects:", len(self.subjects))
 
-        for item in self.data:
-            class_amounts[config.group_names[item.group]] += 1
+        if eval is not True:
+            for item in self.data:
+                class_amounts[config.group_names[item.group]] += 1
 
-        if verbosity:
-            for key, value in class_amounts.items():
-                print("Number of", key, "outcomes:", int(value))
+            if verbosity:
+                for key, value in class_amounts.items():
+                    print("Number of", key, "outcomes:", int(value))
 
         # pop subjects who have too few data loaded in
         for subject in self.subjects:
@@ -387,16 +389,18 @@ class Classifier:
 
             self.test_labels = []
             self.test_labels_subs = []
-            for dataObj in self.data:
-                if (dataObj.source, dataObj.subject) in self.test_subjects:
-                    label = []
-                    for i, class_label in enumerate(self.groups):
-                        if self.groups.index(dataObj.group) == i:
-                            label.append(1)
-                        else:
-                            label.append(0)
-                    self.test_labels.append(label)
-                    self.test_labels_subs.append(dataObj.subject)
+
+            if eval is False:
+                for dataObj in self.data:
+                    if (dataObj.source, dataObj.subject) in self.test_subjects:
+                        label = []
+                        for i, class_label in enumerate(self.groups):
+                            if self.groups.index(dataObj.group) == i:
+                                label.append(1)
+                            else:
+                                label.append(0)
+                        self.test_labels.append(label)
+                        self.test_labels_subs.append(dataObj.subject)
 
             self.test_labels = np.array(self.test_labels)
 
@@ -457,27 +461,28 @@ class Classifier:
             self.test_dataset = np.reshape(self.test_dataset, og_shape)
 
         if verbosity:
-            for group in self.group_names:
-                print(
-                    "% {} samples in train: {}".format(
-                        group,
-                        # len([label for label in self.train_labels
-                        #     if label==self.group_names.index(group)]) \
-                        #     / len(self.train_labels)))
-                        np.sum([
-                            self.train_labels[
-                                :, self.group_names.index(group)]])\
-                        / len(self.train_labels)))
-                print(
-                    "% {} samples in test: {}".format(
-                        group,
-                        # len([label for label in self.test_labels
-                        #     if label==self.group_names.index(group)]) \
-                        #     / len(self.test_labels)))
-                        np.sum([
-                            self.test_labels[
-                                :, self.group_names.index(group)]])\
-                        / len(self.test_labels)))
+            if eval is False:
+                for group in self.group_names:
+                    print(
+                        "% {} samples in train: {}".format(
+                            group,
+                            # len([label for label in self.train_labels
+                            #     if label==self.group_names.index(group)]) \
+                            #     / len(self.train_labels)))
+                            np.sum([
+                                self.train_labels[
+                                    :, self.group_names.index(group)]])\
+                            / len(self.train_labels)))
+                    print(
+                        "% {} samples in test: {}".format(
+                            group,
+                            # len([label for label in self.test_labels
+                            #     if label==self.group_names.index(group)]) \
+                            #     / len(self.test_labels)))
+                            np.sum([
+                                self.test_labels[
+                                    :, self.group_names.index(group)]])\
+                            / len(self.test_labels)))
 
         # shuffle all of the data together
         if len(self.train_labels_subs) > 0:
@@ -1196,7 +1201,8 @@ class Classifier:
         plot_conf=False,
         plot_3d_preds=False,
         fname=None,
-            pred_level='all'):
+        pred_level='all',
+            save_results=False):
 
         import tensorflow as tf
         from focal_loss import SparseCategoricalFocalLoss
@@ -1209,7 +1215,19 @@ class Classifier:
         model.summary()
 
         y_pred_keras = model.predict(self.test_dataset)
-        test_set_labels = self.test_labels
+        # test_set_labels = self.test_labels
+
+        if save_results is True:
+            f = open(checkpoint_dir+"/"+fname+"_predictions.txt", 'w')
+
+            for dataObj, prediction in zip(self.data, y_pred_keras):
+                    f.write(str(dataObj.subject))
+                    f.write('\t')
+                    # f.write(str(prediction))
+                    for score in prediction:
+                        f.write(str(score))
+                        f.write(' ')
+                    f.write('\n')
 
         if pred_level == 'subject':
             sub_level_preds = []
@@ -1236,7 +1254,7 @@ class Classifier:
             test_set_labels = np.array(sub_level_labels)
 
         y_pred = np.argmax(y_pred_keras, axis=1)
-        labels = np.argmax(test_set_labels, axis=1)
+        # labels = np.argmax(test_set_labels, axis=1)
 
         if plot_conf is True:
             from sklearn.metrics import confusion_matrix

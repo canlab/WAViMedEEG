@@ -25,6 +25,7 @@ def main():
                         dest='study_name',
                         type=str,
                         default=None,
+                        nargs='+',
                         help='(Default: None) Study folder containing '
                         + 'dataset. '
                         + 'If None, performed on all studies available.')

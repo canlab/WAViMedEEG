@@ -2,6 +2,7 @@ import sys
 sys.path.append('..')
 from src import Prep
 from src import Standard
+from src import Networks
 from src import config
 import os
 from tqdm import tqdm
@@ -19,6 +20,14 @@ def main():
                         default=config.my_studies,
                         help="(Default: " + config.my_studies + ") Path to "
                         + "parent folder containing study folders")
+
+    parser.add_argument('--reference_study',
+                        dest='reference_study',
+                        type=str,
+                        default=None,
+                        nargs='+',
+                        help='(Default: None) Study folder containing '
+                        + 'reference dataset. ')
 
     parser.add_argument('--study_name',
                         dest='study_name',
@@ -47,8 +56,8 @@ def main():
     parser.add_argument('--band',
                         dest='band',
                         type=str,
-                        default="delta",
-                        help="(Default: delta) "
+                        default="alpha",
+                        help="(Default: alpha) "
                         + "Frequency band used for band ranges: "
                         + str([val for val in config.frequency_bands]))
 
@@ -56,10 +65,21 @@ def main():
     args = parser.parse_args()
 
     studies_folder = args.studies_folder
+    reference_study = args.reference_study
     study_name = args.study_name
     task = args.task
     type = args.type
     band = args.band
+
+    # if reference_study is None:
+    #     ref_studies = os.listdir(studies_folder)
+    # else:
+    ref_studies = [study+"/coherences/"+task for study in reference_study]
+
+    # if study_name is None:
+    #     my_studies = os.listdir(studies_folder)
+    # else:
+    my_studies = [study+"/coherences/"+task for study in study_name]
 
     # ERROR HANDLING
     if not os.path.isdir(studies_folder):
@@ -69,13 +89,23 @@ def main():
         raise FileNotFoundError
         sys.exit(3)
 
-    if study_name is not None:
-        if not os.path.isdir(os.path.join(studies_folder, study_name)):
-            print(
-                "Invalid entry for study_name, "
-                + "path does not exist as directory.")
-            raise FileNotFoundError
-            sys.exit(3)
+    if ref_studies is not None:
+        for study in reference_study:
+            if not os.path.isdir(os.path.join(studies_folder, study)):
+                print(
+                    "Invalid entry for reference_study, "
+                    + "path does not exist as directory.")
+                raise FileNotFoundError
+                sys.exit(3)
+
+    if my_studies is not None:
+        for study in study_name:
+            if not os.path.isdir(os.path.join(studies_folder, study)):
+                print(
+                    "Invalid entry for study_name, "
+                    + "path does not exist as directory.")
+                raise FileNotFoundError
+                sys.exit(3)
 
     if task not in config.tasks:
         print(
@@ -98,20 +128,18 @@ def main():
         raise ValueError
         sys.exit(3)
 
-    if study_name is None:
-        my_studies = os.listdir(studies_folder)
-    else:
-        my_studies = [study_name]
+    ref_coh = Networks.Coherence()
+    for study in ref_studies:
+        ref_coh.load_data(studies_folder+"/"+study)
+    ref_coh.score(band=band)
+    # ref_coh.draw(weighting=True)
 
-    for study_folder in my_studies:
-        print("Processing:", study_folder)
-        mytask = Standard.BandFilter(
-            studies_folder+"/"+study_folder,
-            task,
-            type=type)
-        mytask.gen_taskdata(band)
-        mytask.write_taskdata()
-
+    study_coh = Networks.Coherence()
+    for study in my_studies:
+        study_coh.load_data(studies_folder+"/"+study)
+    study_coh.score(band=band)
+    study_coh.threshold(reference=ref_coh.G, z_score=1)
+    study_coh.draw(weighting=True, threshold=True)
 
 if __name__ == '__main__':
     main()

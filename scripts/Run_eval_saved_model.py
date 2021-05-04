@@ -422,7 +422,8 @@ def main():
             myclf.Prepare(
                 tt_split=1,
                 labels=label_values,
-                normalize=normalize)
+                normalize=normalize,
+                eval=True)
 
             if data_type == 'spectra':
                 if plot_spectra is True:
@@ -439,7 +440,8 @@ def main():
                 plot_conf=plot_conf,
                 plot_3d_preds=plot_3d_preds,
                 fname=study_name,
-                pred_level=pred_level)
+                pred_level=pred_level,
+                save_results=True)
 
             # TODO:
             # broken, can't change label here for combination runs
