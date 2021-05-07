@@ -34,6 +34,14 @@ def main():
                         help="(Default: " + config.study_directory + ") "
                         + "Study folder containing dataset")
 
+    parser.add_argument('--limited_subjects',
+                        dest='limited_subjects',
+                        nargs='+',
+                        default=None,
+                        help="(Default: None" + ") Used to only provide "
+                        + "analysis or preprocessing step wiht a "
+                        + "limited subset of the participants in it.")
+
     parser.add_argument('--log_dir',
                         dest='log_dir',
                         type=str,
@@ -171,6 +179,7 @@ def main():
     plot_3d_preds = args.plot_3d_preds
     pred_level = args.pred_level
     combine = args.combine
+    limited_subjects = args.limited_subjects
 
     # ERROR HANDLING
     if data_type not in ["erps", "spectra", "contigs"]:
@@ -358,7 +367,13 @@ def main():
             # Instantiate a 'Classifier' object
             myclf = ML.Classifier(data_type)
 
-        for fname in os.listdir(patient_path):
+        fnames = os.listdir(patient_path)
+        # used for only loading in subset of subjects for evaluation
+        if limited_subjects is not None:
+            fnames = [fname for fname in fnames
+                if fname[:config.participantNumLen] in limited_subjects]
+
+        for fname in fnames:
             if "_"+filter_band in fname:
                 myclf.LoadData(patient_path+"/"+fname)
 
@@ -376,7 +391,8 @@ def main():
                 myclf.Prepare(
                     tt_split=1,
                     labels=label_values,
-                    normalize=normalize)
+                    normalize=normalize,
+                    eval=True)
 
                 if data_type == 'spectra':
                     if plot_spectra is True:
@@ -393,7 +409,8 @@ def main():
                     plot_conf=plot_conf,
                     plot_3d_preds=plot_3d_preds,
                     fname=study_name,
-                    pred_level=pred_level)
+                    pred_level=pred_level,
+                    save_results=True)
 
                 for i, (pred, inputObj) in enumerate(
                     zip(np.rint(y_preds), myclf.data)):
@@ -439,7 +456,8 @@ def main():
                 plot_hist=plot_hist,
                 plot_conf=plot_conf,
                 plot_3d_preds=plot_3d_preds,
-                fname=study_name,
+                fname=(study_name + "_"+str(artifact)) if limited_subjects is not None\
+                    else study_name,
                 pred_level=pred_level,
                 save_results=True)
 

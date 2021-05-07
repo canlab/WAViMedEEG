@@ -264,6 +264,7 @@ class Classifier:
             if len([dataObj for dataObj in self.data if
                 dataObj.subject == subject[1]]) < data_minimum:
                 self.subjects.pop(self.subjects.index(subject))
+                print("Subject:", subject, "has too few data. <", data_minimum)
 
         self.train_subjects = []
         self.test_subjects = []
@@ -409,9 +410,9 @@ class Classifier:
                 self.train_labels = np.ndarray(self.test_dataset.shape)
                 self.train_labels_subs = []
 
-        if k_fold is None:
-            print("Number of samples in train:", self.train_dataset.shape[0])
-            print("Number of samples in test:", self.test_dataset.shape[0])
+        # if k_fold is None:
+        #     print("Number of samples in train:", self.train_dataset.shape[0])
+        #     print("Number of samples in test:", self.test_dataset.shape[0])
 
         # normalize / standardize
         if normalize is not None:

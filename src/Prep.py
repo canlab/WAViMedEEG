@@ -280,14 +280,14 @@ class TaskData:
 
             mxi = []
             for art, channel in zip(art_degree, artifact_data.T):
-                # if use_gpu is False:
-                mxi.append(cp.asarray(np.ma.filled(
-                    MaskChannel(cp.asnumpy(channel), int(art)).astype(float),
-                    np.nan)))
-                # else:
-                #     mxi.append(cp.ma.filled(
-                #         MaskChannel(channel, int(art)).astype(float),
-                #         cp.nan))
+                if use_gpu is False:
+                    mxi.append(np.asarray(np.ma.filled(
+                        MaskChannel(np.asarray(channel), int(art)).astype(float),
+                        np.nan)))
+                else:
+                    mxi.append(cp.asarray(np.ma.filled(
+                        MaskChannel(cp.asnumpy(channel), int(art)).astype(float),
+                        np.nan)))
 
             if use_gpu is False:
                 mxi = np.stack(mxi).T
@@ -391,7 +391,7 @@ class TaskData:
                                     band))
 
 
-    def write_contigs(self):
+    def write_contigs(self, use_gpu=False):
         """
         Writes TaskData.contigs objects to file, under TaskData.path / contigs
         """
@@ -416,7 +416,8 @@ class TaskData:
                     + contig.band
                     + "_"
                     + str(contig.startindex)
-                    + ".csv")
+                    + ".csv",
+                    use_gpu=use_gpu)
 
     # takes length (in samples @ 250 Hz) as positional argument
     def gen_spectra(
@@ -517,7 +518,7 @@ class TaskData:
                 self.spectra.append(temp)
 
 
-    def write_spectra(self):
+    def write_spectra(self, use_gpu=False):
         """
         Writes self.spectra objects to file
         """
@@ -544,7 +545,8 @@ class TaskData:
                     + spectrum.band
                     + "_"
                     + str(spectrum.startindex)
-                    + ".csv")
+                    + ".csv",
+                    use_gpu=use_gpu)
 
 
 # takes 4 positional arguments:
@@ -590,15 +592,22 @@ class Contig:
 
         self.sample_rate = sample_rate
 
-    def write(self, path):
+    def write(self, path, use_gpu=False):
 
-        import cupy as cp
+        if use_gpu is True:
+            import cupy as cp
 
-        np.savetxt(
-            path,
-            cp.asnumpy(self.data),
-            delimiter=",",
-            fmt="%2.1f")
+            np.savetxt(
+                path,
+                cp.asnumpy(self.data),
+                delimiter=",",
+                fmt="%2.1f")
+        else:
+            np.savetxt(
+                path,
+                self.data,
+                delimiter=",",
+                fmt="%2.1f")
 
     def fft(self, use_gpu=False):
         """
@@ -738,15 +747,22 @@ class Spectra:
 
         self.sample_rate = sample_rate
 
-    def write(self, path):
+    def write(self, path, use_gpu=False):
 
-        import cupy as cp
+        if use_gpu is True:
+            import cupy as cp
 
-        np.savetxt(
-            path,
-            cp.asnumpy(self.data),
-            delimiter=",",
-            fmt="%2.1f")
+            np.savetxt(
+                path,
+                cp.asnumpy(self.data),
+                delimiter=",",
+                fmt="%2.1f")
+        else:
+            np.savetxt(
+                path,
+                self.data,
+                delimiter=",",
+                fmt="%2.1f")
 
     def plot(self, title=""):
         """

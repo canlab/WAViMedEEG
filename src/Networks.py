@@ -66,14 +66,16 @@ class Coherence:
                     self.G.edges[edge]['sum2'] / (self.G.edges[edge]['n']))
         self.edgelist = [edge for edge in self.G.edges()]
 
-    def draw(self, weighting=False, threshold=None):
+    def draw(self, weighting=True, threshold=False):
 
         for node, pos in zip(
             [node for node in self.G.nodes()], config.networkx_positions):
             self.G.nodes[node]['pos'] = pos
 
-        if weighting is True:
+        if (weighting is True) and (threshold is False):
             edges, weights = zip(*nx.get_edge_attributes(self.G,'mean').items())
+        if (weighting is True) and (threshold is True):
+            edges, weights = zip(*nx.get_edge_attributes(self.G, 'z-score').items())
         else:
             weights = [1 for edge in self.G.edges()]
             edges = [edge for edge in self.G.edges()]
@@ -97,7 +99,8 @@ class Coherence:
             vmax=max)
 
         if weighting is True:
-            sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin = vmin, vmax=vmax))
+            sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(
+                vmin = vmin, vmax=vmax))
             sm._A = []
             plt.colorbar(sm)
 
@@ -111,6 +114,9 @@ class Coherence:
 
         for i, edge in enumerate([edge for edge in self.G.edges()]):
             z = (self.G.edges[edge]['mean'] - means[i]) / stds[i]
-            if z < z_score:
+            print(z)
+            if np.abs(z) < z_score:
                 self.G.remove_edge(edge[0], edge[1])
                 print("Removing:", edge)
+            else:
+                self.G.edges[edge]['z-score'] = z

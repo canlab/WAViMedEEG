@@ -2,13 +2,19 @@ import os
 import sys
 import numpy as np
 
-path = str(sys.argv[1])
-correct_logit = int(sys.argv[2])
-incorrect_logit = 1 if correct_logit == 0 else 0
+scores_path = str(sys.argv[1])
+
+translator_path = str(sys.argv[2])
+
+try:
+    positive_logit = int(sys.argv[3])
+except:
+    positive_logit = 1
+negative_logit = 1 if positive_logit == 0 else 0
 
 sub_scores = {}
 
-with open(path) as f:
+with open(scores_path) as f:
     for line in f:
         subject = str(line.split('\t')[0])
         scores = line.split('\t')[1]
@@ -26,18 +32,27 @@ with open(path) as f:
 
 f.close()
 
-with open(path[:-4]+"_subjects"+path[-4:], 'w') as f:
+translator = {}
+
+with open(translator_path, 'r') as f:
+    for line in f:
+        translator[line.split('\t')[1].strip()] = ' '.join(line.split('\t')[0].split('_')[:2])
+
+with open(scores_path[:-4]+"_translation"+scores_path[-4:], 'w') as f:
     for subject, scores in sub_scores.items():
-        total_correct = 0
+        total_positive = 0
         for contig_score in scores:
-            if contig_score[correct_logit] > contig_score[incorrect_logit]:
-                total_correct += 1
+            if contig_score[positive_logit] > contig_score[negative_logit]:
+                total_positive += 1
 
-        percent_correct = total_correct / len(scores)
+        percent_positive = total_positive / len(scores)
 
-        f.write(subject)
+        f.write(translator[subject])
         f.write('\t')
-        f.write(str(percent_correct))
+        f.write(subject)
+
+        f.write('\t')
+        f.write(str(percent_positive))
         f.write('\n')
 
 f.close()
