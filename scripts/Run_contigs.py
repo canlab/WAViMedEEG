@@ -13,7 +13,7 @@ sys.path.append('..')
 from src import Prep
 from src import config
 import os
-import argparse
+import argParser
 from tqdm import tqdm
 
 
@@ -40,221 +40,40 @@ def main():
     and same optional arguments
     write_spectra() = writes spectra to files
     """
-    # Create a argparse args
-    parser = argparse.ArgumentParser(
-        description="Conditions for creating contigs.")
 
-    parser.add_argument('length',
-                        type=int,
-                        help='(Required) Duration of input data,'
-                        + ' in number of samples @ '
-                        + str(config.sample_rate) + ' Hz')
+    args = argParser.main([
+        "studies_folder",
+        "study_names",
+        "artifact",
+        "task",
+        "length",
+        "filter_band",
+        "erp_degree",
+        "channels",
+        "force",
+        "use_gpu",
+        "gen_spectra"
+    ])
 
-    parser.add_argument('--artifact',
-                        dest='artifact',
-                        type=str,
-                        default=''.join(map(str, config.custom_art_map)),
-                        help="(Default: (custom) "
-                        + ''.join(map(str, config.custom_art_map))
-                        + ") Strictness of artifacting "
-                        + "algorithm to be used: 0=strict, 1=some, 2=raw")
-
-    parser.add_argument('--studies_folder',
-                        dest='studies_folder',
-                        type=str,
-                        default=config.my_studies,
-                        help="(Default: " + config.my_studies + ") Path to "
-                        + "parent folder containing study folders")
-
-    parser.add_argument('--study_name',
-                        dest='study_name',
-                        type=str,
-                        default=None,
-                        help='(Default: None) Study folder containing '
-                        + 'dataset. '
-                        + 'If None, performed on all studies available.')
-
-    parser.add_argument('--task',
-                        dest='task',
-                        type=str,
-                        default="P300",
-                        help='(Default: P300) Task to use from config.py')
-
-    parser.add_argument('--spectra',
-                        dest='spectra',
-                        type=bool,
-                        default=True,
-                        help="(Default: True) Whether spectra should "
-                        + "automatically be "
-                        + "generated and written to file after making contigs")
-
-    parser.add_argument('--channels',
-                        dest='channels',
-                        type=str,
-                        default='1111111111111111111',
-                        help="(Default: 1111111111111111111) Binary string "
-                        + "specifying which of the following "
-                        + "EEG channels will be included in analysis: "
-                        + str(config.channel_names))
-
-    parser.add_argument('--filter_band',
-                        dest='filter_band',
-                        type=str,
-                        default='nofilter',
-                        help="(Default: nofilter) Bandfilter to be used in "
-                        + "analysis steps, such "
-                        + "as: 'noalpha', 'delta', or 'nofilter'")
-
-    parser.add_argument('--erp_degree',
-                        dest='erp_degree',
-                        type=int,
-                        default=None,
-                        help="(Default: None) If not None, lowest number in "
-                        + ".evt files which will be accepted as an erp event. "
-                        + "Only contigs falling immediately after erp event, "
-                        + "i.e. evoked responses, are handled.")
-
-    parser.add_argument('--force',
-                        dest='force',
-                        type=bool,
-                        default=False,
-                        help="(Default: False) If True, will write data "
-                        + "in the event that the data folder already exists. "
-                        + "Warning: potential data overwrite. "
-                        + "Be careful!")
-
-    parser.add_argument('--use_gpu',
-                        dest='use_gpu',
-                        type=bool,
-                        default=False,
-                        help="(Default: False) If True, will attempt to "
-                        + "replace numpy and scipy functions with cupy "
-                        + "- requires NVIDIA GPU attached, and an existing "
-                        + "installation of CUDA, as well as cupy.")
-
-    # Save the arguments in "args"
-    args = parser.parse_args()
-
-    length = args.length
-    artifact = args.artifact
     studies_folder = args.studies_folder
-    study_name = args.study_name
+    study_names = args.study_names
+    artifact = args.artifact
     task = args.task
-    spectra = args.spectra
-    channels = args.channels
+    length = args.length
     filter_band = args.filter_band
     erp_degree = args.erp_degree
+    channels = args.channels
     force = args.force
     use_gpu = args.use_gpu
+    gen_spectra = args.gen_spectra
 
-    # ERROR HANDLING
-    if type(length) is int is False:
-        print("Length must be an integer (in Hz).")
-        raise ValueError
-        sys.exit(3)
-
-    try:
-        if (length <= 0) or (length > 10000):
-            print("Invalid entry for length, must be between 0 and 10000.")
-            raise ValueError
-            sys.exit(3)
-    except TypeError:
-        print(
-            "Invalid entry for length, "
-            + "must be integer value between 0 and 10000.")
-        raise ValueError
-        sys.exit(3)
-
-    try:
-        if len(str(artifact)) == 19:
-            for char in artifact:
-                if int(char) < 0 or int(char) > 2:
-                    raise ValueError
-
-        elif artifact in ["0", "1", "2"]:
-            artifact = int(artifact)
-
-        else:
-            raise ValueError
-
-    except ValueError:
-        print(
-            "Invalid entry for artifact. Must be str with length 19, "
-            + "or int between 0 and 2.")
-        raise ValueError
-        sys.exit(3)
-
-    if not os.path.isdir(studies_folder):
-        print(
-            "Invalid entry for studies_folder, "
-            + "path does not exist as directory.")
-        raise FileNotFoundError
-        sys.exit(3)
-
-    if study_name is not None:
-        if not os.path.isdir(os.path.join(studies_folder, study_name)):
-            print(
-                "Invalid entry for study_name, "
-                + "path does not exist as directory.")
-            raise FileNotFoundError
-            sys.exit(3)
-
-    if task not in config.tasks:
-        print(
-            "Invalid entry for task, "
-            + "not accepted as regular task name in config.")
-        raise ValueError
-        sys.exit(3)
-
-    if spectra not in [True, False]:
-        print("spectra must be boolean, True or False.")
-        raise ValueError
-        sys.exit(3)
-
-    try:
-        str(channels)
-    except ValueError:
-        print(
-            "Invalid entry for channels. Must be 19-char long string of "
-            + "1s and 0s")
-        raise ValueError
-        sys.exit(3)
-
-    if len(channels) != 19:
-        print(
-            "Invalid entry for channels. Must be 19-char long string of "
-            + "1s and 0s")
-        raise ValueError
-        sys.exit(3)
-
-    if filter_band == "nofilter":
-        pass
-    elif any(band == filter_band for band in config.frequency_bands):
-        pass
-    elif any("no"+band == filter_band for band in config.frequency_bands):
-        pass
-    elif any("lo"+band == filter_band for band in config.frequency_bands):
-        pass
-    elif any("hi"+band == filter_band for band in config.frequency_bands):
-        pass
-    else:
-        print("That is not a valid filterband option. "
-              + "Please an option listed here:")
-        raise ValueError
-        sys.exit(3)
-
-    if erp_degree not in [1, 2, None]:
-        print("Invalid entry for erp_degree. Must be None, 1, or 2.")
-        raise ValueError
-        sys.exit(3)
-
-    if study_name is None:
+    if study_names is None:
 
         study_names = [folder for folder in os.listdir(studies_folder)]
 
     else:
 
-        study_names = [study_name]
+        study_names = study_names
 
     for study_name in study_names:
 
@@ -276,7 +95,7 @@ def main():
 
         myp300.write_contigs()
 
-        if spectra is True:
+        if gen_spectra is True:
             myp300.gen_spectra(
                 length,
                 art_degree=artifact,

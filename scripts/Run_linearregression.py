@@ -143,7 +143,6 @@ def main():
                         + "to train samples. Note: not applicable if using "
                         + "k_folds.")
 
-
     parser.add_argument('--k_folds',
                         dest='k_folds',
                         type=int,
@@ -409,7 +408,7 @@ def main():
         for fname in sorted(os.listdir(patient_path)):
             if "_"+filter_band in fname:
                 myclf.LoadData(patient_path+"/"+fname)
-                
+
     # ============== Balance Class Data Sizes ==============
     # pops data off from the larger class until class sizes are equal
     # found in the reference folders
