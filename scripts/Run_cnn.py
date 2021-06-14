@@ -186,7 +186,7 @@ def main():
 
                 tuner.results_summary()
 
-    if k_folds > 1:
+    if (k_folds > 1) or (k_folds == -1):
         myclf.KfoldCrossVal(
             myclf.CNN,
             normalize=normalize,

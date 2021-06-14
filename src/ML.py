@@ -1344,8 +1344,9 @@ class Classifier:
         Parameters:
             - k (default 5): int
                 number of groups that a given data sample will be split into
+                number of folds
         """
-        if k is None:
+        if k is -1:
             # pop subjects who have too few data loaded in
             for subject in self.subjects:
                 if len([dataObj for dataObj in self.data if
