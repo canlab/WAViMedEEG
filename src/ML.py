@@ -183,7 +183,7 @@ class Classifier:
         tt_split=0.33,
         labels=None,
         normalize=None,
-        data_minimum=5,
+        data_minimum=2,
             eval=False):
         """
         Prepares data within Classifier object such that all in Classifier.data
@@ -249,8 +249,6 @@ class Classifier:
             (item.source, item.subject)
             for item in self.data]))
 
-        random.shuffle(self.subjects)
-
         if verbosity:
             print("Total number of subjects:", len(self.subjects))
 
@@ -267,7 +265,12 @@ class Classifier:
             if len([dataObj for dataObj in self.data if
                 dataObj.subject == subject[1]]) < data_minimum:
                 self.subjects.pop(self.subjects.index(subject))
-                print("Subject:", subject, "has too few data. <", data_minimum)
+                print("Subject:", subject[1], "has too few data. <", data_minimum)
+
+        if verbosity:
+            print("Trimmed number of subjects:", len(self.subjects))
+
+        random.shuffle(self.subjects)
 
         self.train_subjects = []
         self.test_subjects = []
@@ -324,24 +327,36 @@ class Classifier:
             # n_samples // n_splits
             kf = KFold(n_splits=k_fold[1])
 
-            # first look at only subjects with subject code above 1 (cond-pos)
-            for group in self.groups:
+            # for group in self.groups:
+            #
+            #     group_subjects = [sub for sub in self.subjects
+            #         if int(sub[1][0]) == group]
+            #
+            #     train_indexes, test_indexes = list(
+            #         kf.split(group_subjects))[k_fold[0]]
+            #
+            #     for i, sub in enumerate(group_subjects):
+            #         if i in train_indexes:
+            #             self.train_subjects.append(sub)
+            #         elif i in test_indexes:
+            #             self.test_subjects.append(sub)
+            #         else:
+            #             print("There was an error in the k-fold algorithm.")
+            #             print("Exiting.")
+            #             sys.exit(1)
 
-                group_subjects = [sub for sub in self.subjects
-                    if int(sub[1][0]) == group]
+            train_indeces, test_indeces = list(
+                kf.split(self.subjects))[k_fold[0]]
 
-                train_indexes, test_indexes = list(
-                    kf.split(group_subjects))[k_fold[0]]
-
-                for i, sub in enumerate(group_subjects):
-                    if i in train_indexes:
-                        self.train_subjects.append(sub)
-                    elif i in test_indexes:
-                        self.test_subjects.append(sub)
-                    else:
-                        print("There was an error in the k-fold algorithm.")
-                        print("Exiting.")
-                        sys.exit(1)
+            for i, sub in enumerate(self.subjects):
+                if i in train_indeces:
+                    self.train_subjects.append(sub)
+                elif i in test_indeces:
+                    self.test_subjects.append(sub)
+                else:
+                    print("There was an error in the k-fold algorithm.")
+                    print("Exiting.")
+                    sys.exit(1)
 
         if len(self.train_subjects) > 0:
             self.train_dataset = np.expand_dims(np.stack(
@@ -1336,7 +1351,7 @@ class Classifier:
         tt_split=0.33,
         sample_weight=True,
         logistic_regression=False,
-        data_minimum=5):
+        data_minimum=2):
         """
         Resampling procedure used to evaluate ML models
         on a limited data sample
@@ -1346,15 +1361,34 @@ class Classifier:
                 number of groups that a given data sample will be split into
                 number of folds
         """
-        if k is -1:
+        if k == -1:
+
+            # make list of subjects in this dataset
+            self.subjects = list(set([
+                (item.source, item.subject)
+                for item in self.data]))
+
+            # print("Total number of subjects:", len(self.subjects))
+
+            # if eval is not True:
+            #     for item in self.data:
+            #         class_amounts[config.group_names[item.group]] += 1
+            #
+            #     for key, value in class_amounts.items():
+            #         print("Number of", key, "outcomes:", int(value))
+
             # pop subjects who have too few data loaded in
             for subject in self.subjects:
                 if len([dataObj for dataObj in self.data if
                     dataObj.subject == subject[1]]) < data_minimum:
                     self.subjects.pop(self.subjects.index(subject))
-                    print(
-                        "Subject:", subject,
-                        "has too few data. <", data_minimum)
+                    # print(
+                        # "Subject:", subject[1],
+                        # "has too few data. <", data_minimum)
+
+            # print("Trimmed number of subjects:", len(self.subjects))
+
+            random.shuffle(self.subjects)
 
             k = len(self.subjects)
 
