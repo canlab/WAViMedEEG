@@ -354,7 +354,7 @@ def plot_history(clf, history, checkpoint_dir, metric):
      label='test: '\
          + "Subs: " + str(len(clf.test_subjects)) + " "\
          + "Data: " + str(len(clf.test_dataset)))
-    plt.title('Epoch Accuracy')
+    plt.title('Epoch ' + str(metric))
     plt.ylabel(metric)
     plt.xlabel('epoch')
     plt.legend(loc='upper left')

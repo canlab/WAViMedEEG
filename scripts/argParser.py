@@ -1,6 +1,7 @@
 import sys
 sys.path.append('..')
 import os
+import shutil
 import argparse
 from src import config
 
@@ -309,6 +310,34 @@ def main(query):
                             help="(Default: None) Checkpoint directory (most "
                             + "likely found in logs/fit) containing saved model.")
 
+    if 'combine' in query:
+        parser.add_argument('--combine',
+                            dest='combine',
+                            type=bool,
+                            default=False,
+                            help="(Default: False) Combines all study names "
+                            + "provided into single test dataset.")
+
+    # if 'pred_level' in query:
+    #     parser.add_argument('--pred_level',
+    #                         dest='pred_level',
+    #                         type=str,
+    #                         default='all',
+    #                         help="(Default: all) Whether to save predictions "
+    #                         + "on saved model for each data array provided "
+    #                         + "or summarize as % of subjects' data.")
+
+    if 'fallback' in query:
+        parser.add_argument('--fallback',
+                            dest='fallback',
+                            type=bool,
+                            default=False,
+                            help="(Default: False) In the event that a subject "
+                            + "in the study group does not have contigs "
+                            + "generated (i.e. data too noisy), will attempt "
+                            + "to grab their data from the next-loosest "
+                            + "schema in the given data folder.")
+
     # Machine Learning - Plots
     # ==========================
     if 'plot_ROC' in query:
@@ -318,6 +347,14 @@ def main(query):
                             default=False,
                             help="(Default: False) Plot sensitivity-"
                             + "specificity curve on validation dataset")
+
+    if 'plot_hist' in query:
+        parser.add_argument('--plot_hist',
+                            dest='plot_hist',
+                            type=bool,
+                            default=False,
+                            help="(Default: False) Plot histogram "
+                            + "of model evaluations.")
 
     if 'plot_conf' in query:
         parser.add_argument('--plot_conf',
@@ -590,10 +627,13 @@ def main(query):
 
     # limited subjects
     if hasattr(args, "limited_subjects"):
-        for subject in args.limited_subjects:
-            if len(subject) != config.participantNumLen:
-                print("Subject number provided not correct length. "
-                + "Should be: " + str(config.participantNumLen))
+        if args.limited_subjects is not None:
+            for subject in args.limited_subjects:
+                if len(subject) != config.participantNumLen:
+                    print("Subject number provided not correct length. "
+                    + "Should be: " + str(config.participantNumLen))
+                    raise ValueError
+                    sys.exit(3)
 
     # balance
 

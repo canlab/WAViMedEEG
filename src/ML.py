@@ -117,6 +117,9 @@ class Classifier:
             self.groups.append(self.data[-1].group)
         self.groups.sort()
 
+        # make list of subjects in this dataset
+        self.subjects = [item.subject for item in self.data]
+
     def Balance(
         self,
             verbosity=True):
@@ -180,7 +183,7 @@ class Classifier:
         tt_split=0.33,
         labels=None,
         normalize=None,
-        data_minimum=2,
+        data_minimum=5,
             eval=False):
         """
         Prepares data within Classifier object such that all in Classifier.data
@@ -733,7 +736,7 @@ class Classifier:
         depth=5,
         regularizer=None,
         regularizer_param=0.01,
-        focal_loss_gamma=0,
+        # focal_loss_gamma=0,
         dropout=None,
         plot_ROC=False,
         plot_conf=False,
@@ -767,7 +770,7 @@ class Classifier:
                 in any applicable parameterized layer
             - regularizer_param: (float) default 0.01
                 penalization for large weights in the provided regularizer
-            - focal_loss_gama: (null)
+            # - focal_loss_gama: (null)
             - dropout: (float) default None
                 if float provided (> 0 & < 1), degree of dropout applied after
                 all convolulational sets are given
@@ -806,7 +809,7 @@ class Classifier:
         from tensorflow.keras.layers import Dropout
         from tensorflow.keras.layers import BatchNormalization
         # import tensorflow_addons as tfa
-        from focal_loss import SparseCategoricalFocalLoss
+        # from focal_loss import SparseCategoricalFocalLoss
         import datetime
         import kerastuner as kt
         from src.Plots import plot_history
@@ -961,6 +964,7 @@ class Classifier:
         plot_history(self, history, checkpoint_dir, 'loss')
 
         y_pred_keras = model.predict(self.test_dataset)
+        print("Y pred keras:", y_pred_keras)
 
         y_pred = np.argmax(y_pred_keras, axis=1)
         labels = np.argmax(self.test_labels, axis=1)
@@ -1203,15 +1207,16 @@ class Classifier:
         plot_3d_preds=False,
         fname=None,
         pred_level='all',
-            save_results=False):
+        save_results=False,
+        fallback_list=None):
 
         import tensorflow as tf
         from focal_loss import SparseCategoricalFocalLoss
 
         model = tf.keras.models.load_model(checkpoint_dir+"/my_model")
 
-        if fname is not None:
-            fname = fname + "_" + pred_level
+        # if fname is not None:
+        #     fname = fname + "_" + pred_level
 
         model.summary()
 
@@ -1222,40 +1227,50 @@ class Classifier:
             f = open(checkpoint_dir+"/"+fname+"_predictions.txt", 'w')
 
             for dataObj, prediction in zip(self.data, y_pred_keras):
+                    # subject number
                     f.write(str(dataObj.subject))
                     f.write('\t')
                     # f.write(str(prediction))
+                    # predictions for each output node
                     for score in prediction:
                         f.write(str(score))
                         f.write(' ')
+                    f.write('\t')
+                    art_used = 0
+                    if fallback_list is not None:
+                        art_used = 0 if str(dataObj.subject) not in fallback_list\
+                            else fallback_list[str(dataObj.subject)]
+                    f.write(str(art_used))
                     f.write('\n')
 
-        if pred_level == 'subject':
-            sub_level_preds = []
-            sub_level_labels = []
-            for j, sub in enumerate(self.subjects):
-                subject_preds = []
-                for i, (pred, inputObj) in enumerate(
-                    zip(y_pred_keras, self.data)):
 
-                    if inputObj.subject == str(sub[1]):
-                        subject_preds.append(pred)
-                        if len(sub_level_labels) == j:
-                            label = []
-                            for i in enumerate(self.groups):
-                                if self.groups.index(inputObj.group) == i:
-                                    label.append(1)
-                                else:
-                                    label.append(0)
-                            sub_level_labels.append(label)
-                            print("True group:", inputObj.group)
-                            print("Label:", label)
-                sub_level_preds.append(np.mean(subject_preds, axis=0))
-            y_pred_keras = sub_level_preds
-            test_set_labels = np.array(sub_level_labels)
 
-        y_pred = np.argmax(y_pred_keras, axis=1)
-        # labels = np.argmax(test_set_labels, axis=1)
+        # if pred_level == 'subject':
+        #     sub_level_preds = []
+        #     sub_level_labels = []
+        #     for j, sub in enumerate(self.subjects):
+        #         subject_preds = []
+        #         for i, (pred, inputObj) in enumerate(
+        #             zip(y_pred_keras, self.data)):
+        #
+        #             if inputObj.subject == str(sub[1]):
+        #                 subject_preds.append(pred)
+        #                 if len(sub_level_labels) == j:
+        #                     label = []
+        #                     for i in enumerate(self.groups):
+        #                         if self.groups.index(inputObj.group) == i:
+        #                             label.append(1)
+        #                         else:
+        #                             label.append(0)
+        #                     sub_level_labels.append(label)
+        #                     print("True group:", inputObj.group)
+        #                     print("Label:", label)
+        #         sub_level_preds.append(np.mean(subject_preds, axis=0))
+        #     y_pred_keras = sub_level_preds
+        #     test_set_labels = np.array(sub_level_labels)
+        #
+        # y_pred = np.argmax(y_pred_keras, axis=1)
+        # # labels = np.argmax(test_set_labels, axis=1)
 
         if plot_conf is True:
             from sklearn.metrics import confusion_matrix
@@ -1310,7 +1325,7 @@ class Classifier:
         plot_ROC=False,
         plot_conf=False,
         plot_3d_preds=False,
-        k=1,
+        k=None,
         plot_spec_avgs=False,
         C=1,
         kernel='linear',
@@ -1320,7 +1335,8 @@ class Classifier:
         num_feats=10,
         tt_split=0.33,
         sample_weight=True,
-        logistic_regression=False):
+        logistic_regression=False,
+        data_minimum=5):
         """
         Resampling procedure used to evaluate ML models
         on a limited data sample
@@ -1329,6 +1345,18 @@ class Classifier:
             - k (default 5): int
                 number of groups that a given data sample will be split into
         """
+        if k is None:
+            # pop subjects who have too few data loaded in
+            for subject in self.subjects:
+                if len([dataObj for dataObj in self.data if
+                    dataObj.subject == subject[1]]) < data_minimum:
+                    self.subjects.pop(self.subjects.index(subject))
+                    print(
+                        "Subject:", subject,
+                        "has too few data. <", data_minimum)
+
+            k = len(self.subjects)
+
         for i in tqdm(range(k)):
             self.Prepare(
                 k_fold=(i, k),
@@ -1356,7 +1384,7 @@ class Classifier:
                     model, y_pred, y_labels = ML_function(
                         regularizer=regularizer,
                         regularizer_param=regularizer_param,
-                        focal_loss_gamma=focal_loss_gamma,
+                        # focal_loss_gamma=focal_loss_gamma,
                         dropout=dropout,
                         learning_rate=learning_rate,
                         lr_decay=lr_decay,
@@ -1396,7 +1424,7 @@ class Classifier:
                     model, y_pred, y_labels = self.CNN(
                         regularizer=regularizer,
                         regularizer_param=regularizer_param,
-                        focal_loss_gamma=focal_loss_gamma,
+                        # focal_loss_gamma=focal_loss_gamma,
                         dropout=dropout,
                         learning_rate=learning_rate,
                         lr_decay=lr_decay,
@@ -1435,6 +1463,9 @@ class Classifier:
 
         f.write(model_type)
         f.write('\n')
+        for study in set([dataObj.source for dataObj in self.data]):
+            f.write(study)
+            f.write(' ')
         f.write('\n')
 
         f.write("Subjects")
@@ -1479,6 +1510,7 @@ class Classifier:
         f.write('\n')
 
         f.write('Test')
+        f.write('\n')
         for sub in self.test_subjects:
             f.write(str(sub[1]))
             f.write('\n')
