@@ -31,10 +31,14 @@ class SpectralAverage:
     def __init__(
         self,
         inputClf,
+        use_gpu=False,
         lowbound=0,
         highbound=25,
         training_only=False,
             testing_only=False):
+
+        if use_gpu is True:
+            import cupy as np
 
         self.Clf = inputClf
 
@@ -144,12 +148,15 @@ class SpectralAverage:
 class BandFilter:
     # removes a given frequency band's power from task data trials
 
-    def __init__(self, study_folder, task, type="bandstop"):
+    def __init__(self, study_folder, task, type="bandstop", use_gpu=False):
 
         self.study_folder = study_folder
         self.task = task
         self.type = type
         self.new_data = []
+
+        if use_gpu is True:
+            import cupy as np
 
     def gen_taskdata(self, filter_band):
 
@@ -230,40 +237,76 @@ class BandFilter:
 
 
 class CoherenceMap:
-    def __init__(self, study_folder, task):
+    def __init__(
+        self,
+        array=None,
+        channel_names=config.channel_names,
+        source=None,
+        subject=None,
+        task=None,
+        length=None,
+        sample_rate=config.sample_rate):
 
-        self.study_folder = study_folder
+        if array is not None:
+            self.array = array.T
+        else:
+            self.array = None
+        self.channel_names = channel_names
+        self.source = source
+        self.subject = subject
         self.task = task
-        self.new_data = []
+        if self.array is not None:
+            self.length = self.array.shape[1]
+        else:
+            self.length = 0
+        self.sample_rate = sample_rate
 
-        fnames = [
-            fname for fname in os.listdir(self.study_folder+"/"+self.task)
-            if "_nofilter" in fname]
+        if self.array is not None:
+            edgelist = []
+            cohs = []
+            # channels i=0:-1
+            for i, (sig1, chan1) in enumerate(
+                zip(self.array, self.channel_names)):
+                if i > len(self.array):
+                    continue
+                # channels i+1:
+                for j, (sig2, chan2) in enumerate(
+                    zip(self.array, self.channel_names)):
+                    if j <= i:
+                        continue
+                    f, Cxy = scipy.signal.coherence(
+                        sig1,
+                        sig2,
+                        fs=self.sample_rate)
+                    # on first iteration, element 'f' of dict is frequency list
+                    if j == 1:
+                        labels.append('f')
+                        cohs.append(f)
 
-        print("Generating filtered trials:")
-        for fname in tqdm(fnames):
-            try:
-                arr = np.genfromtxt(
-                    self.study_folder+"/"+self.task+"/"+fname,
-                    delimiter=" ")
-            except Exception:
-                print(fname, " FAILED")
-                print("Couldn't load data. Needs delim fix probably.")
-                sys.exit(3)
+                    labels.append(str(channel_names[i] + '-' + channel_names[j]))
+                    cohs.append(Cxy)
 
-            if arr.size == 0:
-                print(
-                    "Most likely an empty text file was "
-                    + "encountered. Skipping: " + fname)
-                continue
+            labels = np.array(labels)
+            cohs = np.array(cohs)
+            self.map = (labels, cohs)
 
-            post = []
+    def plot_coherences(self):
+        f = self.map[1][0]
+        cohs = self.map[1][1:10]
+        labels = self.map[0][1:10]
 
-            for i, sig in enumerate(arr.T[:-2]):
-                post[i] = []
-                for j, sig2 in enumerate(arr.T[i+1:]):
-                    # j + i + 1
-                    f, Cxy = scipy.signal.coherence(sig, sig2, fs, nperseg=1024)
-                post.append(filtered)
+        fig, axs = plt.subplots(nrows=len(labels), sharex=True)
+        for label, Cxy, ax in zip(labels, cohs, axs):
+            ax.semilogy(f, Cxy)
+            ax.set_xlabel('frequency [Hz]')
+            ax.set_ylabel('Coherence')
+            ax.set_title(str(label))
+        # plt.tight_layout()
+        plt.show()
 
-            post = np.stack(post)
+    def write(self, path):
+        np.savetxt(
+            path,
+            self.map[1],
+            delimiter=",",
+            fmt="%2.1f")

@@ -65,7 +65,7 @@ def pred_hist(
 
     correct = 0
     for pred, true in zip(y_preds, y_labels):
-        if np.rint(pred) == true:
+        if np.rint(pred) == True:
             correct += 1
     acc = correct / len(y_preds)
 
@@ -354,7 +354,7 @@ def plot_history(clf, history, checkpoint_dir, metric):
      label='test: '\
          + "Subs: " + str(len(clf.test_subjects)) + " "\
          + "Data: " + str(len(clf.test_dataset)))
-    plt.title('Epoch Accuracy')
+    plt.title('Epoch ' + str(metric))
     plt.ylabel(metric)
     plt.xlabel('epoch')
     plt.legend(loc='upper left')

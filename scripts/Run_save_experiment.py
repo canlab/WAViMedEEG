@@ -42,6 +42,27 @@ def main():
     log_dirs = args.log_dirs
     checkpoint_dirs = args.checkpoint_dirs
 
+    lrs = [1e-05,
+    1.2742749857031348e-05,
+    1.623776739188721e-05,
+    2.06913808111479e-05,
+    2.6366508987303556e-05,
+    3.359818286283781e-05,
+    4.281332398719396e-05,
+    5.4555947811685143e-05,
+    6.951927961775606e-05,
+    8.858667904100833e-05,
+    0.00011288378916846884,
+    0.0001438449888287663,
+    0.00018329807108324357,
+    0.00023357214690901214,
+    0.00029763514416313193,
+    0.000379269019073225,
+    0.0004832930238571752,
+    0.0006158482110660261,
+    0.0007847599703514606,
+    0.001]
+
     # # ERROR HANDLING
     # if data_type not in ["erps", "spectra", "contigs"]:
     #     print(
@@ -73,18 +94,19 @@ def main():
     #     checkpoint_dirs = [checkpoint_dir]
 
     workbook = xlsxwriter.Workbook('Experiments.xlsx')
-    for log_dir in log_dirs:
-        checkpoint_dirs = os.listdir("logs/"+log_dir)
+    for z, log_dir in enumerate(log_dirs):
+        # if checkpoint_dirs == None:
+        checkpoint_dirs = os.listdir(log_dir)
         checkpoint_dirs.sort()
 
-        worksheet = workbook.add_worksheet(log_dir)
+        worksheet = workbook.add_worksheet(str(z))
         # worksheet.set_default_row(200)
         # worksheet.set_column(6, 21, 200)
 
         # headers
         # model config / training
         worksheet.write('A1', 'Training Studies')
-        worksheet.write('B1', 'Depth')
+        worksheet.write('B1', 'Learning Rate')
         worksheet.write('C1', 'Final Accuracy')
         worksheet.write('D1', 'Final Loss')
         worksheet.write('E1', 'Final Validation Accuracy')
@@ -123,7 +145,7 @@ def main():
         # worksheet.write('V1', 'Eval ref 81+')
 
         for i, checkpoint_dir in enumerate(checkpoint_dirs):
-            with open("logs/"+log_dir+"/"+checkpoint_dir+"/training.log", 'r') as f:
+            with open(log_dir+"/"+checkpoint_dir+"/training.log", 'r') as f:
                 for line in f:
                     pass
                 last_line = line.strip()
@@ -131,13 +153,13 @@ def main():
             training = last_line.split(',')
             training = [val.strip() for val in training]
 
-            if training[0] != '19':
-                continue
+            # if training[0] != '19':
+            #     continue
             if len(training) != 5:
                 continue
 
-            worksheet.write(i+1, 0, 'CU control vs. CU pain')
-            worksheet.write(i+1, 1, i)
+            worksheet.write(i+1, 0, 'WD control vs. CU pain vs. Rehab')
+            worksheet.write(i+1, 1, lrs[i//5])
 
             # write TF log output to the A-D cols
             worksheet.write(i+1, 2, training[1])
@@ -146,12 +168,14 @@ def main():
             worksheet.write(i+1, 5, training[4])
 
             # write training images
-            worksheet.insert_image(i+1, 6, "logs/"+log_dir+"/"+checkpoint_dir+"/epoch_accuracy.png", {'y_scale': 0.75, 'x_scale': 0.75, 'object_position': 1})
-            worksheet.insert_image(i+1, 7, "logs/"+log_dir+"/"+checkpoint_dir+"/epoch_loss.png", {'y_scale': 0.75, 'x_scale': 0.75, 'object_position': 1})
-            worksheet.insert_image(i+1, 8, "logs/"+log_dir+"/"+checkpoint_dir+"/ROC.png", {'y_scale': 0.75, 'x_scale': 0.75, 'object_position': 1})
+            worksheet.insert_image(i+1, 6, log_dir+"/"+checkpoint_dir+"/epoch_accuracy.png", {'y_scale': 0.35, 'x_scale': 0.7, 'object_position': 1})
+            worksheet.insert_image(i+1, 7, log_dir+"/"+checkpoint_dir+"/epoch_loss.png", {'y_scale': 0.35, 'x_scale': 0.7, 'object_position': 1})
+            # worksheet.insert_image(i+1, 8, "logs/"+log_dir+"/"+checkpoint_dir+"/ROC.png", {'y_scale': 0.75, 'x_scale': 0.75, 'object_position': 1})
+            # worksheet.insert_image(i+1, 8, "logs/"+log_dir+"/"+checkpoint_dir+"/ROC.png", {'y_scale': 0.75, 'x_scale': 0.75, 'object_position': 1})
+
             # write testing images
-            worksheet.insert_image(i+1, 9, "logs/"+log_dir+"/"+checkpoint_dir+"/confusion_matrix.png", {'y_scale': 0.75, 'x_scale': 0.75, 'object_position': 1})
-            worksheet.insert_image(i+1, 10, "logs/"+log_dir+"/"+checkpoint_dir+"/validation_3d_preds.png", {'y_scale': 0.75, 'x_scale': 0.75, 'object_position': 1})
+            worksheet.insert_image(i+1, 9, log_dir+"/"+checkpoint_dir+"/confusion_matrix.png", {'y_scale': 0.5, 'x_scale': 0.7, 'object_position': 1})
+            # worksheet.insert_image(i+1, 10, log_dir+"/"+checkpoint_dir+"/validation_3d_preds.gif", {'y_scale': 0.75, 'x_scale': 0.75, 'object_position': 1})
             # worksheet.insert_image(i+1, 11, "logs/"+log_dir+"/"+checkpoint_dir+"/lyons_pain.png", {'y_scale': 0.75, 'x_scale': 0.75, 'object_position': 1})
 
             # worksheet.insert_image(i+1, 9, "logs/"+log_dir+"/"+checkpoint_dir+"/CU_pain.png", {'y_scale': 0.75, 'x_scale': 0.75, 'object_position': 1})

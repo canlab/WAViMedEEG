@@ -7,14 +7,13 @@ import os
 from tqdm import tqdm
 import argparse
 from datetime import datetime
-import numpy as np
 
 
 def main():
 
     parser = argparse.ArgumentParser(
-        description="Options for CNN "
-        + "(convoluional neural network) method of ML.Classifier")
+        description="Options for Linear Regression "
+        + "method of ML.Classifier")
 
     parser.add_argument('data_type',
                         type=str,
@@ -34,34 +33,12 @@ def main():
                         help="(Default: " + config.study_directory + ") "
                         + "Study folder containing dataset")
 
-    parser.add_argument('--log_dir',
-                        dest='log_dir',
-                        type=str,
-                        default="logs/fit",
-                        help="(Default: logs/fit) Parent directory for "
-                        + "checkpoints.")
-
-    parser.add_argument('--checkpoint_dir',
-                        dest='checkpoint_dir',
-                        type=str,
-                        default=None,
-                        help="(Default: None) Checkpoint directory (most "
-                        + "likely found in logs/fit) containing saved model.")
-
-    parser.add_argument('--pred_level',
-                        dest='pred_level',
-                        type=str,
-                        default='all',
-                        help="(Default: 'all') If 'all', returns a prediction "
-                        + "for every individual piece of data. If 'subject', "
-                        + "then returns 1 averaged prediction per subject.")
-
-    parser.add_argument('--combine',
-                        dest='combine',
+    parser.add_argument('--balance',
+                        dest='balance',
                         type=bool,
                         default=False,
-                        help="(Default: False) If True, will load all of the "
-                        + "data at one time for a combined set of predictions.")
+                        help="(Default: False) If True, then will pop data "
+                        + "from the larger class datasets until balanced.")
 
     parser.add_argument('--task',
                         dest='task',
@@ -123,11 +100,26 @@ def main():
                         + "to use. One of "
                         + "the following: standard, minmax, None")
 
-    parser.add_argument('--plot_hist',
-                        dest='plot_hist',
+    parser.add_argument('--sample_weight',
+                        dest='sample_weight',
                         type=bool,
                         default=False,
-                        help="(Default: False) Plot histogram of predictions.")
+                        help="(Default: None) If 'auto', uses auto sample "
+                        + "weighting to try to resolve class imbalances")
+
+    parser.add_argument('--plot_data',
+                        dest='plot_data',
+                        type=bool,
+                        default=False,
+                        help="(Default: False) If True, plots coefficients "
+                        + "of linear regression model.")
+
+    parser.add_argument('--plot_ROC',
+                        dest='plot_ROC',
+                        type=bool,
+                        default=False,
+                        help="(Default: False) Plot sensitivity-specificity "
+                        + "curve on validation dataset")
 
     parser.add_argument('--plot_conf',
                         dest='plot_conf',
@@ -136,13 +128,6 @@ def main():
                         help="(Default: False) Plot confusion matrix "
                         + "on validation dataset")
 
-    parser.add_argument('--plot_3d_preds',
-                        dest='plot_3d_preds',
-                        type=bool,
-                        default=False,
-                        help="(Default: False) Plot 3-dimensional scatter "
-                        + "plot of validation dataset predictions")
-
     parser.add_argument('--plot_spectra',
                         dest='plot_spectra',
                         type=bool,
@@ -150,14 +135,48 @@ def main():
                         help="(Default: False) Plot spectra by group for "
                         + "training data")
 
+    parser.add_argument('--tt_split',
+                        dest='tt_split',
+                        type=float,
+                        default=0.33,
+                        help="(Default: 0.33) Ratio of test samples "
+                        + "to train samples. Note: not applicable if using "
+                        + "k_folds.")
+
+    parser.add_argument('--k_folds',
+                        dest='k_folds',
+                        type=int,
+                        default=1,
+                        help="(Default: 1) If you want to perform "
+                        + "cross evaluation, set equal to number of k-folds.")
+
+    parser.add_argument('--repetitions',
+                        dest='repetitions',
+                        type=int,
+                        default=1,
+                        help="(Default: 1) Unlike k-fold, trains the "
+                        + "model n times without mixing around subjects. "
+                        + "Can still be used within each k-fold.")
+
+    parser.add_argument('--regularizer',
+                        dest='regularizer',
+                        type=str,
+                        default=None,
+                        help="(Default: l1_l2) Regularizer to be used in dense "
+                        + "layers. One of: ['l1', 'l2', 'l1_l2']")
+
+    parser.add_argument('--regularizer_param',
+                        dest='regularizer_param',
+                        type=float,
+                        default=0.01,
+                        help="(Default: 0.01) Regularization parameter ")
+
     # save the variables in 'args'
     args = parser.parse_args()
 
     data_type = args.data_type
     studies_folder = args.studies_folder
     study_names = args.study_names
-    log_dir = args.log_dir
-    checkpoint_dir = args.checkpoint_dir
     task = args.task
     length = args.length
     channels = args.channels
@@ -165,12 +184,17 @@ def main():
     erp_degree = args.erp_degree
     filter_band = args.filter_band
     normalize = args.normalize
-    plot_spectra = args.plot_spectra
-    plot_hist = args.plot_hist
+    sample_weight = args.sample_weight
+    plot_data = args.plot_data
+    plot_ROC = args.plot_ROC
     plot_conf = args.plot_conf
-    plot_3d_preds = args.plot_3d_preds
-    pred_level = args.pred_level
-    combine = args.combine
+    plot_spectra = args.plot_spectra
+    tt_split = args.tt_split
+    k_folds = args.k_folds
+    repetitions = args.repetitions
+    regularizer = args.regularizer
+    regularizer_param = args.regularizer_param
+    balance = args.balance
 
     # ERROR HANDLING
     if data_type not in ["erps", "spectra", "contigs"]:
@@ -194,17 +218,6 @@ def main():
                 + "path does not exist as directory.")
             raise FileNotFoundError
             sys.exit(3)
-
-    if checkpoint_dir is not None:
-        if not os.path.isdir(checkpoint_dir):
-            if not os.path.isdir(log_dir+checkpoint_dir):
-                print(
-                    "Invalid entry for checkpoint directory, "
-                    + "path does not exist as directory.")
-                raise FileNotFoundError
-                sys.exit(3)
-            else:
-                checkpoint_dir = log_dir+checkpoint_dir
 
     if task not in config.tasks:
         print(
@@ -261,6 +274,13 @@ def main():
         raise ValueError
         sys.exit(3)
 
+    if tt_split < 0 or tt_split > 0.999:
+        print(
+            "Invalid entry for tt_split. Must be float between "
+            + "0 and 0.999.")
+        raise ValueError
+        sys.exit(3)
+
     try:
         if len(str(artifact)) == 19:
             for char in artifact:
@@ -285,6 +305,24 @@ def main():
         raise ValueError
         sys.exit(3)
 
+    if k_folds <= 0:
+        print("Invalid entry for k_folds. Must be int 1 or greater.")
+        raise ValueError
+        sys.exit(3)
+
+    if regularizer is not None:
+        if regularizer not in ['l1', 'l2', 'l1_l2']:
+            print("Invalid entry for regularizer. Must be l1, l2, or l1_l2.")
+            raise ValueError
+            sys.exit(3)
+
+    if (regularizer_param <= 0) or (regularizer_param >= 1):
+        print(
+            "Invalid entry for regularizer param. Must be float between "
+            + "0 and 1.")
+        raise ValueError
+        sys.exit(3)
+
     if filter_band == "nofilter":
         pass
     elif any(band == filter_band for band in config.frequency_bands):
@@ -300,26 +338,10 @@ def main():
         raise ValueError
         sys.exit(3)
 
-    if pred_level not in ["all", "subject"]:
-        print(
-            "Invalid entry for pred_level. Must be either "
-            + "'all' or 'subject'")
-        raise ValueError
-        sys.exit(3)
-
+    patient_paths = []
     # patient_path points to our 'condition-positive' dataset
     # ex. patient_path =
     # "/wavi/EEGstudies/CANlab/spectra/P300_250_1111111111111111111_0_1"
-    if checkpoint_dir is None:
-        checkpoint_dirs = [
-            log_dir + folder
-            for folder in os.listdir(log_dir)
-            if "_"+data_type in folder]
-        checkpoint_dirs.sort()
-    else:
-        checkpoint_dirs = [checkpoint_dir]
-
-    patient_paths = []
     for study_name in study_names:
 
         patient_path = studies_folder\
@@ -347,115 +369,88 @@ def main():
 
         patient_paths.append(patient_path)
 
-    if combine is True:
-        # Instantiate a 'Classifier' object
-        myclf = ML.Classifier(data_type)
+    # Instantiate a 'Classifier' Object
+    myclf = ML.Classifier(data_type)
 
     # ============== Load All Studies' Data ==============
-    for study_name, patient_path in zip(study_names, patient_paths):
+    patient_paths = []
+    # patient_path points to our 'condition-positive' dataset
+    # ex. patient_path =
+    # "/wavi/EEGstudies/CANlab/spectra/P300_250_1111111111111111111_0_1"
+    for study_name in study_names:
 
-        if combine is not True:
-            # Instantiate a 'Classifier' object
-            myclf = ML.Classifier(data_type)
+        patient_path = studies_folder\
+            + '/'\
+            + study_name\
+            + '/'\
+            + data_type\
+            + '/'\
+            + task\
+            + '_'\
+            + str(length)\
+            + '_'\
+            + channels\
+            + '_'\
+            + str(artifact)
 
-        for fname in os.listdir(patient_path):
+        if erp_degree is not None:
+            patient_path += ("_" + str(erp_degree))
+
+        if not os.path.isdir(patient_path):
+            print("Configuration supplied was not found in study folder data.")
+            print("Failed:", patient_path)
+            raise FileNotFoundError
+            sys.exit(3)
+
+        patient_paths.append(patient_path)
+
+    for patient_path in patient_paths:
+        for fname in sorted(os.listdir(patient_path)):
             if "_"+filter_band in fname:
                 myclf.LoadData(patient_path+"/"+fname)
 
-        if combine is not True:
+    # ============== Balance Class Data Sizes ==============
+    # pops data off from the larger class until class sizes are equal
+    # found in the reference folders
+    if balance is True:
+        myclf.Balance()
 
-            for checkpoint_dir in checkpoint_dirs:
+    if k_folds == 1:
+        myclf.Prepare(tt_split=tt_split, normalize=normalize)
 
-                label_names=checkpoint_dir.split('_')[7:]
-                label_values=[]
-                for group in label_names:
-                    for key, value in config.group_names.items():
-                        if group == value:
-                            label_values.append(key)
+        for i in range(repetitions):
 
-                myclf.Prepare(
-                    tt_split=1,
-                    labels=label_values,
-                    normalize=normalize)
-
-                if data_type == 'spectra':
-                    if plot_spectra is True:
-                        specavgObj = SpectralAverage(myclf)
-                        specavgObj.plot(
-                            fig_fname=checkpoint_dir+"/"
-                            + study_name
-                            + "_true_"
-                            + str(datetime.now().strftime("%H-%M-%S")))
-
-                y_preds = myclf.eval_saved_CNN(
-                    checkpoint_dir,
-                    plot_hist=plot_hist,
-                    plot_conf=plot_conf,
-                    plot_3d_preds=plot_3d_preds,
-                    fname=study_name,
-                    pred_level=pred_level)
-
-                for i, (pred, inputObj) in enumerate(
-                    zip(np.rint(y_preds), myclf.data)):
-
-                    inputObj.group = myclf.groups[int(np.argmax(pred))]
-
-                if data_type == 'spectra':
-                    if plot_spectra is True:
-                        specavgObj = SpectralAverage(myclf)
-                        specavgObj.plot(
-                            fig_fname=checkpoint_dir+"/"
-                            + study_name
-                            + "_pred_"
-                            + str(datetime.now().strftime("%H-%M-%S")))
-
-    if combine is True:
-        for checkpoint_dir in checkpoint_dirs:
-
-            label_names=checkpoint_dir.split('_')[7:]
-            label_values=[]
-            for group in label_names:
-                for key, value in config.group_names.items():
-                    if group == value:
-                        label_values.append(key)
-
-            myclf.Prepare(
-                tt_split=1,
-                labels=label_values,
-                normalize=normalize)
+            model, y_pred, y_labels = myclf.LinearRegression(
+                plot_data=plot_data,
+                plot_ROC=plot_ROC,
+                plot_conf=plot_conf)
 
             if data_type == 'spectra':
                 if plot_spectra is True:
                     specavgObj = SpectralAverage(myclf)
                     specavgObj.plot(
-                        fig_fname=checkpoint_dir+"/"
-                        + study_name
-                        + "_true_"
+                        fig_fname=myclf.checkpoint_dir
+                        + "/specavg_"
+                        + os.path.basename(myclf.trial_name)
+                        + "_train_"
                         + str(datetime.now().strftime("%H-%M-%S")))
 
-            y_preds = myclf.eval_saved_CNN(
-                checkpoint_dir,
-                plot_hist=plot_hist,
-                plot_conf=plot_conf,
-                plot_3d_preds=plot_3d_preds,
-                fname=study_name,
-                pred_level=pred_level)
+    if k_folds > 1:
+        myclf.KfoldCrossVal(
+            myclf.LDA,
+            normalize=normalize,
+            regularizer=regularizer,
+            regularizer_param=regularizer_param,
+            repetitions=repetitions,
+            learning_rate=learning_rate,
+            lr_decay=lr_decay,
+            plot_ROC=plot_ROC,
+            plot_conf=plot_conf,
+            plot_3d_preds=plot_3d_preds,
+            k=k_folds,
+            plot_spec_avgs=plot_spectra,
+            sample_weight=sample_weight)
 
-            # TODO:
-            # broken, can't change label here for combination runs
-            # for i, (pred, inputObj) in enumerate(
-            #     zip(np.rint(y_preds), myclf.data)):
-            #
-            #     inputObj.group = myclf.groups[int(np.argmax(pred))]
-
-            # if data_type == 'spectra':
-            #     if plot_spectra is True:
-            #         specavgObj = SpectralAverage(myclf)
-            #         specavgObj.plot(
-            #             fig_fname=checkpoint_dir+"/"
-            #             + study_name
-            #             + "_pred_"
-            #             + str(datetime.now().strftime("%H-%M-%S")))
 
 if __name__ == '__main__':
     main()

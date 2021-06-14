@@ -117,6 +117,9 @@ class Classifier:
             self.groups.append(self.data[-1].group)
         self.groups.sort()
 
+        # make list of subjects in this dataset
+        self.subjects = [item.subject for item in self.data]
+
     def Balance(
         self,
             verbosity=True):
@@ -180,7 +183,8 @@ class Classifier:
         tt_split=0.33,
         labels=None,
         normalize=None,
-            data_minimum=2):
+        data_minimum=5,
+            eval=False):
         """
         Prepares data within Classifier object such that all in Classifier.data
         are contained in either self.train_dataset or self.test_dataset,
@@ -250,18 +254,20 @@ class Classifier:
         if verbosity:
             print("Total number of subjects:", len(self.subjects))
 
-        for item in self.data:
-            class_amounts[config.group_names[item.group]] += 1
+        if eval is not True:
+            for item in self.data:
+                class_amounts[config.group_names[item.group]] += 1
 
-        if verbosity:
-            for key, value in class_amounts.items():
-                print("Number of", key, "outcomes:", int(value))
+            if verbosity:
+                for key, value in class_amounts.items():
+                    print("Number of", key, "outcomes:", int(value))
 
         # pop subjects who have too few data loaded in
         for subject in self.subjects:
             if len([dataObj for dataObj in self.data if
                 dataObj.subject == subject[1]]) < data_minimum:
                 self.subjects.pop(self.subjects.index(subject))
+                print("Subject:", subject, "has too few data. <", data_minimum)
 
         self.train_subjects = []
         self.test_subjects = []
@@ -387,16 +393,18 @@ class Classifier:
 
             self.test_labels = []
             self.test_labels_subs = []
-            for dataObj in self.data:
-                if (dataObj.source, dataObj.subject) in self.test_subjects:
-                    label = []
-                    for i, class_label in enumerate(self.groups):
-                        if self.groups.index(dataObj.group) == i:
-                            label.append(1)
-                        else:
-                            label.append(0)
-                    self.test_labels.append(label)
-                    self.test_labels_subs.append(dataObj.subject)
+
+            if eval is False:
+                for dataObj in self.data:
+                    if (dataObj.source, dataObj.subject) in self.test_subjects:
+                        label = []
+                        for i, class_label in enumerate(self.groups):
+                            if self.groups.index(dataObj.group) == i:
+                                label.append(1)
+                            else:
+                                label.append(0)
+                        self.test_labels.append(label)
+                        self.test_labels_subs.append(dataObj.subject)
 
             self.test_labels = np.array(self.test_labels)
 
@@ -405,9 +413,9 @@ class Classifier:
                 self.train_labels = np.ndarray(self.test_dataset.shape)
                 self.train_labels_subs = []
 
-        if k_fold is None:
-            print("Number of samples in train:", self.train_dataset.shape[0])
-            print("Number of samples in test:", self.test_dataset.shape[0])
+        # if k_fold is None:
+        #     print("Number of samples in train:", self.train_dataset.shape[0])
+        #     print("Number of samples in test:", self.test_dataset.shape[0])
 
         # normalize / standardize
         if normalize is not None:
@@ -457,27 +465,28 @@ class Classifier:
             self.test_dataset = np.reshape(self.test_dataset, og_shape)
 
         if verbosity:
-            for group in self.group_names:
-                print(
-                    "% {} samples in train: {}".format(
-                        group,
-                        # len([label for label in self.train_labels
-                        #     if label==self.group_names.index(group)]) \
-                        #     / len(self.train_labels)))
-                        np.sum([
-                            self.train_labels[
-                                :, self.group_names.index(group)]])\
-                        / len(self.train_labels)))
-                print(
-                    "% {} samples in test: {}".format(
-                        group,
-                        # len([label for label in self.test_labels
-                        #     if label==self.group_names.index(group)]) \
-                        #     / len(self.test_labels)))
-                        np.sum([
-                            self.test_labels[
-                                :, self.group_names.index(group)]])\
-                        / len(self.test_labels)))
+            if eval is False:
+                for group in self.group_names:
+                    print(
+                        "% {} samples in train: {}".format(
+                            group,
+                            # len([label for label in self.train_labels
+                            #     if label==self.group_names.index(group)]) \
+                            #     / len(self.train_labels)))
+                            np.sum([
+                                self.train_labels[
+                                    :, self.group_names.index(group)]])\
+                            / len(self.train_labels)))
+                    print(
+                        "% {} samples in test: {}".format(
+                            group,
+                            # len([label for label in self.test_labels
+                            #     if label==self.group_names.index(group)]) \
+                            #     / len(self.test_labels)))
+                            np.sum([
+                                self.test_labels[
+                                    :, self.group_names.index(group)]])\
+                            / len(self.test_labels)))
 
         # shuffle all of the data together
         if len(self.train_labels_subs) > 0:
@@ -502,6 +511,7 @@ class Classifier:
             self.test_labels = np.array(self.test_labels)
             self.test_labels_subs = np.array(self.test_labels_subs)
 
+
     def LDA(
         self,
             plot_data=False):
@@ -519,11 +529,8 @@ class Classifier:
 
         # reshape datasets
         nsamples, nx, ny, ndepth = self.train_dataset.shape
-
         rs_train_dataset = self.train_dataset.reshape((nsamples, nx*ny))
-
         nsamples, nx, ny, ndepth = self.test_dataset.shape
-
         rs_test_dataset = self.test_dataset.reshape((nsamples, nx*ny))
 
         # << Normalize features (z-score standardization) >> #
@@ -545,6 +552,33 @@ class Classifier:
                 clf,
                 rs_train_dataset,
                 self.test_labels, y_pred)
+
+        if plot_conf is True:
+            from sklearn.metrics import confusion_matrix
+            from src.Plots import plot_confusion_matrix
+
+            # calculate confusion matrix
+            cm = confusion_matrix(labels, y_pred)
+            plot_confusion_matrix(cm, checkpoint_dir, self.group_names)
+
+        if plot_3d_preds is True:
+            from src.Plots import plot_3d_scatter
+
+            plot_3d_scatter(
+                y_pred_keras,
+                labels,
+                self.group_names,
+                checkpoint_dir,
+                "validation_3d_preds")
+
+        # TODO:
+        # not working for multi-label atm
+        if plot_ROC is True:
+            from src.Plots import roc
+            roc(
+                y_pred,
+                labels,
+                fname=checkpoint_dir+"/ROC")
 
         return clf, y_pred, self.test_labels
 
@@ -699,22 +733,22 @@ class Classifier:
         beta2=0.999,
         epochs=100,
         verbosity=True,
-        eval=None,
         depth=5,
         regularizer=None,
         regularizer_param=0.01,
-        focal_loss_gamma=0,
+        # focal_loss_gamma=0,
         dropout=None,
         plot_ROC=False,
         plot_conf=False,
         decode=True,
         plot_3d_preds=False,
-            initial_bias=None):
+        sample_weight=True,
+            logistic_regression=False):
         """
         Convolutional Neural Network classifier, using Tensorflow base
 
         Parameters:
-            - learning_rate: (float) 0.01
+            - learning_rate: (float) default 0.01
                 how quickly the weights adapt at each iteration
             - lr_decay: (bool) default True
                 whether the learning rate should decay at a rate of 0.96
@@ -724,8 +758,41 @@ class Classifier:
                 beta2 value for Adam optimizer
             - epochs: (int) default 100
                 number of training iterations
+            - verbosity: (bool) default True
+                whether or not certain output statements should be printed
+                to standard output
+            - depth: (int) default 5
+                number of *sets* of convolutional layers (including pooling
+                and batch normalization) to be provided to the model;
+                an analog for complexity
+            - regularizer: {'l1', 'l2', 'l1_l2', None} default None
+                which regularization method should be applied to weights
+                in any applicable parameterized layer
+            - regularizer_param: (float) default 0.01
+                penalization for large weights in the provided regularizer
+            # - focal_loss_gama: (null)
+            - dropout: (float) default None
+                if float provided (> 0 & < 1), degree of dropout applied after
+                all convolulational sets are given
             - plot_ROC: (bool) default False
                 evaluates model on validation data and plots ROC curve
+            - plot_conf: (bool) default False
+                evaluates model on validation data and plots confusion matrix
+                of correct and incorrect rates for each class provided
+            - decode: (bool) default True
+                whether or not data labels should be one-hot-encoded, i.e.
+                a ground-truth array (0, 1, 0) -> 1, (0, 0, 1) -> 2,
+                *note* only applicable for sparse categorical loss (softmax)
+            - plot_3d_preds: (bool) default False
+                evaluates model on validation data and plots outputs from
+                logits *only to be used when 3 classes total are invovled*
+            - sample_weight: (bool) default True
+                if True, inputs are associated with a sample weight when
+                training so that imbalanced classes are given approximately
+                equal amounts of influence over the loss function
+            - logistic_regression: (bool) default False
+                if True, then the model will be simply a logistic regression
+                model, without convolutions, or other model complexities
         """
         # quiet some TF warnings
         TF_CPP_MIN_LOG_LEVEL = 2
@@ -742,39 +809,19 @@ class Classifier:
         from tensorflow.keras.layers import Dropout
         from tensorflow.keras.layers import BatchNormalization
         # import tensorflow_addons as tfa
-        from focal_loss import SparseCategoricalFocalLoss
+        # from focal_loss import SparseCategoricalFocalLoss
         import datetime
         import kerastuner as kt
         from src.Plots import plot_history
 
-        if initial_bias == 'auto':
-            initial_bias = {}
-            for i, group in enumerate(self.groups):
-                initial_bias[group] =\
-                    (np.sum(self.train_labels[:, i])\
-                    / len(self.train_labels))
-
-            initial_bias = tf.keras.initializers.Constant(initial_bias)
-            # initial_bias = None
-
-        # TODO: redo sample weight calculation
-        # check: 5:4:1 / 10
-        # -> {2, 2.5, 10} -> sum = 1
-        # sample_weights = np.ndarray(shape=self.train_labels.shape)
-        # for i, element in enumerate(self.train_labels_subs):
-        #     sample_weights[i] = (
-        #         (1 -
-        #         (
-        #         len([tag for tag in self.train_labels_subs if tag == element]) /
-        #         len(self.train_labels_subs)
-        #         )) / len([tag for tag in self.train_labels_subs if tag == element])
-        #     )
-
-        sample_weights = [
-            (len(self.train_labels) /
-            len([label for label in self.train_labels if (np.argmax(label) == np.argmax(thislabel))]))
-            for thislabel in self.train_labels]
-        sample_weights = np.array(sample_weights)
+        if sample_weight is True:
+            sample_weights = [
+                (len(self.train_labels) /
+                len([label for label in self.train_labels if (np.argmax(label) == np.argmax(thislabel))]))
+                for thislabel in self.train_labels]
+            sample_weights = np.array(sample_weights)
+        else:
+            sample_weights = [1 for label in self.train_labels]
 
         # decode labels (they arrive as one-hot vectors)
         if decode is True:
@@ -784,48 +831,41 @@ class Classifier:
         # introduce sequential set
         model = tf.keras.models.Sequential()
 
-        for i in range(depth):
-            # 1
-            model.add(Conv2D(
-                15,
-                kernel_size=(10, 3),
-                strides=1,
-                padding='same',
-                activation='relu',
-                data_format='channels_last',
-                kernel_regularizer=tf.keras.regularizers.l1_l2(
-                    l1=regularizer_param,
-                    l2=regularizer_param)
-                ))
+        if logistic_regression is not True:
+            for i in range(depth):
+                # 1
+                model.add(Conv2D(
+                    15,
+                    kernel_size=(10, 3),
+                    strides=1,
+                    padding='same',
+                    activation='relu',
+                    data_format='channels_last',
+                    kernel_regularizer=tf.keras.regularizers.l1_l2(
+                        l1=regularizer_param,
+                        l2=regularizer_param)
+                    ))
 
-            model.add(MaxPooling2D(
-                pool_size=(3, 3),
-                strides=1,
-                padding='valid',
-                data_format='channels_last'))
+                model.add(MaxPooling2D(
+                    pool_size=(3, 3),
+                    strides=1,
+                    padding='valid',
+                    data_format='channels_last'))
 
-        model.add(BatchNormalization())
+            model.add(BatchNormalization())
 
-        if dropout is not None:
-            model.add(Dropout(dropout))
+            if dropout is not None:
+                model.add(Dropout(dropout))
 
         # flatten
-        # model.add(Flatten(data_format='channels_last'))
-        model.add(Flatten())
-
-        # model.add(Dense(
-        #     10,
-        #     activation='relu',
-        #     kernel_regularizer=tf.keras.regularizers.l1_l2(
-        #         l1=regularizer_param,
-        #         l2=regularizer_param)))
+        model.add(Flatten(data_format='channels_last'))
 
         model.add(Dense(
             len(self.groups),
-            use_bias=True if initial_bias is not None else False,
-            bias_initializer=initial_bias
-            if initial_bias is not None
-            else None,
+            # use_bias=True if initial_bias is not None else False,
+            # bias_initializer=initial_bias
+            # if initial_bias is not None
+            # else None,
             kernel_regularizer=tf.keras.regularizers.l1_l2(
                 l1=regularizer_param,
                 l2=regularizer_param)
@@ -871,11 +911,13 @@ class Classifier:
             metrics=['accuracy'])
 
         # tensorboard setup
+        # and naming of checkpoint directory
         checkpoint_dir = '../logs/fit/'\
             + datetime.datetime.now().strftime('%Y%m%d-%H%M%S')\
             + "_"\
             + self.trial_name.replace("/", "_")\
 
+        # include each group name (sorted) into checkpoint directory
         for group in self.group_names:
             checkpoint_dir = checkpoint_dir + "_" + group
 
@@ -886,10 +928,12 @@ class Classifier:
             histogram_freq=1)
 
         # save model history (acc, loss) to csv file
+        # in checkpoint directory
         csv_logger = tf.keras.callbacks.CSVLogger(
             checkpoint_dir+"/training.log",
             separator=',')
 
+        # fit model to data
         history = model.fit(
             self.train_dataset,
             self.train_labels_ohe if decode is True else self.train_labels,
@@ -908,6 +952,7 @@ class Classifier:
             verbose=verbosity,
             shuffle=True)
 
+        # write model summary to output file
         with open(checkpoint_dir+"/summary.txt", 'w') as fh:
             # Pass the file handle in as a lambda function to make it callable
             model.summary(print_fn=lambda x: fh.write(x + '\n'))
@@ -919,6 +964,7 @@ class Classifier:
         plot_history(self, history, checkpoint_dir, 'loss')
 
         y_pred_keras = model.predict(self.test_dataset)
+        print("Y pred keras:", y_pred_keras)
 
         y_pred = np.argmax(y_pred_keras, axis=1)
         labels = np.argmax(self.test_labels, axis=1)
@@ -1160,47 +1206,71 @@ class Classifier:
         plot_conf=False,
         plot_3d_preds=False,
         fname=None,
-            pred_level='all'):
+        pred_level='all',
+        save_results=False,
+        fallback_list=None):
 
         import tensorflow as tf
         from focal_loss import SparseCategoricalFocalLoss
 
         model = tf.keras.models.load_model(checkpoint_dir+"/my_model")
 
-        if fname is not None:
-            fname = fname + "_" + pred_level
+        # if fname is not None:
+        #     fname = fname + "_" + pred_level
 
         model.summary()
 
         y_pred_keras = model.predict(self.test_dataset)
-        test_set_labels = self.test_labels
+        # test_set_labels = self.test_labels
 
-        if pred_level == 'subject':
-            sub_level_preds = []
-            sub_level_labels = []
-            for j, sub in enumerate(self.subjects):
-                subject_preds = []
-                for i, (pred, inputObj) in enumerate(
-                    zip(y_pred_keras, self.data)):
+        if save_results is True:
+            f = open(checkpoint_dir+"/"+fname+"_predictions.txt", 'w')
 
-                    if inputObj.subject == str(sub[1]):
-                        subject_preds.append(pred)
-                        if len(sub_level_labels) == j:
-                            label = []
-                            for i in enumerate(self.groups):
-                                if self.groups.index(inputObj.group) == i:
-                                    label.append(1)
-                                else:
-                                    label.append(0)
-                            sub_level_labels.append(label)
-                            print("True group:", inputObj.group)
-                            print("Label:", label)
-                sub_level_preds.append(np.mean(subject_preds, axis=0))
-            y_pred_keras = sub_level_preds
-            test_set_labels = np.array(sub_level_labels)
+            for dataObj, prediction in zip(self.data, y_pred_keras):
+                    # subject number
+                    f.write(str(dataObj.subject))
+                    f.write('\t')
+                    # f.write(str(prediction))
+                    # predictions for each output node
+                    for score in prediction:
+                        f.write(str(score))
+                        f.write(' ')
+                    f.write('\t')
+                    art_used = 0
+                    if fallback_list is not None:
+                        art_used = 0 if str(dataObj.subject) not in fallback_list\
+                            else fallback_list[str(dataObj.subject)]
+                    f.write(str(art_used))
+                    f.write('\n')
 
-        y_pred = np.argmax(y_pred_keras, axis=1)
-        labels = np.argmax(test_set_labels, axis=1)
+
+
+        # if pred_level == 'subject':
+        #     sub_level_preds = []
+        #     sub_level_labels = []
+        #     for j, sub in enumerate(self.subjects):
+        #         subject_preds = []
+        #         for i, (pred, inputObj) in enumerate(
+        #             zip(y_pred_keras, self.data)):
+        #
+        #             if inputObj.subject == str(sub[1]):
+        #                 subject_preds.append(pred)
+        #                 if len(sub_level_labels) == j:
+        #                     label = []
+        #                     for i in enumerate(self.groups):
+        #                         if self.groups.index(inputObj.group) == i:
+        #                             label.append(1)
+        #                         else:
+        #                             label.append(0)
+        #                     sub_level_labels.append(label)
+        #                     print("True group:", inputObj.group)
+        #                     print("Label:", label)
+        #         sub_level_preds.append(np.mean(subject_preds, axis=0))
+        #     y_pred_keras = sub_level_preds
+        #     test_set_labels = np.array(sub_level_labels)
+        #
+        # y_pred = np.argmax(y_pred_keras, axis=1)
+        # # labels = np.argmax(test_set_labels, axis=1)
 
         if plot_conf is True:
             from sklearn.metrics import confusion_matrix
@@ -1255,7 +1325,7 @@ class Classifier:
         plot_ROC=False,
         plot_conf=False,
         plot_3d_preds=False,
-        k=1,
+        k=None,
         plot_spec_avgs=False,
         C=1,
         kernel='linear',
@@ -1263,7 +1333,10 @@ class Classifier:
         plot_Features=False,
         feat_select=False,
         num_feats=10,
-            tt_split=0.33):
+        tt_split=0.33,
+        sample_weight=True,
+        logistic_regression=False,
+        data_minimum=5):
         """
         Resampling procedure used to evaluate ML models
         on a limited data sample
@@ -1272,6 +1345,18 @@ class Classifier:
             - k (default 5): int
                 number of groups that a given data sample will be split into
         """
+        if k is None:
+            # pop subjects who have too few data loaded in
+            for subject in self.subjects:
+                if len([dataObj for dataObj in self.data if
+                    dataObj.subject == subject[1]]) < data_minimum:
+                    self.subjects.pop(self.subjects.index(subject))
+                    print(
+                        "Subject:", subject,
+                        "has too few data. <", data_minimum)
+
+            k = len(self.subjects)
+
         for i in tqdm(range(k)):
             self.Prepare(
                 k_fold=(i, k),
@@ -1299,7 +1384,7 @@ class Classifier:
                     model, y_pred, y_labels = ML_function(
                         regularizer=regularizer,
                         regularizer_param=regularizer_param,
-                        focal_loss_gamma=focal_loss_gamma,
+                        # focal_loss_gamma=focal_loss_gamma,
                         dropout=dropout,
                         learning_rate=learning_rate,
                         lr_decay=lr_decay,
@@ -1308,7 +1393,9 @@ class Classifier:
                         epochs=epochs,
                         plot_ROC=plot_ROC,
                         plot_conf=plot_conf,
-                        plot_3d_preds=plot_3d_preds)
+                        plot_3d_preds=plot_3d_preds,
+                        sample_weight=sample_weight,
+                        logistic_regression=logistic_regression)
 
                     # self.saveModelConfig('cnn', model)
 
@@ -1337,7 +1424,7 @@ class Classifier:
                     model, y_pred, y_labels = self.CNN(
                         regularizer=regularizer,
                         regularizer_param=regularizer_param,
-                        focal_loss_gamma=focal_loss_gamma,
+                        # focal_loss_gamma=focal_loss_gamma,
                         dropout=dropout,
                         learning_rate=learning_rate,
                         lr_decay=lr_decay,
@@ -1346,7 +1433,8 @@ class Classifier:
                         epochs=epochs,
                         plot_ROC=plot_ROC,
                         plot_conf=plot_conf,
-                        plot_3d_preds=plot_3d_preds)
+                        plot_3d_preds=plot_3d_preds,
+                        logistic_regression=logistic_regression)
 
                     # self.saveModelConfig('cnn', model)
 
@@ -1375,6 +1463,9 @@ class Classifier:
 
         f.write(model_type)
         f.write('\n')
+        for study in set([dataObj.source for dataObj in self.data]):
+            f.write(study)
+            f.write(' ')
         f.write('\n')
 
         f.write("Subjects")
@@ -1419,6 +1510,7 @@ class Classifier:
         f.write('\n')
 
         f.write('Test')
+        f.write('\n')
         for sub in self.test_subjects:
             f.write(str(sub[1]))
             f.write('\n')

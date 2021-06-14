@@ -9,57 +9,48 @@ from scipy import signal, stats
 import sys
 
 
-def BinarizeChannels(network_channels=config.network_channels):
+def BinarizeChannels(
+    input_channels=config.network_channels,
+    true_channels=config.channel_names):
     """
     Utility function to convert list of string channel names to a
     binary string corresponding to whether or not each default channel
-    in config.channel_names is found in the input list
+    in true_channels is found in the input_channels
 
     Parameters:
-        - network_channels: default config.network_channels
+        - input_channels: (default config.network_channels)
+        - true_channels: (default config.channel_names)
 
     Returns:
         - string of 0s and 1s
     """
-
-    bin_str = ""
-
-    for channel in config.channel_names:
-
-        if channel in network_channels:
-
-            bin_str = bin_str + "1"
-
-        else:
-
-            bin_str = bin_str + "0"
-
-    return(bin_str)
+    return(map(str, ["1" if channel in input_channels else "0"
+        for channel in config.channel_names]))
 
 
-def StringarizeChannels(bin_str):
+def StringarizeChannels(input_str, reference_list=config.channel_names):
     """
     Utility function to convert binary string channel names to a list of
     strings corresponding to whether or not each default channel
-    in config.channel_names is found in the input list
+    in reference_list is found in the input string
 
     Parameters:
-        - string of 0s and 1s
+        - input_str: string of 0s and 1s
+        - reference_list: list against which input_str will be validated
 
     Returns:
         - network_channels: default config.network_channels
     """
-
-    channels = []
-    for bin, chan in zip(bin_str, config.channel_names):
-        if bin == "1":
-            channels.append(chan)
-
-    return channels
+    return([chan for bin, chan in zip(input_str, reference_list)
+        if bin == "1"])
 
 
-# just keeps subset of 19 channels as defined in network_channels
-def FilterChannels(array, keep_channels, axis_num=1):
+def FilterChannels(
+    array,
+    keep_channels,
+    axis_num=1,
+    reference_list=config.channel_names,
+    use_gpu=False):
     """
     Returns a new array of input data containing only the channels
     provided in keep_channels; axis_num corresponds to the axis across
@@ -70,6 +61,8 @@ def FilterChannels(array, keep_channels, axis_num=1):
         - keep_channels: list of channel names to keep, should be a subset
           of config.channel_names
         - axis_num: (int) default 1
+        - reference_list: list of true channel names / columns which
+            keep_channels will be validated against
 
     Returns:
         - newarr: array with only certain channels kept in
@@ -77,19 +70,19 @@ def FilterChannels(array, keep_channels, axis_num=1):
     if isinstance(array, str):
         array = np.array([char for char in array])
 
-    filter_indeces = []
+    if use_gpu is False:
+        newarray = np.take(
+            array,
+            [reference_list.index(keep) for keep in keep_channels],
+            axis_num)
+    else:
+        import cupy as cp
+        newarray = cp.take(
+            array,
+            [reference_list.index(keep) for keep in keep_channels],
+            axis_num)
 
-    # print("Old Shape of Dataset:", dataset.shape, "\n")
-    # for each channel in my channel list
-    for keep in keep_channels:
-
-        filter_indeces.append(config.channel_names.index(keep))
-        # get the index of that channel in the master channel list
-        # add that index number to a new list filter_indeces
-
-    newarr = np.take(array, filter_indeces, axis_num)
-
-    return(newarr)
+    return(newarray)
 
 
 def MaskChannel(channel_data, art_degree=0):
@@ -103,11 +96,7 @@ def MaskChannel(channel_data, art_degree=0):
             over and not masked
 
     """
-    channel_mxi = np.ma.masked_where(
-        channel_data > art_degree,
-        channel_data)
-
-    return channel_mxi
+    return np.ma.masked_where(channel_data > art_degree, channel_data)
 
 
 # takes one positional argument, path of TaskData folder
@@ -158,10 +147,12 @@ class TaskData:
     def gen_contigs(
         self,
         contigLength,
-        network_channels=BinarizeChannels(config.network_channels),
+        network_channels=BinarizeChannels(
+            input_channels=config.network_channels),
         art_degree=0,
         erp_degree=None,
         filter_band="nofilter",
+        use_gpu=False,
             force=False):
 
         """
@@ -176,6 +167,9 @@ class TaskData:
             - erp_degree: (int) default 1, lowest number in .evt which will be
               accepted as an erp event
         """
+
+        if use_gpu is True:
+            import cupy as cp
 
         if not hasattr(self, 'subjects'):
 
@@ -238,6 +232,9 @@ class TaskData:
                 self.path + "/" + art_fname,
                 delimiter=" ")
 
+            if use_gpu is True:
+                artifact_data = cp.asarray(artifact_data)
+
             if artifact_data.size == 0:
                 print(
                     "Most likely an empty text file was "
@@ -249,6 +246,8 @@ class TaskData:
                 events = np.genfromtxt(
                     self.path + "/" + evtfile,
                     delimiter=" ")
+                if use_gpu is True:
+                    events = cp.asarray(events)
 
                 if events.size == 0:
                     print(
@@ -260,11 +259,15 @@ class TaskData:
             artifact_data = FilterChannels(
                 artifact_data,
                 StringarizeChannels(network_channels),
-                axis_num=1)
+                axis_num=1,
+                use_gpu=use_gpu)
 
             # mask artifact array where numbers exceed art_degree
             if isinstance(art_degree, int):
-                art_degree = np.repeat(art_degree, network_channels.count('1'))
+                if use_gpu is False:
+                    art_degree = np.repeat(art_degree, network_channels.count('1'))
+                else:
+                    art_degree = cp.repeat(art_degree, network_channels.count('1'))
 
             # if using custom artifact map
             elif isinstance(art_degree, str):
@@ -272,15 +275,24 @@ class TaskData:
                 art_degree = FilterChannels(
                     art_degree,
                     StringarizeChannels(network_channels),
-                    axis_num=0)
+                    axis_num=0,
+                    use_gpu=use_gpu)
 
             mxi = []
             for art, channel in zip(art_degree, artifact_data.T):
-                mxi.append(np.ma.filled(
-                    MaskChannel(channel, int(art)).astype(float),
-                    np.nan))
+                if use_gpu is False:
+                    mxi.append(np.asarray(np.ma.filled(
+                        MaskChannel(np.asarray(channel), int(art)).astype(float),
+                        np.nan)))
+                else:
+                    mxi.append(cp.asarray(np.ma.filled(
+                        MaskChannel(cp.asnumpy(channel), int(art)).astype(float),
+                        np.nan)))
 
-            mxi = np.stack(mxi).T
+            if use_gpu is False:
+                mxi = np.stack(mxi).T
+            else:
+                mxi = cp.stack(mxi).T
 
             artifact_data = mxi
 
@@ -295,29 +307,42 @@ class TaskData:
 
                     stk = artifact_data[i:(i + contigLength), :]
 
-                    if not np.any(np.isnan(stk)):
-
-                        indeces.append(i)
-
-                        i += contigLength
-
+                    if use_gpu is False:
+                        if not np.any(np.isnan(stk)):
+                            indeces.append(i)
+                            i += contigLength
+                        else:
+                            # TODO
+                            # contig alg can be sped up here to jump to
+                            # last instance of NaN
+                            i += 1
                     else:
-                        # TODO
-                        # contig alg can be sped up here to jump to
-                        # last instance of NaN
-                        i += 1
+                        if not cp.any(cp.isnan(stk)):
+                            indeces.append(i)
+                            i += contigLength
+                        else:
+                            # TODO
+                            # contig alg can be sped up here to jump to
+                            # last instance of NaN
+                            i += 1
 
             else:
                 # only take oddball erp?
-                event_indeces = np.where(events >= erp_degree)[0]
+                if use_gpu is False:
+                    event_indeces = np.where(events >= erp_degree)[0]
+                else:
+                    event_indeces = cp.where(events >= erp_degree)[0]
 
                 for i in event_indeces:
 
                     stk = artifact_data[i:(i + contigLength), :]
 
-                    if not np.any(np.isnan(stk)):
-
-                        indeces.append(i)
+                    if use_gpu is False:
+                        if not np.any(np.isnan(stk)):
+                            indeces.append(i)
+                    else:
+                        if not cp.any(cp.isnan(stk)):
+                            indeces.append(i)
 
             subfiles = [
                 fname for fname in self.task_fnames
@@ -329,6 +354,8 @@ class TaskData:
             for eegfile in subfiles:
                 # print("EEG file:"+self.path+"/"+eegfile)
                 data = np.genfromtxt(self.path+"/"+eegfile, delimiter=" ")
+                if use_gpu is True:
+                    data = cp.asarray(data)
                 # data = FilterChannels(
                 #     data,
                 #     StringarizeChannels(network_channels),
@@ -363,7 +390,8 @@ class TaskData:
                                     sub,
                                     band))
 
-    def write_contigs(self):
+
+    def write_contigs(self, use_gpu=False):
         """
         Writes TaskData.contigs objects to file, under TaskData.path / contigs
         """
@@ -388,16 +416,18 @@ class TaskData:
                     + contig.band
                     + "_"
                     + str(contig.startindex)
-                    + ".csv")
+                    + ".csv",
+                    use_gpu=use_gpu)
 
     # takes length (in samples @ 250 Hz) as positional argument
     def gen_spectra(
         self,
         contigLength,
-        network_channels=BinarizeChannels(config.network_channels),
+        network_channels=BinarizeChannels(input_channels=config.network_channels),
         art_degree=0,
         erp_degree=None,
         filter_band="nofilter",
+        use_gpu=False,
             force=False):
 
         """
@@ -412,6 +442,8 @@ class TaskData:
             - art_degree: (int) default 0, minimum value accepted to pass as a
               "clean" contig, when reading mask from .art file
         """
+        if use_gpu is True:
+            import cupy as cp
 
         if not hasattr(self, 'spectra'):
 
@@ -479,12 +511,14 @@ class TaskData:
                     delimiter=","),
                 contig.split('_')[2][:-4],
                 contig[:config.participantNumLen],
-                contig.split('_')[1]).fft()
+                ### TODO: GPU spectra
+                contig.split('_')[1]).fft(use_gpu=False)
 
             if temp is not None:
                 self.spectra.append(temp)
 
-    def write_spectra(self):
+
+    def write_spectra(self, use_gpu=False):
         """
         Writes self.spectra objects to file
         """
@@ -511,7 +545,8 @@ class TaskData:
                     + spectrum.band
                     + "_"
                     + str(spectrum.startindex)
-                    + ".csv")
+                    + ".csv",
+                    use_gpu=use_gpu)
 
 
 # takes 4 positional arguments:
@@ -538,7 +573,8 @@ class Contig:
         subject,
         band,
         source=None,
-            event=None):
+        event=None,
+        sample_rate=config.sample_rate):
 
         self.data = data
 
@@ -554,15 +590,26 @@ class Contig:
 
         self.event = event
 
-    def write(self, path):
+        self.sample_rate = sample_rate
 
-        np.savetxt(
-            path,
-            self.data,
-            delimiter=",",
-            fmt="%2.1f")
+    def write(self, path, use_gpu=False):
 
-    def fft(self):
+        if use_gpu is True:
+            import cupy as cp
+
+            np.savetxt(
+                path,
+                cp.asnumpy(self.data),
+                delimiter=",",
+                fmt="%2.1f")
+        else:
+            np.savetxt(
+                path,
+                self.data,
+                delimiter=",",
+                fmt="%2.1f")
+
+    def fft(self, use_gpu=False):
         """
         Fourier transforms data
 
@@ -571,19 +618,31 @@ class Contig:
         Returns:
             - Spectra object
         """
+        if use_gpu is True:
+            import cupy as cp
+            import cupyx
 
         channel_number = 0
 
         for sig in self.data.T:
 
+            if use_gpu is True:
+                sig = cp.asarray(sig)
+
             electrode = config.network_channels[channel_number]
 
             # perform pwelch routine to extract PSD estimates by channel
             try:
-                f, Pxx_den = signal.periodogram(
-                    sig,
-                    fs=float(config.sample_rate),
-                    window='hann')
+                if use_gpu is False:
+                    f, Pxx_den = signal.periodogram(
+                        sig,
+                        fs=float(config.sample_rate),
+                        window='hann')
+                else:
+                    ###
+                    f = cp.fft.fftfreq(len(sig), d=(1/config.sample_rate))
+                    Pxx_den = cupyx.scipy.fft.fft(sig)
+
             except IndexError:
                 print("Something went wrong processing the following contig:")
                 print(self.subject, self.startindex, self.source)
@@ -596,9 +655,15 @@ class Contig:
 
             if channel_number == 0:
 
-                spectral = np.array(f)
+                if use_gpu is False:
+                    spectral = np.array(f)
+                else:
+                    spectral = cp.asarray(f)
 
-            spectral = np.column_stack((spectral, Pxx_den))
+            if use_gpu is False:
+                spectral = np.column_stack((spectral, Pxx_den))
+            else:
+                spectral = cp.column_stack((spectral, Pxx_den))
 
             channel_number += 1
 
@@ -610,100 +675,26 @@ class Contig:
                 self.subject,
                 self.band))
 
-    def plot(self):
+    def plot(self, title=""):
         """
         Plots the contig
         """
 
-        fig, axs = plt.subplots(nrows=1, figsize=(16, 8))
+        fig, axs = plt.subplots(
+            nrows=self.data.shape[1],
+            figsize=(16, 8),
+            sharex=True)
 
-        trials = []
+        time = np.linspace(
+            0,
+            self.data.shape[0] / self.sample_rate,
+            num=self.data.shape[0])
 
-        plots = []
-
-        for channel in config.network_channels:
-
-            i = config.network_channels.index(channel)
-
-            trial = self.data.T[i]
-
-            trials.append(trial)
-
-            wavs = trial * 0.1
-
-            print(wavs)
-
-            t = np.arange(0, len(wavs)) / config.sample_rate
-
-            wavs = np.subtract(wavs, i * 25)
-
-            plots.append(axs.plot(t, wavs)[0])
-
-        axs.axis([
-            t[0],
-            t[-1],
-            -25 * len(config.network_channels),
-            5 * len(config.network_channels)])
-
-        leg = axs.legend(config.network_channels, loc="right", fancybox=True)
-
-        leg.get_frame().set_alpha(0.4)
-
-        axs.grid(b=True)
-
-        axs.set_title("Raw Waveforms: Subject " + self.subject)
-
-        axs.set_ylabel("Voltage [mV]")
-
-        axs.set_xlabel('Time [seconds]')
-
-        # we will set up a dict mapping legend line to orig line, and enable
-        # picking on the legend line
-        lined = dict()
-
-        for legline, origline in zip(leg.get_lines(), plots):
-
-            legline.set_picker(5)  # 5 pts tolerance
-
-            lined[legline] = origline
-
-        def onpick(event):
-            # on the pick event, find the orig line corresponding to the
-            # legend proxy line, and toggle the visibility
-            legline = event.artist
-            origline = lined[legline]
-            vis = not origline.get_visible()
-            origline.set_visible(vis)
-            # Change the alpha on the line in the legend so
-            # we can see what lines
-            # have been toggled
-            if vis:
-                legline.set_alpha(1.0)
-            else:
-                legline.set_alpha(0.2)
-            fig.canvas.draw()
-
-        fig.canvas.mpl_connect('pick_event', onpick)
-
-        def movonpick(event):
-            # on the pick event, find the orig line corresponding to the
-            # legend proxy line, and toggle the visibility
-            movlegline = event.artist
-            movorigline = movlined[movlegline]
-            vis = not movorigline.get_visible()
-            movorigline.set_visible(vis)
-            # Change the alpha on the line in the legend so
-            # we can see what lines
-            # have been toggled
-            if vis:
-                movlegline.set_alpha(1.0)
-            else:
-                movlegline.set_alpha(0.2)
-            fig.canvas.draw()
-
-        fig.canvas.mpl_connect('pick_event', movonpick)
-
-        plt.tight_layout()
+        for i, (sig, ax) in enumerate(zip(self.data.T, axs)):
+            ax.plot(time, sig)
+            ax.set_xlabel("Time (seconds)")
+            ax.set_ylabel("Voltage")
+            ax.set_title(config.channel_names[i])
 
         plt.show()
 
@@ -731,7 +722,8 @@ class Spectra:
         subject,
         band="nofilter",
         channels=config.network_channels,
-            source=None):
+        source=None,
+        sample_rate=config.sample_rate):
 
         self.data = data
 
@@ -747,16 +739,46 @@ class Spectra:
 
         self.channels = channels
 
-        self.freq_res = (config.sample_rate / 2) / (len(self.freq) - 1)
+        self.freq_res = (sample_rate / 2) / (len(self.freq) - 1)
 
         self.contig_length = config.sample_rate // self.freq_res
 
         self.source = source
 
-    def write(self, path):
+        self.sample_rate = sample_rate
 
-        np.savetxt(
-            path,
-            self.data,
-            delimiter=",",
-            fmt="%2.1f")
+    def write(self, path, use_gpu=False):
+
+        if use_gpu is True:
+            import cupy as cp
+
+            np.savetxt(
+                path,
+                cp.asnumpy(self.data),
+                delimiter=",",
+                fmt="%2.1f")
+        else:
+            np.savetxt(
+                path,
+                self.data,
+                delimiter=",",
+                fmt="%2.1f")
+
+    def plot(self, title=""):
+        """
+        Plots the contig
+        """
+
+        fig, axs = plt.subplots(
+            nrows=self.data.T.shape[0]-1,
+            figsize=(16, 8),
+            sharex=True)
+
+        for i, (Pxx, ax) in enumerate(zip(self.data.T[1:], axs)):
+            ax.plot(self.freq, Pxx)
+            ax.set_xlabel("Frequency (Hz)")
+            ax.set_ylabel("Power (Log)")
+            ax.set_yscale("log")
+            ax.set_title(config.channel_names[i])
+
+        plt.show()
