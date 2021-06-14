@@ -219,7 +219,8 @@ def main(query):
                             default=1,
                             help="(Default: 1) If you want to perform "
                             + "cross evaluation, set equal to number of "
-                            + "k-folds.")
+                            + "k-folds. For leave-one-out style cross val., "
+                            " enter '-1'.")
 
     if 'repetitions' in query:
         parser.add_argument('--repetitions',
@@ -711,9 +712,10 @@ def main(query):
     # k folds
     if hasattr(args, "k_folds"):
         if args.k_folds <= 0:
-            print("Invalid entry for k_folds. Must be int 1 or greater.")
-            raise ValueError
-            sys.exit(3)
+            if args.k_folds != -1:
+                print("Invalid entry for k_folds. Must be -1, or >=1.")
+                raise ValueError
+                sys.exit(3)
 
     # repetitions
 
