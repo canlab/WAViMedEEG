@@ -37,8 +37,8 @@ class SpectralAverage:
         training_only=False,
             testing_only=False):
 
-        if use_gpu is True:
-            import cupy as np
+        # if use_gpu is True:
+        #     import cupy as np
 
         self.Clf = inputClf
 
@@ -98,10 +98,8 @@ class SpectralAverage:
 
         fig, axs = plt.subplots(
             nrows=len(channels),
-            sharex=False,
+            sharex=True,
             figsize=(12, 1*num_channels))
-
-        fig.tight_layout()
 
         axs[-1].set_xlabel('Frequency')
 
@@ -136,11 +134,13 @@ class SpectralAverage:
 
             i += 1
 
+        fig.tight_layout()
+
         if fig_fname is None:
             plt.show()
 
         if fig_fname is not None:
-            fig.suptitle(fig_fname)
+            # fig.suptitle(fig_fname)
             fig.savefig(fig_fname)
             plt.close(fig)
 

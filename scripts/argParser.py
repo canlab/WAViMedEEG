@@ -46,6 +46,13 @@ def main(query):
                             help="(Default: P300) Four-character task name. "
                             + "Options: " + str([key for key in config.tasks]))
 
+    if 'fig_fname' in query:
+        parser.add_argument('--fig_fname',
+                            dest='fig_fname',
+                            type=str,
+                            default='defaultfigure',
+                            help="(Default: defaultfigure)")
+
     # PATHS Setup - METADATA
     # ==========================
     if 'group_nums' in query:

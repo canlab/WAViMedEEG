@@ -1541,6 +1541,8 @@ class Classifier:
         f.write('\n')
         for sub in self.train_subjects:
             f.write(str(sub[1]))
+            f.write('\t')
+            f.write(str(sub[0]))
             f.write('\n')
         f.write('\n')
 
@@ -1548,6 +1550,8 @@ class Classifier:
         f.write('\n')
         for sub in self.test_subjects:
             f.write(str(sub[1]))
+            f.write('\t')
+            f.write(str(sub[0]))
             f.write('\n')
 
         f.close()
