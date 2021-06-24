@@ -1380,7 +1380,7 @@ class Classifier:
             # pop subjects who have too few data loaded in
             for subject in self.subjects:
                 if len([dataObj for dataObj in self.data if
-                    (dataObj.subject == subject[1]]) and (dataObj.source == subject[0])) < data_minimum:
+                    ((dataObj.subject == subject[1]) and (dataObj.source == subject[0]))]) < data_minimum:
                     self.subjects.pop(self.subjects.index(subject))
                     # print(
                         # "Subject:", subject[1],
