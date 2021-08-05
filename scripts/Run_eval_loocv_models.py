@@ -3,6 +3,8 @@ from tqdm import tqdm
 import argParser
 from datetime import datetime
 import numpy as np
+from src import ML
+from src import config
 
 
 def main():
@@ -37,18 +39,26 @@ def main():
 
     # for cross-fold in LOO-cross-validation
     for fold in checkpoint_dirs:
+        # real possible binary labels of the fold
+        labels = fold.split('_')[-2:]
+        labels = [
+            list(config.group_names.keys())[\
+                list(config.group_names.values()).index(label)]
+            for label in labels]
+
         # get num, source of left-out subject
         f = open(fold+'/subjects.txt', 'r')
         line = ""
         while "Test" not in line:
             line = f.readline()
         line = str(f.readline())
-        subject, source = line.split('\t')
+        subject, source = line.strip().split('\t')
 
         # remove header (may have come from different PC, or server)
         source = '/' + source.split('//')[1]
-        source = studies_folder + source
+        source = str(studies_folder) + str(source)
 
+        # check this dir exists, not working?
         if not os.path.isdir(source):
             print("Configuration supplied was not found in study folder data.")
             print("Failed:", source)
@@ -65,8 +75,15 @@ def main():
         for fname in fnames:
             myclf.LoadData(source+'/'+fname)
 
+        myclf.Prepare(
+            tt_split=1,
+            labels=labels,
+            eval=True,
+            data_minimum=0)
+
         y_preds = myclf.eval_saved_CNN(
             fold,
+            fname="loocv",
             save_results=True)
 
 if __name__ == '__main__':
