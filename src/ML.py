@@ -1216,14 +1216,15 @@ class Classifier:
 
     def eval_saved_CNN(
         self,
-        checkpoint_dir,
-        plot_hist=False,
-        plot_conf=False,
-        plot_3d_preds=False,
-        fname=None,
-        pred_level='all',
-        save_results=False,
-        fallback_list=None):
+        checkpoint_dir, # directory in which savedmodel, my_model dir exists
+        plot_hist=False, # plot histogram of 0-1 binary predictions per contig
+        plot_conf=False, # plot confusion matrix on basis of preds
+        plot_3d_preds=False, # plot 3d predictions (multiclass only)
+        fname=None, # fname appended to saved results / files / figures
+        pred_level='all', # one of 'all', 'subject',
+        # if pred_level is subject then contig / preds are collapsed by avg
+        save_results=False, # save results per pred_level in txt file / tsv
+        fallback_list=None): #
 
         import tensorflow as tf
         from focal_loss import SparseCategoricalFocalLoss
@@ -1245,6 +1246,8 @@ class Classifier:
                     # subject number
                     f.write(str(dataObj.subject))
                     f.write('\t')
+                    f.write(str(dataObj.source))
+                    f.write('\t')
                     # f.write(str(prediction))
                     # predictions for each output node
                     for score in prediction:
@@ -1257,8 +1260,6 @@ class Classifier:
                             else fallback_list[str(dataObj.subject)]
                     f.write(str(art_used))
                     f.write('\n')
-
-
 
         # if pred_level == 'subject':
         #     sub_level_preds = []
