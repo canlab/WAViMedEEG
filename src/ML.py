@@ -90,7 +90,7 @@ class Classifier:
                     fname.split('_')[2][:-4],
                     fname[:config.participantNumLen],
                     fname.split('_')[1],
-                    source=os.path.basename(os.path.dirname(path))))
+                    source=os.path.dirname(path)))
 
         elif self.type == "spectra":
             self.data.append(
